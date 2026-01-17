@@ -239,20 +239,25 @@ class GameState {
     }
 
     spawnEnemy(enemyData) {
-        // Pick random edge spawn point
-        const edges = ['top', 'bottom', 'left', 'right'];
-        const edge = edges[Math.floor(Math.random() * edges.length)];
+        try {
+            // Pick random edge spawn point
+            const edges = ['top', 'bottom', 'left', 'right'];
+            const edge = edges[Math.floor(Math.random() * edges.length)];
 
-        let x, y;
-        switch (edge) {
-            case 'top': x = Math.floor(Math.random() * this.cols); y = 0; break;
-            case 'bottom': x = Math.floor(Math.random() * this.cols); y = this.rows - 1; break;
-            case 'left': x = 0; y = Math.floor(Math.random() * this.rows); break;
-            case 'right': x = this.cols - 1; y = Math.floor(Math.random() * this.rows); break;
-        }
+            let x, y;
+            switch (edge) {
+                case 'top': x = Math.floor(Math.random() * this.cols); y = 0; break;
+                case 'bottom': x = Math.floor(Math.random() * this.cols); y = this.rows - 1; break;
+                case 'left': x = 0; y = Math.floor(Math.random() * this.rows); break;
+                case 'right': x = this.cols - 1; y = Math.floor(Math.random() * this.rows); break;
+            }
 
-        const config = ENEMY_TYPES[enemyData.type];
-        const healthMult = 1 + (this.waveNumber - 1) * 0.1;
+            const config = ENEMY_TYPES[enemyData.type];
+            if (!config) {
+                console.error(`Unknown enemy type: ${enemyData.type}`);
+                return;
+            }
+            const healthMult = 1 + (this.waveNumber - 1) * 0.1;
 
         const enemy = {
             id: Date.now() + Math.random(),
@@ -278,6 +283,9 @@ class GameState {
         if (path) {
             enemy.path = path;
             this.enemies.push(enemy);
+        }
+        } catch (error) {
+            console.error('Error spawning enemy:', error);
         }
     }
 

@@ -241,31 +241,41 @@ function startGameLoop(roomCode) {
     let lastTime = Date.now();
 
     const gameLoop = setInterval(() => {
-        const room = rooms.get(roomCode);
-        if (!room || room.players.size === 0) {
-            clearInterval(gameLoop);
-            return;
-        }
+        try {
+            const room = rooms.get(roomCode);
+            if (!room || room.players.size === 0) {
+                clearInterval(gameLoop);
+                console.log(`Game loop stopped for room ${roomCode} - no players`);
+                return;
+            }
 
-        const now = Date.now();
-        const deltaTime = (now - lastTime) / 1000;
-        lastTime = now;
+            const now = Date.now();
+            const deltaTime = (now - lastTime) / 1000;
+            lastTime = now;
 
-        // Update game state
-        room.gameState.update(deltaTime);
+            // Cap deltaTime to prevent huge jumps
+            const cappedDelta = Math.min(deltaTime, 0.1);
 
-        // Send state to all players
-        io.to(roomCode).emit('gameState', {
-            state: room.gameState.serializeForSync(),
-            timestamp: now
-        });
+            // Update game state
+            room.gameState.update(cappedDelta);
 
-        // Check game over
-        if (room.gameState.isGameOver()) {
-            io.to(roomCode).emit('gameOver', {
-                waveReached: room.gameState.waveNumber
+            // Send state to all players
+            io.to(roomCode).emit('gameState', {
+                state: room.gameState.serializeForSync(),
+                timestamp: now
             });
-            clearInterval(gameLoop);
+
+            // Check game over
+            if (room.gameState.isGameOver()) {
+                io.to(roomCode).emit('gameOver', {
+                    waveReached: room.gameState.waveNumber
+                });
+                clearInterval(gameLoop);
+                console.log(`Game over in room ${roomCode} at wave ${room.gameState.waveNumber}`);
+            }
+        } catch (error) {
+            console.error(`Error in game loop for room ${roomCode}:`, error);
+            // Don't stop the loop on error, try to continue
         }
 
     }, 1000 / TICK_RATE);
