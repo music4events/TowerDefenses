@@ -20,6 +20,19 @@ app.use(express.static(path.join(__dirname, '../client')));
 // Game rooms
 const rooms = new Map();
 
+// Debug endpoint to check active rooms
+app.get('/api/rooms', (req, res) => {
+    const roomList = [];
+    for (const [code, room] of rooms) {
+        roomList.push({
+            code,
+            playerCount: room.players.size,
+            started: room.started
+        });
+    }
+    res.json({ rooms: roomList, count: roomList.length });
+});
+
 // Generate 6-character room code
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -74,9 +87,13 @@ io.on('connection', (socket) => {
         const roomCode = data.code.toUpperCase();
         playerName = data.name || 'Player';
 
+        console.log(`Join attempt: code="${roomCode}" by ${playerName}`);
+        console.log(`Active rooms: ${Array.from(rooms.keys()).join(', ') || 'none'}`);
+
         const room = rooms.get(roomCode);
 
         if (!room) {
+            console.log(`Room not found: ${roomCode}`);
             socket.emit('joinError', { message: 'Room not found' });
             return;
         }
