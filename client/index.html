@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense Coop</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Lobby Screen -->
+    <div id="lobby-screen">
+        <div class="lobby-container">
+            <h1>Tower Defense Coop</h1>
+            <div class="lobby-mode-select">
+                <button id="btn-solo" class="lobby-btn">Jouer Solo</button>
+                <button id="btn-multiplayer" class="lobby-btn primary">Multijoueur</button>
+            </div>
+
+            <div id="game-mode-panel" class="hidden">
+                <h3>Mode de jeu</h3>
+                <div class="game-mode-options">
+                    <button class="mode-select-btn selected" data-mode="waves">
+                        <span class="mode-icon">🌊</span>
+                        <span class="mode-name">Vagues</span>
+                        <span class="mode-desc">Vagues avec pauses entre chaque</span>
+                    </button>
+                    <button class="mode-select-btn" data-mode="endless">
+                        <span class="mode-icon">♾️</span>
+                        <span class="mode-name">Endless</span>
+                        <span class="mode-desc">Ennemis en continu, difficulte croissante</span>
+                    </button>
+                </div>
+                <button id="btn-start-solo" class="lobby-btn primary">Lancer la partie</button>
+            </div>
+
+            <div id="multiplayer-panel" class="hidden">
+                <div class="input-group">
+                    <label>Ton pseudo</label>
+                    <input type="text" id="player-name" placeholder="Entrez votre pseudo" maxlength="20">
+                </div>
+
+                <div class="lobby-actions">
+                    <button id="btn-create-room" class="lobby-btn">Creer une partie</button>
+                    <div class="divider">ou</div>
+                    <div class="join-room">
+                        <input type="text" id="room-code-input" placeholder="Code de la partie" maxlength="6">
+                        <button id="btn-join-room" class="lobby-btn">Rejoindre</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="room-panel" class="hidden">
+                <div class="room-info">
+                    <span>Code de la partie:</span>
+                    <span id="room-code-display" class="room-code"></span>
+                </div>
+                <div id="players-list">
+                    <h3>Joueurs</h3>
+                    <ul id="player-list"></ul>
+                </div>
+                <div id="mp-game-mode" class="hidden">
+                    <h3>Mode de jeu</h3>
+                    <div class="game-mode-options">
+                        <button class="mode-select-btn mp-mode selected" data-mode="waves">
+                            <span class="mode-icon">🌊</span>
+                            <span class="mode-name">Vagues</span>
+                        </button>
+                        <button class="mode-select-btn mp-mode" data-mode="endless">
+                            <span class="mode-icon">♾️</span>
+                            <span class="mode-name">Endless</span>
+                        </button>
+                    </div>
+                </div>
+                <button id="btn-start-game" class="lobby-btn primary hidden">Lancer la partie</button>
+                <p id="waiting-msg" class="waiting-msg">En attente du host...</p>
+            </div>
+
+            <div id="lobby-error" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-container" class="hidden">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="resources">
+                <div class="resource" id="res-iron">
+                    <span class="res-icon iron"></span>
+                    <span class="res-value">500</span>
+                </div>
+                <div class="resource" id="res-copper">
+                    <span class="res-icon copper"></span>
+                    <span class="res-value">0</span>
+                </div>
+                <div class="resource" id="res-coal">
+                    <span class="res-icon coal"></span>
+                    <span class="res-value">0</span>
+                </div>
+                <div class="resource" id="res-gold">
+                    <span class="res-icon gold"></span>
+                    <span class="res-value">0</span>
+                </div>
+            </div>
+            <div id="wave-info">
+                <span id="wave-number">Vague 1</span>
+                <span id="wave-timer"></span>
+                <button id="btn-skip-wave" class="skip-btn hidden">Lancer la vague</button>
+            </div>
+            <div id="nexus-health">
+                <div id="nexus-health-bar">
+                    <div id="nexus-health-fill"></div>
+                </div>
+                <span id="nexus-health-text">1000 / 1000</span>
+            </div>
+            <div id="build-menu">
+                <h3>Construction</h3>
+                <div id="build-buttons">
+                    <button class="build-btn" data-building="turret-mg">
+                        <div class="btn-icon turret-mg"></div>
+                        <span class="btn-name">Mitrailleuse</span>
+                        <span class="btn-cost"><span class="cost-iron">100</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-sniper">
+                        <div class="btn-icon turret-sniper"></div>
+                        <span class="btn-name">Sniper</span>
+                        <span class="btn-cost"><span class="cost-iron">200</span> <span class="cost-copper">50</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-artillery">
+                        <div class="btn-icon turret-artillery"></div>
+                        <span class="btn-name">Artillerie</span>
+                        <span class="btn-cost"><span class="cost-iron">300</span> <span class="cost-copper">100</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-flamethrower">
+                        <div class="btn-icon turret-flame"></div>
+                        <span class="btn-name">Flammes</span>
+                        <span class="btn-cost"><span class="cost-iron">150</span> <span class="cost-coal">30</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-tesla">
+                        <div class="btn-icon turret-tesla"></div>
+                        <span class="btn-name">Tesla</span>
+                        <span class="btn-cost"><span class="cost-iron">400</span> <span class="cost-copper">150</span> <span class="cost-gold">50</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-laser">
+                        <div class="btn-icon turret-laser"></div>
+                        <span class="btn-name">Laser</span>
+                        <span class="btn-cost"><span class="cost-iron">500</span> <span class="cost-copper">200</span> <span class="cost-gold">100</span></span>
+                    </button>
+                    <button class="build-btn" data-building="wall">
+                        <div class="btn-icon wall"></div>
+                        <span class="btn-name">Mur</span>
+                        <span class="btn-cost"><span class="cost-iron">20</span></span>
+                    </button>
+                    <button class="build-btn" data-building="extractor">
+                        <div class="btn-icon extractor"></div>
+                        <span class="btn-name">Foreuse</span>
+                        <span class="btn-cost"><span class="cost-iron">50</span></span>
+                    </button>
+                </div>
+                <div id="action-modes">
+                    <button id="btn-sell-mode" class="mode-btn sell-mode">Vendre (75%)</button>
+                    <button id="btn-upgrade-mode" class="mode-btn upgrade-mode">Ameliorer</button>
+                </div>
+            </div>
+            <!-- Selection info panel -->
+            <div id="selection-info" class="hidden">
+                <h3>Selection</h3>
+                <div id="selection-details"></div>
+            </div>
+            <!-- Chat for multiplayer -->
+            <div id="chat-container" class="hidden">
+                <div id="chat-messages"></div>
+                <input type="text" id="chat-input" placeholder="Message..." maxlength="100">
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
