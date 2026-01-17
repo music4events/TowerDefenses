@@ -143,6 +143,7 @@ io.on('connection', (socket) => {
         const gameMode = data?.gameMode || 'waves';
         room.started = true;
         room.gameMode = gameMode;
+        room.gameState.gameMode = gameMode; // Set game mode before init
         room.gameState.init();
 
         const serializedState = room.gameState.serialize();

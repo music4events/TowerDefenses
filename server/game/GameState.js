@@ -68,10 +68,11 @@ const ENEMY_TYPES = {
 };
 
 class GameState {
-    constructor() {
+    constructor(gameMode = 'waves') {
         this.cellSize = 32;
         this.cols = 40;
         this.rows = 30;
+        this.gameMode = gameMode; // 'waves' or 'endless'
 
         this.resources = { iron: 500, copper: 0, coal: 0, gold: 0 };
         this.nexusHealth = 1000;
@@ -90,6 +91,12 @@ class GameState {
         this.waveActive = false;
         this.enemiesToSpawn = [];
         this.spawnTimer = 0;
+
+        // Endless mode settings
+        this.endlessSpawnRate = 2; // Spawn every 2 seconds
+        this.endlessDifficulty = 1;
+        this.endlessTimer = 0;
+        this.difficultyTimer = 0;
     }
 
     init() {
@@ -142,8 +149,12 @@ class GameState {
     }
 
     update(deltaTime) {
-        // Wave management
-        this.updateWaves(deltaTime);
+        // Wave/Endless management based on game mode
+        if (this.gameMode === 'endless') {
+            this.updateEndless(deltaTime);
+        } else {
+            this.updateWaves(deltaTime);
+        }
 
         // Update extractors
         for (const extractor of this.extractors) {
@@ -202,6 +213,85 @@ class GameState {
                 this.waveTimer = 60;
                 this.spawnTimer = 0;
             }
+        }
+    }
+
+    updateEndless(deltaTime) {
+        this.waveActive = true; // Always active in endless
+
+        // Initialize wave number on first frame
+        if (this.waveNumber === 0) {
+            this.waveNumber = 1;
+        }
+
+        this.endlessTimer += deltaTime;
+        this.difficultyTimer += deltaTime;
+
+        // Increase difficulty every 30 seconds
+        if (this.difficultyTimer >= 30) {
+            this.difficultyTimer = 0;
+            this.endlessDifficulty += 0.1;
+            this.endlessSpawnRate = Math.max(0.5, this.endlessSpawnRate - 0.1);
+            this.waveNumber++;
+        }
+
+        // Spawn enemies continuously
+        if (this.endlessTimer >= this.endlessSpawnRate) {
+            this.endlessTimer = 0;
+            this.spawnEndlessEnemy();
+        }
+    }
+
+    spawnEndlessEnemy() {
+        // Choose enemy type based on difficulty
+        const types = ['grunt'];
+        if (this.endlessDifficulty >= 1.2) types.push('runner');
+        if (this.endlessDifficulty >= 1.5) types.push('tank');
+        if (this.endlessDifficulty >= 1.8) types.push('kamikaze');
+        if (this.endlessDifficulty >= 2.0) types.push('healer');
+        if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05) types.push('boss');
+
+        const type = types[Math.floor(Math.random() * types.length)];
+
+        // Pick random edge spawn point
+        const edges = ['top', 'bottom', 'left', 'right'];
+        const edge = edges[Math.floor(Math.random() * edges.length)];
+
+        let x, y;
+        switch (edge) {
+            case 'top': x = Math.floor(Math.random() * this.cols); y = 0; break;
+            case 'bottom': x = Math.floor(Math.random() * this.cols); y = this.rows - 1; break;
+            case 'left': x = 0; y = Math.floor(Math.random() * this.rows); break;
+            case 'right': x = this.cols - 1; y = Math.floor(Math.random() * this.rows); break;
+        }
+
+        const config = ENEMY_TYPES[type];
+        if (!config) return;
+
+        const enemy = {
+            id: Date.now() + Math.random(),
+            type: type,
+            x: x * this.cellSize + this.cellSize / 2,
+            y: y * this.cellSize + this.cellSize / 2,
+            gridX: x,
+            gridY: y,
+            health: config.health * this.endlessDifficulty,
+            maxHealth: config.health * this.endlessDifficulty,
+            speed: config.speed,
+            damage: config.damage,
+            path: [],
+            pathIndex: 0,
+            dead: false,
+            reachedNexus: false,
+            burning: false,
+            burnTime: 0,
+            burnDamage: 0
+        };
+
+        const path = this.findPath(x, y, this.nexusX, this.nexusY);
+        if (path) {
+            enemy.path = path;
+            this.enemies.push(enemy);
         }
     }
 
