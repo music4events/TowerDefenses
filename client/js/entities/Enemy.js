@@ -39,7 +39,8 @@ export class Enemy {
         this.reachedNexus = false;
 
         // Spawn protection (brief invulnerability)
-        this.spawnProtection = 0.5; // 0.5 seconds of protection
+        this.spawnProtection = 1.0; // 1 second of protection
+        this.age = 0; // Track how long enemy has existed
 
         // Wall attacking
         this.targetWall = null;
@@ -70,9 +71,17 @@ export class Enemy {
     update(deltaTime, nexus, enemies, game) {
         if (this.dead) return;
 
+        // Track age
+        this.age += deltaTime;
+
         // Spawn protection countdown
         if (this.spawnProtection > 0) {
             this.spawnProtection -= deltaTime;
+        }
+
+        // Force alive during spawn protection
+        if (this.spawnProtection > 0) {
+            this.dead = false;
         }
 
         // Handle burning damage over time

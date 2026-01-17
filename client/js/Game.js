@@ -203,8 +203,13 @@ export class Game {
     }
 
     gameLoop(currentTime) {
-        const deltaTime = (currentTime - this.lastTime) / 1000;
+        let deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
+
+        // Cap deltaTime to prevent huge jumps (max 100ms)
+        if (deltaTime > 0.1) {
+            deltaTime = 0.1;
+        }
 
         if (!this.gameOver) {
             this.update(deltaTime);
@@ -235,15 +240,27 @@ export class Game {
         }
 
         // Remove dead enemies and collect rewards
+        const beforeCount = this.enemies.length;
         this.enemies = this.enemies.filter(enemy => {
-            if (enemy.dead && !enemy.reachedNexus) {
-                const reward = enemy.getReward();
-                for (const [resource, amount] of Object.entries(reward)) {
-                    this.resources[resource] = (this.resources[resource] || 0) + amount;
+            // Never remove enemies that are too young (protection against instant death bugs)
+            if (enemy.age === undefined || enemy.age < 1.0) {
+                enemy.dead = false;
+                return true;
+            }
+            if (enemy.dead) {
+                console.log(`Enemy removed: dead=${enemy.dead}, age=${enemy.age}, reachedNexus=${enemy.reachedNexus}`);
+                if (!enemy.reachedNexus) {
+                    const reward = enemy.getReward();
+                    for (const [resource, amount] of Object.entries(reward)) {
+                        this.resources[resource] = (this.resources[resource] || 0) + amount;
+                    }
                 }
             }
             return !enemy.dead;
         });
+        if (beforeCount > 0 && this.enemies.length !== beforeCount) {
+            console.log(`Enemies changed: ${beforeCount} -> ${this.enemies.length}`);
+        }
 
         // Update turrets
         for (const turret of this.turrets) {
@@ -465,16 +482,31 @@ export class Game {
     }
 
     spawnEnemy(gridX, gridY, type) {
-        const enemy = new Enemy(gridX, gridY, type, this.grid);
+        try {
+            const enemy = new Enemy(gridX, gridY, type, this.grid);
 
-        // Calculate path to nexus
-        const path = this.grid.findPath(gridX, gridY, this.nexus.gridX, this.nexus.gridY);
-        if (path) {
-            enemy.setPath(path);
+            // Make sure enemy is valid
+            if (!enemy || !enemy.config) {
+                console.error('Failed to create enemy:', type);
+                return null;
+            }
+
+            // Initialize age to 0 (safety check)
+            enemy.age = 0;
+            enemy.dead = false;
+
+            // Calculate path to nexus
+            const path = this.grid.findPath(gridX, gridY, this.nexus.gridX, this.nexus.gridY);
+            if (path) {
+                enemy.setPath(path);
+            }
+            // Always add enemy - if no path, they'll find one or attack obstacles
+            this.enemies.push(enemy);
+            return enemy;
+        } catch (e) {
+            console.error('Error spawning enemy:', e);
+            return null;
         }
-        // Always add enemy - if no path, they'll find one or attack obstacles
-        this.enemies.push(enemy);
-        return enemy;
     }
 
     recalculateEnemyPaths() {

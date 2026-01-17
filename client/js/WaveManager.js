@@ -199,6 +199,7 @@ export class WaveManager {
         // Make sure we have spawn points
         if (!this.spawnPoints || this.spawnPoints.length === 0) {
             this.generateSpawnPoints();
+            console.log('No spawn points, generating...');
             return;
         }
 
@@ -213,10 +214,15 @@ export class WaveManager {
         const type = types[Math.floor(Math.random() * types.length)];
         const spawn = this.spawnPoints[Math.floor(Math.random() * this.spawnPoints.length)];
 
+        console.log(`Spawning ${type} at (${spawn.x}, ${spawn.y})`);
+
         const enemy = this.game.spawnEnemy(spawn.x, spawn.y, type);
         if (enemy) {
             enemy.maxHealth *= this.endlessDifficulty;
             enemy.health = enemy.maxHealth;
+            console.log(`Enemy created, total enemies: ${this.game.enemies.length}`);
+        } else {
+            console.error('Failed to spawn enemy!');
         }
     }
 

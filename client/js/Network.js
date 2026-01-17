@@ -37,7 +37,10 @@ export class Network {
     }
 
     initSocket(serverUrl) {
-        this.socket = io(serverUrl || window.location.origin);
+        // Auto-detect server URL (works locally and on Railway)
+        const url = serverUrl || window.location.origin;
+        console.log('Connecting to server:', url);
+        this.socket = io(url);
 
         this.socket.on('connect', () => {
             this.connected = true;
@@ -141,26 +144,53 @@ export class Network {
     }
 
     handleGameStateUpdate(data) {
+        // Skip if no valid data
+        if (!data || !data.state) {
+            return;
+        }
+
         const state = data.state;
 
-        // Update game state from server
-        this.game.resources = state.resources;
-        this.game.nexus.health = state.nexusHealth;
-        this.game.waveNumber = state.waveNumber;
+        // Only update if state has valid data
+        if (state.resources) {
+            this.game.resources = state.resources;
+        }
+        if (state.nexusHealth !== undefined) {
+            this.game.nexus.health = state.nexusHealth;
+        }
+        if (state.waveNumber !== undefined) {
+            this.game.waveNumber = state.waveNumber;
+        }
 
-        // Sync enemies
-        this.syncEnemies(state.enemies);
+        // Sync enemies only if server provides them
+        if (state.enemies) {
+            this.syncEnemies(state.enemies);
+        }
 
         // Sync turret angles
-        for (const serverTurret of state.turrets) {
-            const localTurret = this.game.turrets.find(t => t.id === serverTurret.id);
-            if (localTurret) {
-                localTurret.angle = serverTurret.angle;
+        if (state.turrets && Array.isArray(state.turrets)) {
+            for (const serverTurret of state.turrets) {
+                const localTurret = this.game.turrets.find(t => t.id === serverTurret.id);
+                if (localTurret) {
+                    localTurret.angle = serverTurret.angle;
+                }
             }
         }
     }
 
     syncEnemies(serverEnemies) {
+        // Skip sync if server data is invalid - let local game handle enemies
+        if (!serverEnemies || !Array.isArray(serverEnemies)) {
+            return;
+        }
+
+        // Only sync if server is actually managing enemies (has sent some)
+        // Otherwise, let local game handle everything
+        if (serverEnemies.length === 0 && this.game.enemies.length > 0) {
+            // Server has no enemies but we have local ones - don't delete them
+            return;
+        }
+
         // Update existing enemies
         for (const serverEnemy of serverEnemies) {
             let localEnemy = this.game.enemies.find(e => e.id === serverEnemy.id);
@@ -191,9 +221,11 @@ export class Network {
             }
         }
 
-        // Remove enemies that don't exist on server
-        const serverIds = new Set(serverEnemies.map(e => e.id));
-        this.game.enemies = this.game.enemies.filter(e => serverIds.has(e.id));
+        // Only remove enemies if server is actively managing them
+        if (serverEnemies.length > 0) {
+            const serverIds = new Set(serverEnemies.map(e => e.id));
+            this.game.enemies = this.game.enemies.filter(e => serverIds.has(e.id) || !e.id);
+        }
     }
 
     isMultiplayer() {
