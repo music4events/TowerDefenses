@@ -1,5 +1,13 @@
 import { Game } from './Game.js';
 import { Network } from './Network.js';
+import { Turret } from './entities/Turret.js';
+import { Wall } from './entities/Wall.js';
+import { Extractor } from './entities/Extractor.js';
+
+// Expose entity classes globally for Network.js sync
+window.TurretModule = { Turret };
+window.WallModule = { Wall };
+window.ExtractorModule = { Extractor };
 
 class App {
     constructor() {

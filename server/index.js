@@ -117,23 +117,28 @@ io.on('connection', (socket) => {
     });
 
     // Start game
-    socket.on('startGame', () => {
+    socket.on('startGame', (data) => {
         if (!currentRoom) return;
 
         const room = rooms.get(currentRoom);
         if (!room || room.host !== socket.id) return;
 
+        const gameMode = data?.gameMode || 'waves';
         room.started = true;
+        room.gameMode = gameMode;
         room.gameState.init();
 
+        const serializedState = room.gameState.serialize();
+        serializedState.gameMode = gameMode;
+
         io.to(currentRoom).emit('gameStarted', {
-            gameState: room.gameState.serialize()
+            gameState: serializedState
         });
 
         // Start game loop
         startGameLoop(currentRoom);
 
-        console.log(`Game started in room ${currentRoom}`);
+        console.log(`Game started in room ${currentRoom} with mode: ${gameMode}`);
     });
 
     // Player places building

@@ -162,20 +162,102 @@ export class Network {
             this.game.waveNumber = state.waveNumber;
         }
 
+        // Sync grid if provided
+        if (state.grid) {
+            this.game.grid.cells = state.grid;
+        }
+
         // Sync enemies only if server provides them
         if (state.enemies) {
             this.syncEnemies(state.enemies);
         }
 
-        // Sync turret angles
+        // Sync turrets
         if (state.turrets && Array.isArray(state.turrets)) {
-            for (const serverTurret of state.turrets) {
-                const localTurret = this.game.turrets.find(t => t.id === serverTurret.id);
-                if (localTurret) {
-                    localTurret.angle = serverTurret.angle;
+            this.syncTurrets(state.turrets);
+        }
+
+        // Sync walls
+        if (state.walls && Array.isArray(state.walls)) {
+            this.syncWalls(state.walls);
+        }
+
+        // Sync extractors
+        if (state.extractors && Array.isArray(state.extractors)) {
+            this.syncExtractors(state.extractors);
+        }
+    }
+
+    syncTurrets(serverTurrets) {
+        // Update existing turrets and add new ones
+        for (const serverTurret of serverTurrets) {
+            let localTurret = this.game.turrets.find(t => t.id === serverTurret.id);
+
+            if (!localTurret) {
+                // Turret doesn't exist locally, create it
+                const { Turret } = window.TurretModule || {};
+                if (Turret) {
+                    localTurret = new Turret(serverTurret.gridX, serverTurret.gridY, serverTurret.type, this.game.grid);
+                    localTurret.id = serverTurret.id;
+                    localTurret.level = serverTurret.level || 1;
+                    this.game.turrets.push(localTurret);
+                }
+            } else {
+                // Update existing turret
+                localTurret.angle = serverTurret.angle;
+                localTurret.level = serverTurret.level || localTurret.level;
+            }
+        }
+
+        // Remove turrets that no longer exist on server
+        const serverIds = new Set(serverTurrets.map(t => t.id));
+        this.game.turrets = this.game.turrets.filter(t => serverIds.has(t.id));
+    }
+
+    syncWalls(serverWalls) {
+        // Update existing walls and add new ones
+        for (const serverWall of serverWalls) {
+            let localWall = this.game.walls.find(w => w.id === serverWall.id);
+
+            if (!localWall) {
+                // Wall doesn't exist locally, create it
+                const { Wall } = window.WallModule || {};
+                if (Wall) {
+                    localWall = new Wall(serverWall.gridX, serverWall.gridY, 'wall', this.game.grid);
+                    localWall.id = serverWall.id;
+                    localWall.health = serverWall.health;
+                    this.game.walls.push(localWall);
+                }
+            } else {
+                // Update existing wall health
+                localWall.health = serverWall.health;
+            }
+        }
+
+        // Remove walls that no longer exist on server
+        const serverIds = new Set(serverWalls.map(w => w.id));
+        this.game.walls = this.game.walls.filter(w => serverIds.has(w.id));
+    }
+
+    syncExtractors(serverExtractors) {
+        // Update existing extractors and add new ones
+        for (const serverExtractor of serverExtractors) {
+            let localExtractor = this.game.extractors.find(e => e.id === serverExtractor.id);
+
+            if (!localExtractor) {
+                // Extractor doesn't exist locally, create it
+                const { Extractor } = window.ExtractorModule || {};
+                if (Extractor) {
+                    localExtractor = new Extractor(serverExtractor.gridX, serverExtractor.gridY, serverExtractor.resourceType, this.game.grid);
+                    localExtractor.id = serverExtractor.id;
+                    this.game.extractors.push(localExtractor);
                 }
             }
         }
+
+        // Remove extractors that no longer exist on server
+        const serverIds = new Set(serverExtractors.map(e => e.id));
+        this.game.extractors = this.game.extractors.filter(e => serverIds.has(e.id));
     }
 
     syncEnemies(serverEnemies) {

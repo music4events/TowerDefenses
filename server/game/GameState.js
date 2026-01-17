@@ -671,15 +671,35 @@ class GameState {
             turrets: this.turrets.map(t => ({
                 id: t.id,
                 type: t.type,
+                gridX: t.gridX,
+                gridY: t.gridY,
                 x: t.x,
                 y: t.y,
-                angle: t.angle
+                angle: t.angle,
+                level: t.level || 1
+            })),
+            walls: this.walls.map(w => ({
+                id: w.id,
+                gridX: w.gridX,
+                gridY: w.gridY,
+                x: w.x,
+                y: w.y,
+                health: w.health
+            })),
+            extractors: this.extractors.map(e => ({
+                id: e.id,
+                gridX: e.gridX,
+                gridY: e.gridY,
+                x: e.x,
+                y: e.y,
+                resourceType: e.resourceType
             })),
             projectiles: this.projectiles.map(p => ({
                 id: p.id,
                 x: p.x,
                 y: p.y
-            }))
+            })),
+            grid: this.grid
         };
     }
 }
