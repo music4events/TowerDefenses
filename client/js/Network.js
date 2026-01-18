@@ -268,6 +268,8 @@ export class Network {
                 this.game.renderer.addExplosion(effect.x, effect.y, effect.radius, effect.color);
             } else if (effect.type === 'death') {
                 this.game.renderer.addDeathEffect(effect.x, effect.y, effect.color);
+            } else if (effect.type === 'shockwave') {
+                this.game.renderer.addShockwave(effect.x, effect.y, effect.radius, effect.color);
             }
         }
     }
@@ -303,7 +305,7 @@ export class Network {
                 if (serverTurret.fireRate !== undefined) localTurret.config.fireRate = serverTurret.fireRate;
             }
 
-            // Sync drone position
+            // Sync drone position and boost states
             if (localTurret) {
                 localTurret.x = serverTurret.x;
                 localTurret.y = serverTurret.y;
@@ -311,6 +313,9 @@ export class Network {
                     localTurret.homeX = serverTurret.homeX;
                     localTurret.homeY = serverTurret.homeY;
                 }
+                // Sync boost states
+                localTurret.speedBoosted = serverTurret.speedBoosted || false;
+                localTurret.damageBoosted = serverTurret.damageBoosted || false;
             }
         }
 

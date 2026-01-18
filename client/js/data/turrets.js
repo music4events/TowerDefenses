@@ -187,5 +187,47 @@ export const TURRET_TYPES = {
         size: 0.6,
         health: 60,
         maxHealth: 60
+    },
+    'turret-shockwave': {
+        name: 'Shockwave',
+        damage: 20,
+        range: 4,
+        fireRate: 1.5,
+        color: '#00bfff',
+        cost: { iron: 350, copper: 150, gold: 60 },
+        isShockwave: true,
+        aoeRange: 3,
+        shockColor: '#00d4ff',
+        size: 0.85,
+        health: 100,
+        maxHealth: 100
+    },
+    'turret-speed-booster': {
+        name: 'Speed Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        color: '#ffaa00',
+        cost: { iron: 200, copper: 80, gold: 40 },
+        isSpeedBooster: true,
+        fireRateBoost: 0.25,
+        boostColor: 'rgba(255, 170, 0, 0.15)',
+        size: 0.8,
+        health: 80,
+        maxHealth: 80
+    },
+    'turret-damage-booster': {
+        name: 'Damage Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        color: '#ff4444',
+        cost: { iron: 250, copper: 100, gold: 50 },
+        isDamageBooster: true,
+        damageBoost: 0.3,
+        boostColor: 'rgba(255, 68, 68, 0.15)',
+        size: 0.8,
+        health: 80,
+        maxHealth: 80
     }
 };

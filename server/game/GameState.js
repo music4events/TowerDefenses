@@ -148,6 +148,39 @@ const TURRET_TYPES = {
         moveSpeed: 2,
         health: 60,
         maxHealth: 60
+    },
+    'turret-shockwave': {
+        name: 'Shockwave',
+        damage: 20,
+        range: 4,
+        fireRate: 1.5,
+        cost: { iron: 350, copper: 150, gold: 60 },
+        isShockwave: true,
+        aoeRange: 3,
+        health: 100,
+        maxHealth: 100
+    },
+    'turret-speed-booster': {
+        name: 'Speed Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        cost: { iron: 200, copper: 80, gold: 40 },
+        isSpeedBooster: true,
+        fireRateBoost: 0.25, // 25% faster firing for nearby turrets
+        health: 80,
+        maxHealth: 80
+    },
+    'turret-damage-booster': {
+        name: 'Damage Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        cost: { iron: 250, copper: 100, gold: 50 },
+        isDamageBooster: true,
+        damageBoost: 0.3, // 30% more damage for nearby turrets
+        health: 80,
+        maxHealth: 80
     }
 };
 
@@ -289,8 +322,8 @@ class GameState {
 
     update(deltaTime) {
         try {
-            // Clear pending effects from previous frame
-            this.pendingEffects = [];
+            // NOTE: pendingEffects is NOT cleared here - it accumulates between syncs
+            // It gets cleared in serializeForSync() after being sent to clients
 
             // Wave/Endless management based on game mode
             if (this.gameMode === 'endless') {
@@ -361,9 +394,26 @@ class GameState {
                 this.spawnSplitterChild(spawn);
             }
 
-            // Update turrets
+            // Reset boosts for all turrets
             for (const turret of this.turrets) {
-                this.updateTurret(turret, deltaTime);
+                turret.speedBoosted = false;
+                turret.damageBoosted = false;
+                turret.speedBoostAmount = 0;
+                turret.damageBoostAmount = 0;
+            }
+
+            // Update booster turrets FIRST so they can set boost flags
+            for (const turret of this.turrets) {
+                if (turret.config?.isSpeedBooster || turret.config?.isDamageBooster) {
+                    this.updateTurret(turret, deltaTime);
+                }
+            }
+
+            // Update all other turrets
+            for (const turret of this.turrets) {
+                if (!turret.config?.isSpeedBooster && !turret.config?.isDamageBooster) {
+                    this.updateTurret(turret, deltaTime);
+                }
             }
 
             // Remove destroyed turrets
@@ -510,22 +560,71 @@ class GameState {
         this.enemiesToSpawn = [];
         const baseCount = 5 + this.waveNumber * 2;
 
+        // Spawn rate increases with waves (faster spawning)
+        const spawnInterval = Math.max(0.2, 0.5 - this.waveNumber * 0.02);
+
+        // Grunts - always
         for (let i = 0; i < baseCount; i++) {
-            this.enemiesToSpawn.push({ type: 'grunt', delay: i * 0.5 });
+            this.enemiesToSpawn.push({ type: 'grunt', delay: i * spawnInterval });
         }
 
+        // Runners - from wave 2
         if (this.waveNumber >= 2) {
-            for (let i = 0; i < Math.floor(baseCount * 0.3); i++) {
-                this.enemiesToSpawn.push({ type: 'runner', delay: 2 + i * 0.3 });
+            const count = Math.floor(baseCount * 0.3);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'runner', delay: 2 + i * spawnInterval * 0.6 });
             }
         }
 
+        // Tanks - from wave 3
         if (this.waveNumber >= 3) {
-            for (let i = 0; i < Math.floor(this.waveNumber / 3); i++) {
+            const count = Math.floor(this.waveNumber / 3);
+            for (let i = 0; i < count; i++) {
                 this.enemiesToSpawn.push({ type: 'tank', delay: 5 + i * 2 });
             }
         }
 
+        // Kamikazes - from wave 4
+        if (this.waveNumber >= 4) {
+            const count = Math.floor(this.waveNumber / 4);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'kamikaze', delay: 3 + i * 1.5 });
+            }
+        }
+
+        // Flying enemies - from wave 5
+        if (this.waveNumber >= 5) {
+            const count = Math.floor(this.waveNumber / 5);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'flying', delay: 4 + i * 2 });
+            }
+        }
+
+        // Splitters - from wave 6
+        if (this.waveNumber >= 6) {
+            const count = Math.floor(this.waveNumber / 6);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'splitter', delay: 6 + i * 3 });
+            }
+        }
+
+        // Armored-front - from wave 7
+        if (this.waveNumber >= 7) {
+            const count = Math.floor(this.waveNumber / 7);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'armored-front', delay: 7 + i * 2.5 });
+            }
+        }
+
+        // Healers - from wave 8 (supporting enemies)
+        if (this.waveNumber >= 8) {
+            const count = Math.floor(this.waveNumber / 8);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'healer', delay: 8 + i * 4 });
+            }
+        }
+
+        // Boss every 10 waves
         if (this.waveNumber % 10 === 0) {
             this.enemiesToSpawn.push({ type: 'boss', delay: 10 });
         }
@@ -552,7 +651,10 @@ class GameState {
                 console.error(`Unknown enemy type: ${enemyData.type}`);
                 return;
             }
+
+            // Scaling: HP increases 10% per wave, speed increases 3% per wave
             const healthMult = 1 + (this.waveNumber - 1) * 0.1;
+            const speedMult = 1 + (this.waveNumber - 1) * 0.03;
 
         const enemy = {
             id: Date.now() + Math.random(),
@@ -563,7 +665,7 @@ class GameState {
             gridY: y,
             health: config.health * healthMult,
             maxHealth: config.health * healthMult,
-            speed: config.speed,
+            speed: config.speed * speedMult,
             damage: config.damage,
             path: [],
             pathIndex: 0,
@@ -743,7 +845,9 @@ class GameState {
         if (!turret || !turret.config) return;
         if (turret.health !== undefined && turret.health <= 0) return;
 
-        turret.cooldown -= deltaTime;
+        // Apply cooldown reduction (speed boost from boosters makes it faster)
+        const speedMult = 1 + (turret.speedBoostAmount || 0);
+        turret.cooldown -= deltaTime * speedMult;
 
         const range = (turret.config.range || 4) * this.cellSize;
         const minRange = (turret.config.minRange || 0) * this.cellSize;
@@ -834,6 +938,73 @@ class GameState {
             return;
         }
 
+        // Shockwave turret - periodic electric AOE
+        if (turret.config.isShockwave) {
+            if (turret.cooldown <= 0) {
+                const shockRange = (turret.config.aoeRange || turret.config.range) * this.cellSize;
+                let hitAny = false;
+
+                for (const enemy of this.enemies) {
+                    if (!enemy || enemy.dead) continue;
+                    const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
+                    if (dist <= shockRange) {
+                        enemy.health -= turret.config.damage || 20;
+                        hitAny = true;
+                    }
+                }
+
+                // Always create shockwave visual, even if no enemies hit
+                this.pendingEffects.push({
+                    type: 'shockwave',
+                    x: turret.x,
+                    y: turret.y,
+                    radius: shockRange,
+                    color: '#00d4ff'
+                });
+
+                turret.cooldown = turret.config.fireRate || 1.5;
+            }
+            return;
+        }
+
+        // Speed Booster - boosts nearby turrets' fire rate
+        if (turret.config.isSpeedBooster) {
+            const boostRange = (turret.config.range || 4) * this.cellSize;
+            const boostAmount = turret.config.fireRateBoost || 0.25;
+
+            for (const other of this.turrets) {
+                if (other === turret) continue;
+                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isHealer) continue;
+
+                const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
+                if (dist <= boostRange) {
+                    // Mark as speed boosted (will reduce cooldown faster)
+                    other.speedBoosted = true;
+                    other.speedBoostAmount = Math.max(other.speedBoostAmount || 0, boostAmount);
+                }
+            }
+            return;
+        }
+
+        // Damage Booster - boosts nearby turrets' damage
+        if (turret.config.isDamageBooster) {
+            const boostRange = (turret.config.range || 4) * this.cellSize;
+            const boostAmount = turret.config.damageBoost || 0.3;
+
+            for (const other of this.turrets) {
+                if (other === turret) continue;
+                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isHealer) continue;
+
+                const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
+                if (dist <= boostRange) {
+                    // Mark as damage boosted
+                    other.damageBoosted = true;
+                    other.damageBoostAmount = Math.max(other.damageBoostAmount || 0, boostAmount);
+                }
+            }
+            return;
+        }
+
         // Normal turrets - Find target
         let target = null;
         let closestDist = Infinity;
@@ -866,7 +1037,9 @@ class GameState {
     fireTurret(turret, target) {
         if (!turret || !turret.config || !target || target.dead) return;
 
-        const damage = turret.config.damage || 10;
+        // Apply damage boost from nearby boosters
+        const damageMult = 1 + (turret.damageBoostAmount || 0);
+        const damage = (turret.config.damage || 10) * damageMult;
 
         // Shotgun - multiple pellets
         if (turret.config.pelletCount) {
@@ -1507,6 +1680,10 @@ class GameState {
     }
 
     serializeForSync() {
+        // Capture effects before clearing
+        const effectsToSend = this.pendingEffects.slice();
+        this.pendingEffects = []; // Clear after capturing
+
         return {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
@@ -1541,7 +1718,9 @@ class GameState {
                 health: t.health,
                 maxHealth: t.maxHealth || t.config?.maxHealth || 100,
                 homeX: t.homeX,
-                homeY: t.homeY
+                homeY: t.homeY,
+                speedBoosted: t.speedBoosted || false,
+                damageBoosted: t.damageBoosted || false
             })),
             walls: this.walls.map(w => ({
                 id: w.id,
@@ -1575,7 +1754,7 @@ class GameState {
                 damage: p.damage
             })),
             // Effects to trigger on client (explosions, deaths, etc.)
-            effects: this.pendingEffects || [],
+            effects: effectsToSend,
             grid: this.grid
         };
     }

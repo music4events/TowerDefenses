@@ -154,16 +154,56 @@ export class Renderer {
             this.ctx.fill();
         }
 
-        // Draw slowdown zone
+        // Draw slowdown zone - very transparent to not obscure turrets
         if (config?.isSlowdown) {
             const slowRange = (config.aoeRange || config.range) * this.grid.cellSize;
-            this.ctx.fillStyle = config.frostColor || 'rgba(136, 221, 255, 0.15)';
+            this.ctx.fillStyle = 'rgba(136, 221, 255, 0.05)';
             this.ctx.beginPath();
             this.ctx.arc(x, y, slowRange, 0, Math.PI * 2);
             this.ctx.fill();
 
-            this.ctx.strokeStyle = config.frostColor || 'rgba(136, 221, 255, 0.4)';
+            this.ctx.strokeStyle = 'rgba(136, 221, 255, 0.25)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+
+        // Draw shockwave turret zone
+        if (config?.isShockwave) {
+            const shockRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            // Animated pulsing ring
+            const pulse = (Date.now() / 100) % (Math.PI * 2);
+            const pulseAlpha = 0.1 + Math.sin(pulse) * 0.05;
+
+            this.ctx.strokeStyle = `rgba(0, 212, 255, ${pulseAlpha})`;
             this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, shockRange, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
+        // Draw speed booster zone
+        if (config?.isSpeedBooster) {
+            const boostRange = (config.range || 4) * this.grid.cellSize;
+            this.ctx.fillStyle = config.boostColor || 'rgba(255, 170, 0, 0.08)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+
+        // Draw damage booster zone
+        if (config?.isDamageBooster) {
+            const boostRange = (config.range || 4) * this.grid.cellSize;
+            this.ctx.fillStyle = config.boostColor || 'rgba(255, 68, 68, 0.08)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(255, 68, 68, 0.3)';
+            this.ctx.lineWidth = 1;
             this.ctx.stroke();
         }
 
@@ -220,6 +260,43 @@ export class Renderer {
             this.ctx.fill();
         }
 
+        // Shockwave lightning symbol
+        if (config?.isShockwave) {
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 3, y - 6);
+            this.ctx.lineTo(x + 1, y - 1);
+            this.ctx.lineTo(x - 1, y + 1);
+            this.ctx.lineTo(x + 3, y + 6);
+            this.ctx.stroke();
+        }
+
+        // Speed booster arrow symbol
+        if (config?.isSpeedBooster) {
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.moveTo(x + 6, y);
+            this.ctx.lineTo(x - 3, y - 5);
+            this.ctx.lineTo(x - 3, y + 5);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+
+        // Damage booster sword symbol
+        if (config?.isDamageBooster) {
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 5, y + 5);
+            this.ctx.lineTo(x + 5, y - 5);
+            this.ctx.moveTo(x + 3, y - 3);
+            this.ctx.lineTo(x + 5, y - 1);
+            this.ctx.moveTo(x + 3, y - 3);
+            this.ctx.lineTo(x + 1, y - 5);
+            this.ctx.stroke();
+        }
+
         // Cooldown indicator
         if (cooldown > 0) {
             this.ctx.globalAlpha = 0.3;
@@ -233,6 +310,24 @@ export class Renderer {
         // Draw upgrade stars
         if (level && level > 1) {
             this.drawStars(x, y + size / 2 + 8, level - 1);
+        }
+
+        // Boost indicators
+        if (turret.speedBoosted) {
+            // Orange glow for speed boost
+            this.ctx.strokeStyle = 'rgba(255, 170, 0, 0.6)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 2 + 3, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+        if (turret.damageBoosted) {
+            // Red glow for damage boost
+            this.ctx.strokeStyle = 'rgba(255, 68, 68, 0.6)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 2 + (turret.speedBoosted ? 6 : 3), 0, Math.PI * 2);
+            this.ctx.stroke();
         }
 
         // Health bar when damaged
@@ -599,30 +694,89 @@ export class Renderer {
         });
     }
 
+    addShockwave(x, y, radius, color = '#00d4ff') {
+        // Shockwave is an expanding electric ring
+        this.explosions.push({
+            x, y,
+            radius: 0,
+            maxRadius: radius,
+            color: color,
+            alpha: 1,
+            time: 0,
+            isShockwave: true
+        });
+    }
+
     drawExplosions(deltaTime) {
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const exp = this.explosions[i];
             exp.time += deltaTime;
-            exp.alpha = 1 - exp.time / 0.5;
-            exp.radius = exp.maxRadius * (exp.time / 0.3);
 
-            if (exp.alpha <= 0) {
-                this.explosions.splice(i, 1);
-                continue;
+            if (exp.isShockwave) {
+                // Shockwave: electric ring expanding outward
+                const duration = 0.4;
+                exp.alpha = 1 - exp.time / duration;
+                exp.radius = exp.maxRadius * (exp.time / duration);
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Multiple rings for electric effect
+                for (let r = 0; r < 3; r++) {
+                    const ringRadius = exp.radius - r * 5;
+                    if (ringRadius <= 0) continue;
+
+                    this.ctx.strokeStyle = exp.color;
+                    this.ctx.lineWidth = 3 - r;
+                    this.ctx.globalAlpha = exp.alpha * (1 - r * 0.3);
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, ringRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+
+                // Electric sparks
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 1;
+                this.ctx.globalAlpha = exp.alpha;
+                for (let s = 0; s < 8; s++) {
+                    const angle = (s / 8) * Math.PI * 2 + exp.time * 5;
+                    const sparkX = exp.x + Math.cos(angle) * exp.radius;
+                    const sparkY = exp.y + Math.sin(angle) * exp.radius;
+                    const sparkLen = 8;
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(sparkX, sparkY);
+                    this.ctx.lineTo(
+                        sparkX + Math.cos(angle) * sparkLen,
+                        sparkY + Math.sin(angle) * sparkLen
+                    );
+                    this.ctx.stroke();
+                }
+            } else {
+                // Normal explosion
+                exp.alpha = 1 - exp.time / 0.5;
+                exp.radius = exp.maxRadius * (exp.time / 0.3);
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Outer ring
+                this.ctx.strokeStyle = exp.color;
+                this.ctx.lineWidth = 3;
+                this.ctx.globalAlpha = exp.alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+
+                // Inner fill
+                this.ctx.fillStyle = exp.color;
+                this.ctx.globalAlpha = exp.alpha * 0.3;
+                this.ctx.fill();
             }
-
-            // Outer ring
-            this.ctx.strokeStyle = exp.color;
-            this.ctx.lineWidth = 3;
-            this.ctx.globalAlpha = exp.alpha;
-            this.ctx.beginPath();
-            this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
-            this.ctx.stroke();
-
-            // Inner fill
-            this.ctx.fillStyle = exp.color;
-            this.ctx.globalAlpha = exp.alpha * 0.3;
-            this.ctx.fill();
 
             this.ctx.globalAlpha = 1;
         }

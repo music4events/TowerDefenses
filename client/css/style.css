@@ -184,6 +184,9 @@ body {
 .btn-icon.turret-mortar { background: #556b2f; }
 .btn-icon.turret-railgun { background: #4169e1; }
 .btn-icon.turret-drone { background: #9370db; }
+.btn-icon.turret-shock { background: #00bfff; }
+.btn-icon.turret-speed { background: #ffaa00; }
+.btn-icon.turret-damage { background: #ff4444; }
 .btn-icon.wall { background: #533535; border-radius: 4px; }
 .btn-icon.extractor { background: #8b9dc3; }
 
