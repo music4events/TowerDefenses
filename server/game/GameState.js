@@ -520,10 +520,18 @@ class GameState {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
+                // Determine projectile type from turret type
+                let projType = 'bullet';
+                if (turret.type === 'turret-artillery') projType = 'artillery';
+                else if (turret.type === 'turret-sniper') projType = 'sniper';
+
                 this.projectiles.push({
                     id: Date.now() + Math.random(),
+                    type: projType,
                     x: turret.x,
                     y: turret.y,
+                    startX: turret.x,
+                    startY: turret.y,
                     vx: (dx / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
                     vy: (dy / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
                     damage: damage,
@@ -962,8 +970,12 @@ class GameState {
             })),
             projectiles: this.projectiles.map(p => ({
                 id: p.id,
+                type: p.type || 'bullet',
                 x: p.x,
-                y: p.y
+                y: p.y,
+                startX: p.startX,
+                startY: p.startY,
+                aoeRadius: p.aoeRadius || 0
             })),
             grid: this.grid
         };

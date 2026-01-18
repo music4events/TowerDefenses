@@ -199,9 +199,27 @@ export class Network {
             if (state.extractors && Array.isArray(state.extractors)) {
                 this.syncExtractors(state.extractors);
             }
+
+            // Sync projectiles
+            if (state.projectiles && Array.isArray(state.projectiles)) {
+                this.syncProjectiles(state.projectiles);
+            }
         } catch (error) {
             console.error('Error handling game state update:', error);
         }
+    }
+
+    syncProjectiles(serverProjectiles) {
+        // Replace projectiles entirely (they move too fast for interpolation)
+        this.game.projectiles = serverProjectiles.map(p => ({
+            id: p.id,
+            type: p.type || 'bullet',
+            x: p.x,
+            y: p.y,
+            startX: p.startX,
+            startY: p.startY,
+            aoeRadius: p.aoeRadius || 0
+        }));
     }
 
     syncTurrets(serverTurrets) {
