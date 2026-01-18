@@ -335,17 +335,17 @@ export const TURRET_TYPES = {
     'turret-flak': {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
-        damage: 8,
+        damage: 5,
         range: 12,
-        fireRate: 1.5,
+        fireRate: 0.15,           // Tir très rapide!
         color: '#2a5caa',
         cost: { iron: 800, copper: 300, gold: 100 },
-        projectileSpeed: 25,
+        projectileSpeed: 30,
         projectileColor: '#00ddff',
 
         isAntiAir: true,
-        flakCount: 12,
-        flakSpread: 1.5,
+        flakCount: 6,             // 6 projectiles par salve
+        flakSpread: 2.0,          // Plus de dispersion
         barrelCount: 2,
 
         size: 2.8,
