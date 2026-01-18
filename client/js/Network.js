@@ -204,6 +204,11 @@ export class Network {
             if (state.projectiles && Array.isArray(state.projectiles)) {
                 this.syncProjectiles(state.projectiles);
             }
+
+            // Process effects (explosions, deaths)
+            if (state.effects && Array.isArray(state.effects)) {
+                this.processEffects(state.effects);
+            }
         } catch (error) {
             console.error('Error handling game state update:', error);
         }
@@ -218,8 +223,24 @@ export class Network {
             y: p.y,
             startX: p.startX,
             startY: p.startY,
-            aoeRadius: p.aoeRadius || 0
+            aoeRadius: p.aoeRadius || 0,
+            life: p.life,
+            vx: p.vx,
+            vy: p.vy,
+            damage: p.damage
         }));
+    }
+
+    processEffects(effects) {
+        if (!effects || !Array.isArray(effects)) return;
+
+        for (const effect of effects) {
+            if (effect.type === 'explosion') {
+                this.game.renderer.addExplosion(effect.x, effect.y, effect.radius, effect.color);
+            } else if (effect.type === 'death') {
+                this.game.renderer.addDeathEffect(effect.x, effect.y, effect.color);
+            }
+        }
     }
 
     syncTurrets(serverTurrets) {

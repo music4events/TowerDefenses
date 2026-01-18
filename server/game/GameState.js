@@ -233,6 +233,9 @@ class GameState {
         this.endlessDifficulty = 1;
         this.endlessTimer = 0;
         this.difficultyTimer = 0;
+
+        // Effects to send to client (explosions, deaths)
+        this.pendingEffects = [];
     }
 
     init() {
@@ -286,6 +289,9 @@ class GameState {
 
     update(deltaTime) {
         try {
+            // Clear pending effects from previous frame
+            this.pendingEffects = [];
+
             // Wave/Endless management based on game mode
             if (this.gameMode === 'endless') {
                 this.updateEndless(deltaTime);
@@ -316,23 +322,34 @@ class GameState {
             const enemiesToSpawn = [];
             this.enemies = this.enemies.filter(e => {
                 if (!e) return false;
-                if (e.dead && !e.reachedNexus) {
+                if (e.dead) {
+                    // Add death effect
                     const enemyType = ENEMY_TYPES[e.type];
-                    if (enemyType && enemyType.reward) {
-                        for (const [res, amt] of Object.entries(enemyType.reward)) {
-                            this.resources[res] = (this.resources[res] || 0) + amt;
+                    this.pendingEffects.push({
+                        type: 'death',
+                        x: e.x,
+                        y: e.y,
+                        enemyType: e.type,
+                        color: enemyType?.color || '#ff4444'
+                    });
+
+                    if (!e.reachedNexus) {
+                        if (enemyType && enemyType.reward) {
+                            for (const [res, amt] of Object.entries(enemyType.reward)) {
+                                this.resources[res] = (this.resources[res] || 0) + amt;
+                            }
                         }
-                    }
-                    // Handle splitter
-                    if (enemyType && enemyType.splitOnDeath) {
-                        const count = enemyType.splitCount || 2;
-                        const childType = enemyType.splitType || 'splitter-child';
-                        for (let i = 0; i < count; i++) {
-                            enemiesToSpawn.push({
-                                type: childType,
-                                gridX: e.gridX,
-                                gridY: e.gridY
-                            });
+                        // Handle splitter
+                        if (enemyType && enemyType.splitOnDeath) {
+                            const count = enemyType.splitCount || 2;
+                            const childType = enemyType.splitType || 'splitter-child';
+                            for (let i = 0; i < count; i++) {
+                                enemiesToSpawn.push({
+                                    type: childType,
+                                    gridX: e.gridX,
+                                    gridY: e.gridY
+                                });
+                            }
                         }
                     }
                 }
@@ -950,17 +967,51 @@ class GameState {
             return;
         }
 
-        if (turret.config.instantHit) {
+        if (turret.config.instantHit && !turret.config.piercingBeam) {
+            // Laser - instant hit with visual
             target.health -= damage;
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'laser',
+                x: target.x,
+                y: target.y,
+                startX: turret.x,
+                startY: turret.y,
+                vx: 0,
+                vy: 0,
+                damage: 0,
+                life: 0.1
+            });
         } else if (turret.config.chainTargets) {
             // Tesla chain
             let current = target;
             const hitTargets = [];
             const chainRange = (turret.config.chainRange || 2) * this.cellSize;
+            let prevX = turret.x;
+            let prevY = turret.y;
+
             for (let i = 0; i < turret.config.chainTargets; i++) {
                 if (current && !current.dead) {
                     current.health -= damage;
                     hitTargets.push(current);
+
+                    // Create visual arc
+                    this.projectiles.push({
+                        id: Date.now() + Math.random() + i,
+                        type: 'tesla',
+                        x: current.x,
+                        y: current.y,
+                        startX: prevX,
+                        startY: prevY,
+                        vx: 0,
+                        vy: 0,
+                        damage: 0,
+                        life: 0.15
+                    });
+
+                    prevX = current.x;
+                    prevY = current.y;
+
                     // Find next target
                     current = this.findNearestEnemy(current.x, current.y, chainRange, hitTargets);
                 }
@@ -971,6 +1022,26 @@ class GameState {
             target.burning = true;
             target.burnDamage = turret.config.dotDamage || 5;
             target.burnTime = turret.config.dotDuration || 2;
+
+            // Create flame particles
+            for (let i = 0; i < 3; i++) {
+                const spread = 0.3;
+                const angle = turret.angle + (Math.random() - 0.5) * spread;
+                const speed = (turret.config.projectileSpeed || 5) * this.cellSize;
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: 'flame',
+                    x: turret.x,
+                    y: turret.y,
+                    startX: turret.x,
+                    startY: turret.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    damage: 0,
+                    life: 0.3
+                });
+            }
         } else {
             // Standard projectile
             const dx = target.x - turret.x;
@@ -1044,6 +1115,19 @@ class GameState {
                 continue;
             }
 
+            // Handle beam/visual-only projectiles with life
+            if (proj.life !== undefined) {
+                proj.life -= deltaTime;
+                if (proj.life <= 0) {
+                    this.projectiles.splice(i, 1);
+                    continue;
+                }
+                // Beam projectiles don't move or hit - they're just visual
+                if (proj.type === 'railgun' || proj.type === 'laser' || proj.type === 'tesla') {
+                    continue;
+                }
+            }
+
             proj.x += (proj.vx || 0) * deltaTime;
             proj.y += (proj.vy || 0) * deltaTime;
 
@@ -1081,6 +1165,16 @@ class GameState {
 
     dealAOE(x, y, radius, damage) {
         if (!radius || radius <= 0) return;
+
+        // Add explosion effect
+        this.pendingEffects.push({
+            type: 'explosion',
+            x: x,
+            y: y,
+            radius: radius,
+            color: '#ff6600'
+        });
+
         for (const enemy of this.enemies) {
             if (!enemy || enemy.dead) continue;
             const dist = Math.sqrt((x - enemy.x) ** 2 + (y - enemy.y) ** 2);
@@ -1474,8 +1568,14 @@ class GameState {
                 y: p.y,
                 startX: p.startX,
                 startY: p.startY,
-                aoeRadius: p.aoeRadius || 0
+                aoeRadius: p.aoeRadius || 0,
+                life: p.life,
+                vx: p.vx,
+                vy: p.vy,
+                damage: p.damage
             })),
+            // Effects to trigger on client (explosions, deaths, etc.)
+            effects: this.pendingEffects || [],
             grid: this.grid
         };
     }

@@ -20,6 +20,7 @@ export class Renderer {
 
         this.particles = [];
         this.explosions = [];
+        this.deathEffects = [];
     }
 
     clear() {
@@ -625,6 +626,47 @@ export class Renderer {
 
             this.ctx.globalAlpha = 1;
         }
+    }
+
+    addDeathEffect(x, y, color = '#ff4444') {
+        // Create particles for death
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const speed = 50 + Math.random() * 50;
+            this.deathEffects.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: color,
+                alpha: 1,
+                size: 4 + Math.random() * 4,
+                time: 0
+            });
+        }
+    }
+
+    drawDeathEffects(deltaTime) {
+        for (let i = this.deathEffects.length - 1; i >= 0; i--) {
+            const p = this.deathEffects[i];
+            p.time += deltaTime;
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+            p.alpha = 1 - p.time / 0.5;
+            p.size *= 0.95;
+
+            if (p.alpha <= 0 || p.size < 1) {
+                this.deathEffects.splice(i, 1);
+                continue;
+            }
+
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = p.alpha;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        this.ctx.globalAlpha = 1;
     }
 
     drawPlacementPreview(gridX, gridY, canPlace, buildingType) {

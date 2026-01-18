@@ -543,6 +543,9 @@ export class Game {
 
         // Draw explosions
         this.renderer.drawExplosions(deltaTime);
+
+        // Draw death effects
+        this.renderer.drawDeathEffects(deltaTime);
     }
 
     placeBuilding(gridX, gridY, buildingType) {
