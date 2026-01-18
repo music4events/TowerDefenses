@@ -317,21 +317,29 @@ export class Game {
                     if (proj.hitEnemies && proj.hitEnemies.includes(enemy)) continue;
 
                     const dist = Math.sqrt((proj.x - enemy.x) ** 2 + (proj.y - enemy.y) ** 2);
-                    const hitRadius = this.cellSize * enemy.config.size / 2;
+                    const enemySize = enemy.config?.size || 1;
+                    const hitRadius = this.cellSize * enemySize / 2;
 
                     if (dist < hitRadius) {
                         // Hit!
                         if (proj.aoeRadius > 0) {
-                            // AOE damage
-                            this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
+                            // AOE explosion visual
                             this.renderer.addExplosion(proj.x, proj.y, proj.aoeRadius);
+                            // Only deal damage in solo mode
+                            if (!this.isMultiplayer) {
+                                this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
+                            }
                             this.projectiles.splice(i, 1);
                         } else {
-                            enemy.takeDamage(proj.damage);
-
-                            // Apply DOT for flamethrower
-                            if (proj.dotDamage) {
-                                enemy.applyBurn(proj.dotDamage, proj.dotDuration);
+                            // Only deal damage in solo mode (server handles in multiplayer)
+                            if (!this.isMultiplayer) {
+                                if (enemy.takeDamage) {
+                                    enemy.takeDamage(proj.damage);
+                                }
+                                // Apply DOT for flamethrower
+                                if (proj.dotDamage && enemy.applyBurn) {
+                                    enemy.applyBurn(proj.dotDamage, proj.dotDuration);
+                                }
                             }
 
                             if (proj.penetration) {
@@ -349,6 +357,9 @@ export class Game {
     }
 
     dealAOEDamage(x, y, radius, damage) {
+        // Skip in multiplayer - server handles damage
+        if (this.isMultiplayer) return;
+
         for (const enemy of this.enemies) {
             if (enemy.dead) continue;
 
@@ -356,7 +367,9 @@ export class Game {
             if (dist <= radius) {
                 // Damage falls off with distance
                 const falloff = 1 - (dist / radius) * 0.5;
-                enemy.takeDamage(damage * falloff);
+                if (enemy.takeDamage) {
+                    enemy.takeDamage(damage * falloff);
+                }
             }
         }
     }
