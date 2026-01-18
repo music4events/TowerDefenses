@@ -212,6 +212,17 @@ class App {
                 }
             });
         });
+
+        // Path visualization toggle button
+        const pathBtn = document.getElementById('btn-show-paths');
+        if (pathBtn) {
+            pathBtn.addEventListener('click', () => {
+                if (this.game) {
+                    const isShowing = this.game.togglePathVisualization();
+                    pathBtn.classList.toggle('active', isShowing);
+                }
+            });
+        }
     }
 
     setupChat() {

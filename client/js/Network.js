@@ -197,6 +197,11 @@ export class Network {
                 this.game.grid.cells = state.grid;
             }
 
+            // Sync main paths for visualization
+            if (state.mainPaths && this.game.grid) {
+                this.game.grid.mainPaths = state.mainPaths;
+            }
+
             // Sync enemies only if server provides them
             if (state.enemies) {
                 this.syncEnemies(state.enemies);

@@ -10,6 +10,19 @@ export class Grid {
         this.cells = [];
         this.resourceMap = []; // Type of resource at each cell
 
+        // 4 main paths from edges to nexus (optimization)
+        this.mainPaths = {
+            north: [],
+            east: [],
+            south: [],
+            west: []
+        };
+        this.nexusX = null;
+        this.nexusY = null;
+
+        // Toggle for visualizing paths
+        this.showPaths = false;
+
         this.init();
     }
 
@@ -127,7 +140,71 @@ export class Grid {
     setNexus(x, y) {
         if (this.isValidCell(x, y)) {
             this.cells[y][x] = 3;
+            this.nexusX = x;
+            this.nexusY = y;
+            // Calculate main paths after nexus is set
+            this.calculateMainPaths();
         }
+    }
+
+    // Calculate 4 main paths from edge centers to nexus
+    calculateMainPaths() {
+        if (this.nexusX === null || this.nexusY === null) return;
+
+        const centerX = Math.floor(this.cols / 2);
+        const centerY = Math.floor(this.rows / 2);
+
+        // Define spawn points at center of each edge
+        const spawnPoints = {
+            north: { x: centerX, y: 0 },
+            south: { x: centerX, y: this.rows - 1 },
+            west: { x: 0, y: centerY },
+            east: { x: this.cols - 1, y: centerY }
+        };
+
+        // Calculate paths from each spawn point to nexus
+        for (const [direction, spawn] of Object.entries(spawnPoints)) {
+            const path = this.findPath(spawn.x, spawn.y, this.nexusX, this.nexusY);
+            this.mainPaths[direction] = path || [];
+        }
+
+        console.log(`[Grid] Main paths calculated: N=${this.mainPaths.north.length}, E=${this.mainPaths.east.length}, S=${this.mainPaths.south.length}, W=${this.mainPaths.west.length}`);
+    }
+
+    // Find the nearest main path for an enemy position
+    findNearestMainPath(x, y) {
+        let bestPath = null;
+        let bestDistance = Infinity;
+        let bestStartIndex = 0;
+
+        for (const [direction, path] of Object.entries(this.mainPaths)) {
+            if (!path || path.length === 0) continue;
+
+            // Find the closest point on this path
+            for (let i = 0; i < path.length; i++) {
+                const point = path[i];
+                const dist = Math.abs(point.x - x) + Math.abs(point.y - y); // Manhattan distance
+
+                if (dist < bestDistance) {
+                    bestDistance = dist;
+                    bestPath = path;
+                    bestStartIndex = i;
+                }
+            }
+        }
+
+        // Return a copy of the path starting from the nearest point
+        if (bestPath && bestStartIndex < bestPath.length) {
+            return bestPath.slice(bestStartIndex).map(p => ({ x: p.x, y: p.y }));
+        }
+
+        return null;
+    }
+
+    // Toggle path visualization
+    togglePathVisualization() {
+        this.showPaths = !this.showPaths;
+        return this.showPaths;
     }
 
     // A* Pathfinding

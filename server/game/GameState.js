@@ -384,35 +384,71 @@ class GameState {
         // Game speed multiplier (1, 2, 5, 10)
         this.gameSpeed = 1;
 
-        // Path caching for optimization
-        this.pathCache = new Map();
-        this.pathCacheValid = true;
+        // 4 main paths from edges to nexus (N, E, S, W)
+        this.mainPaths = {
+            north: [],
+            east: [],
+            south: [],
+            west: []
+        };
+        this.mainSpawnPoints = {
+            north: null,
+            east: null,
+            south: null,
+            west: null
+        };
     }
 
-    invalidatePathCache() {
-        this.pathCache.clear();
-        this.pathCacheValid = false;
-    }
+    // Calculate the 4 main paths from edge centers to nexus
+    calculateMainPaths() {
+        const centerX = Math.floor(this.cols / 2);
+        const centerY = Math.floor(this.rows / 2);
 
-    getCachedPath(startX, startY) {
-        const key = `${startX},${startY}`;
-        if (this.pathCache.has(key)) {
-            // Return a copy of the cached path
-            return this.pathCache.get(key).map(p => ({ x: p.x, y: p.y }));
+        // Define spawn points at center of each edge
+        this.mainSpawnPoints = {
+            north: { x: centerX, y: 0 },
+            south: { x: centerX, y: this.rows - 1 },
+            west: { x: 0, y: centerY },
+            east: { x: this.cols - 1, y: centerY }
+        };
+
+        // Calculate paths from each spawn point to nexus
+        for (const [direction, spawn] of Object.entries(this.mainSpawnPoints)) {
+            const path = this.findPath(spawn.x, spawn.y, this.nexusX, this.nexusY);
+            this.mainPaths[direction] = path || [];
         }
-        return null;
+
+        console.log(`[Pathfinding] Main paths calculated: N=${this.mainPaths.north.length}, E=${this.mainPaths.east.length}, S=${this.mainPaths.south.length}, W=${this.mainPaths.west.length}`);
     }
 
-    setCachedPath(startX, startY, path) {
-        if (path && path.length > 0) {
-            const key = `${startX},${startY}`;
-            this.pathCache.set(key, path);
-            // Limit cache size to prevent memory issues
-            if (this.pathCache.size > 500) {
-                const firstKey = this.pathCache.keys().next().value;
-                this.pathCache.delete(firstKey);
+    // Find the nearest main path for an enemy position
+    findNearestMainPath(x, y) {
+        let bestPath = null;
+        let bestDistance = Infinity;
+        let bestStartIndex = 0;
+
+        for (const [direction, path] of Object.entries(this.mainPaths)) {
+            if (!path || path.length === 0) continue;
+
+            // Find the closest point on this path
+            for (let i = 0; i < path.length; i++) {
+                const point = path[i];
+                const dist = Math.abs(point.x - x) + Math.abs(point.y - y); // Manhattan distance
+
+                if (dist < bestDistance) {
+                    bestDistance = dist;
+                    bestPath = path;
+                    bestStartIndex = i;
+                }
             }
         }
+
+        // Return a copy of the path starting from the nearest point
+        if (bestPath && bestStartIndex < bestPath.length) {
+            return bestPath.slice(bestStartIndex).map(p => ({ x: p.x, y: p.y }));
+        }
+
+        return null;
     }
 
     setGameSpeed(speed) {
@@ -449,6 +485,9 @@ class GameState {
 
         // Generate resources
         this.generateResources();
+
+        // Calculate the 4 main paths
+        this.calculateMainPaths();
 
         // Start first wave timer
         this.waveTimer = 30;
@@ -748,16 +787,9 @@ class GameState {
                 spawnTimer: 0 // For transport/spawner units
             };
 
-            // Try cached path first, then calculate if needed
-            let path = this.getCachedPath(x, y);
-            if (!path) {
-                path = this.findPath(x, y, this.nexusX, this.nexusY);
-                if (path) {
-                    this.setCachedPath(x, y, path);
-                }
-            }
-
-            if (path) {
+            // Use main paths - find nearest path point
+            const path = this.findNearestMainPath(x, y);
+            if (path && path.length > 0) {
                 enemy.path = path;
             } else {
                 // No path found - mark enemy to go through walls
@@ -955,16 +987,9 @@ class GameState {
                 spawnTimer: 0
             };
 
-            // Try cached path first, then calculate if needed
-            let path = this.getCachedPath(x, y);
-            if (!path) {
-                path = this.findPath(x, y, this.nexusX, this.nexusY);
-                if (path) {
-                    this.setCachedPath(x, y, path);
-                }
-            }
-
-            if (path) {
+            // Use main paths - find nearest path point
+            const path = this.findNearestMainPath(x, y);
+            if (path && path.length > 0) {
                 enemy.path = path;
             } else {
                 // No path found - mark enemy to go through walls
@@ -1005,13 +1030,11 @@ class GameState {
                 turretAttackCooldown: 0
             };
 
-            // Use cached path
-            let path = this.getCachedPath(x, y);
-            if (!path) {
-                path = this.findPath(x, y, this.nexusX, this.nexusY);
-                if (path) this.setCachedPath(x, y, path);
+            // Use main paths
+            const path = this.findNearestMainPath(x, y);
+            if (path && path.length > 0) {
+                enemy.path = path;
             }
-            if (path) enemy.path = path;
             this.enemies.push(enemy);
         } catch (error) {
             console.error('Error spawning splitter child:', error);
@@ -1051,13 +1074,11 @@ class GameState {
                     turretAttackCooldown: 0
                 };
 
-                // Use cached path
-                let path = this.getCachedPath(gridX, gridY);
-                if (!path) {
-                    path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
-                    if (path) this.setCachedPath(gridX, gridY, path);
+                // Use main paths
+                const path = this.findNearestMainPath(gridX, gridY);
+                if (path && path.length > 0) {
+                    enemy.path = path;
                 }
-                if (path) enemy.path = path;
                 this.enemies.push(enemy);
             }
 
@@ -1950,8 +1971,9 @@ class GameState {
     }
 
     recalculatePaths() {
-        // Invalidate path cache when grid changes
-        this.invalidatePathCache();
+        // Recalculate main paths when grid changes
+        this.calculateMainPaths();
+
         // Mark all enemies for path recalculation (will be done progressively)
         for (const enemy of this.enemies) {
             enemy.needsPathRecalc = true;
@@ -1959,7 +1981,7 @@ class GameState {
     }
 
     // Progressive path recalculation - call this in update loop
-    // Scale with game speed for better performance at x10
+    // Uses main paths for efficiency
     progressivePathRecalc(maxPerFrame = 5) {
         // Scale recalculations with game speed
         const scaledMax = maxPerFrame * this.gameSpeed;
@@ -1970,15 +1992,8 @@ class GameState {
                 const gridX = Math.floor(enemy.x / this.cellSize);
                 const gridY = Math.floor(enemy.y / this.cellSize);
 
-                // Try to use cached path first
-                let path = this.getCachedPath(gridX, gridY);
-                if (!path) {
-                    path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
-                    if (path) {
-                        this.setCachedPath(gridX, gridY, path);
-                    }
-                }
-
+                // Use main paths - find nearest path point
+                const path = this.findNearestMainPath(gridX, gridY);
                 if (path) {
                     enemy.path = path;
                     enemy.pathIndex = 0;
@@ -2167,7 +2182,9 @@ class GameState {
             })),
             // Effects to trigger on client (explosions, deaths, etc.)
             effects: effectsToSend,
-            grid: this.grid
+            grid: this.grid,
+            // Main paths for visualization
+            mainPaths: this.mainPaths
         };
     }
 }

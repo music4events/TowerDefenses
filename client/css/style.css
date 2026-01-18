@@ -310,6 +310,28 @@ body {
     color: #fff;
 }
 
+.path-btn {
+    padding: 4px 8px;
+    background: #0f3460;
+    border: 1px solid #1a4a7a;
+    border-radius: 3px;
+    color: #8892b0;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.path-btn:hover {
+    background: #1a4a7a;
+    color: #fff;
+}
+
+.path-btn.active {
+    background: #2ecc71;
+    border-color: #2ecc71;
+    color: #fff;
+}
+
 /* Action modes (Sell/Upgrade) */
 #action-modes {
     display: flex;

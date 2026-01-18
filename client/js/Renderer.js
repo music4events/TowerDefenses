@@ -80,6 +80,64 @@ export class Renderer {
                 }
             }
         }
+
+        // Draw main paths if visualization is enabled
+        if (this.grid.showPaths) {
+            this.drawMainPaths();
+        }
+    }
+
+    drawMainPaths() {
+        const colors = {
+            north: '#ff4444',  // Red
+            south: '#44ff44',  // Green
+            east: '#4444ff',   // Blue
+            west: '#ffff44'    // Yellow
+        };
+
+        for (const [direction, path] of Object.entries(this.grid.mainPaths)) {
+            if (!path || path.length === 0) continue;
+
+            const color = colors[direction] || '#ffffff';
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 3;
+            this.ctx.globalAlpha = 0.6;
+
+            // Draw path as a line
+            this.ctx.beginPath();
+            for (let i = 0; i < path.length; i++) {
+                const point = path[i];
+                const worldX = point.x * this.grid.cellSize + this.grid.cellSize / 2;
+                const worldY = point.y * this.grid.cellSize + this.grid.cellSize / 2;
+
+                if (i === 0) {
+                    this.ctx.moveTo(worldX, worldY);
+                } else {
+                    this.ctx.lineTo(worldX, worldY);
+                }
+            }
+            this.ctx.stroke();
+
+            // Draw spawn point marker
+            const startPoint = path[0];
+            if (startPoint) {
+                const startX = startPoint.x * this.grid.cellSize + this.grid.cellSize / 2;
+                const startY = startPoint.y * this.grid.cellSize + this.grid.cellSize / 2;
+
+                this.ctx.fillStyle = color;
+                this.ctx.beginPath();
+                this.ctx.arc(startX, startY, 10, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Label
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = 'bold 12px sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(direction.charAt(0).toUpperCase(), startX, startY + 4);
+            }
+
+            this.ctx.globalAlpha = 1;
+        }
     }
 
     drawResources() {

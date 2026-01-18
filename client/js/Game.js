@@ -817,9 +817,9 @@ export class Game {
             enemy.age = 0;
             enemy.dead = false;
 
-            // Calculate path to nexus
-            const path = this.grid.findPath(gridX, gridY, this.nexus.gridX, this.nexus.gridY);
-            if (path) {
+            // Use main paths for efficiency - find nearest path point
+            const path = this.grid.findNearestMainPath(gridX, gridY);
+            if (path && path.length > 0) {
                 enemy.setPath(path);
             }
             // Always add enemy - if no path, they'll find one or attack obstacles
@@ -835,6 +835,9 @@ export class Game {
         // Server handles pathfinding in multiplayer
         if (this.isMultiplayer) return;
 
+        // Recalculate main paths when grid changes
+        this.grid.calculateMainPaths();
+
         // Mark all enemies for progressive path recalculation
         for (const enemy of this.enemies) {
             enemy.needsPathRecalc = true;
@@ -843,12 +846,16 @@ export class Game {
 
     progressivePathRecalc(maxPerFrame = 5) {
         // Process a limited number of path recalculations per frame to avoid lag
+        // Scale with game speed
+        const scaledMax = maxPerFrame * this.gameSpeed;
         let recalculated = 0;
+
         for (const enemy of this.enemies) {
-            if (enemy.needsPathRecalc && recalculated < maxPerFrame) {
+            if (enemy.needsPathRecalc && recalculated < scaledMax) {
                 if (enemy.setPath) {
-                    const path = this.grid.findPath(enemy.gridX, enemy.gridY, this.nexus.gridX, this.nexus.gridY);
-                    if (path) {
+                    // Use main paths for efficiency
+                    const path = this.grid.findNearestMainPath(enemy.gridX, enemy.gridY);
+                    if (path && path.length > 0) {
                         enemy.setPath(path);
                     }
                 }
@@ -856,5 +863,10 @@ export class Game {
                 recalculated++;
             }
         }
+    }
+
+    // Toggle path visualization
+    togglePathVisualization() {
+        return this.grid.togglePathVisualization();
     }
 }
