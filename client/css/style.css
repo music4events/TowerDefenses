@@ -224,9 +224,34 @@ body {
 .btn-icon.turret-shock { background: #00bfff; }
 .btn-icon.turret-speed { background: #ffaa00; }
 .btn-icon.turret-damage { background: #ff4444; }
+/* Tourelles 2x2 */
+.btn-icon.turret-missile { background: linear-gradient(135deg, #8b0000, #ff4400); border: 2px solid #ff6600; }
+.btn-icon.turret-plasma { background: linear-gradient(135deg, #9400d3, #da70d6); border: 2px solid #ff00ff; }
+.btn-icon.turret-cryo { background: linear-gradient(135deg, #00ffff, #aaffff); border: 2px solid #00ffff; }
+.btn-icon.turret-gatling { background: linear-gradient(135deg, #696969, #a9a9a9); border: 2px solid #ffdd00; }
+.btn-icon.turret-emp { background: linear-gradient(135deg, #4169e1, #6495ed); border: 2px solid #00bfff; }
+
+/* Tourelles 3x3 */
 .btn-icon.turret-flak { background: #2a5caa; border: 2px solid #00ddff; }
+.btn-icon.turret-mega-tesla { background: linear-gradient(135deg, #00ffff, #00bfff); border: 2px solid #ffffff; box-shadow: 0 0 6px #00ffff; }
+.btn-icon.turret-mega-railgun { background: linear-gradient(135deg, #1e90ff, #00bfff); border: 2px solid #ffffff; box-shadow: 0 0 6px #1e90ff; }
+.btn-icon.turret-rocket-array { background: linear-gradient(135deg, #b22222, #ff4500); border: 2px solid #ff6347; }
+.btn-icon.turret-laser-array { background: linear-gradient(135deg, #32cd32, #00ff00); border: 2px solid #adff2f; box-shadow: 0 0 6px #00ff00; }
+.btn-icon.turret-particle { background: linear-gradient(135deg, #ff1493, #ff69b4); border: 2px solid #ffffff; box-shadow: 0 0 6px #ff1493; }
+.btn-icon.turret-nuclear { background: linear-gradient(135deg, #ffff00, #ffa500); border: 2px solid #ff0000; box-shadow: 0 0 8px #ffff00; }
+.btn-icon.turret-storm { background: linear-gradient(135deg, #9932cc, #4b0082); border: 2px solid #da70d6; box-shadow: 0 0 6px #9932cc; }
+.btn-icon.turret-deathray { background: linear-gradient(135deg, #8b0000, #ff0000); border: 2px solid #ffff00; box-shadow: 0 0 8px #ff0000; }
+.btn-icon.turret-missile-battery { background: linear-gradient(135deg, #556b2f, #9acd32); border: 2px solid #adff2f; }
+.btn-icon.turret-orbital { background: linear-gradient(135deg, #ffd700, #ffffff); border: 2px solid #ffd700; box-shadow: 0 0 10px #ffd700; }
+
 .btn-icon.wall { background: #533535; border-radius: 4px; }
 .btn-icon.extractor { background: #8b9dc3; }
+
+/* Medium turrets (2x2) */
+.build-btn.medium-turret {
+    border: 2px solid #ff6600;
+    box-shadow: 0 0 6px rgba(255, 102, 0, 0.3);
+}
 
 /* Big turrets (3x3) */
 .build-btn.big-turret {

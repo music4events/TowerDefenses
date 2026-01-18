@@ -259,9 +259,75 @@ export class Turret {
 
         const projectileType = this.getProjectileType();
 
-        // FLAK Anti-Air - rain of projectiles
+        // === TOURELLES 2x2 ===
+        if (this.config.isMissile && !this.config.isRocketArray && !this.config.isMissileBattery) {
+            this.fireMissile(projectiles);
+            return;
+        }
+        if (this.config.isPlasma) {
+            this.firePlasma(projectiles);
+            return;
+        }
+        if (this.config.isCryo) {
+            this.fireCryo(projectiles, game);
+            return;
+        }
+        if (this.config.isGatling) {
+            this.fireGatling(projectiles);
+            return;
+        }
+        if (this.config.isEMP) {
+            this.fireEMP(projectiles, game);
+            return;
+        }
+
+        // === TOURELLES 3x3 ===
         if (this.config.flakCount) {
             this.fireFlak(projectiles);
+            return;
+        }
+        if (this.config.isMegaTesla) {
+            this.fireMegaTesla(projectiles, game);
+            return;
+        }
+        if (this.config.isMegaRailgun) {
+            this.fireMegaRailgun(projectiles, game);
+            return;
+        }
+        if (this.config.isRocketArray) {
+            this.fireRocketArray(projectiles);
+            return;
+        }
+        if (this.config.isLaserArray) {
+            this.fireLaserArray(projectiles, game);
+            return;
+        }
+        if (this.config.isParticle) {
+            this.fireParticle(projectiles, game);
+            return;
+        }
+        if (this.config.isNuclear) {
+            this.fireNuclear(projectiles);
+            return;
+        }
+        if (this.config.isStorm) {
+            this.fireStorm(projectiles, game);
+            return;
+        }
+        if (this.config.isDeathRay) {
+            this.fireDeathRay(projectiles, game);
+            return;
+        }
+        if (this.config.isMissileBattery) {
+            this.fireMissileBattery(projectiles);
+            return;
+        }
+        if (this.config.isOrbital) {
+            this.fireOrbital(projectiles, game);
+            return;
+        }
+        if (this.config.isShockwave) {
+            this.fireShockwave(projectiles, game);
             return;
         }
 
@@ -507,19 +573,15 @@ export class Turret {
         const barrels = this.config.barrelCount || 2;
         const speed = (this.config.projectileSpeed || 25) * this.grid.cellSize;
 
-        // Offset for double barrel (left and right of center)
         const barrelOffset = this.grid.cellSize * 0.3;
 
         for (let i = 0; i < flakCount; i++) {
-            // Alternate between barrels
             const barrelSide = (i % barrels === 0) ? -1 : 1;
             const perpAngle = this.angle + Math.PI / 2;
 
-            // Starting position from one of the barrels
             const startX = this.x + Math.cos(perpAngle) * barrelOffset * barrelSide;
             const startY = this.y + Math.sin(perpAngle) * barrelOffset * barrelSide;
 
-            // Target position with random spread
             const spreadAngle = Math.random() * Math.PI * 2;
             const spreadDist = Math.random() * spreadRadius;
             const targetX = this.target.x + Math.cos(spreadAngle) * spreadDist;
@@ -529,7 +591,6 @@ export class Turret {
             const dy = targetY - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Small delay between projectiles for rain effect
             const delay = (i / flakCount) * 0.2;
 
             projectiles.push({
@@ -549,6 +610,524 @@ export class Turret {
                 life: 1.0
             });
         }
+    }
+
+    // === TOURELLES 2x2 ===
+    fireMissile(projectiles) {
+        const missileCount = this.config.missileCount || 2;
+        const speed = (this.config.projectileSpeed || 8) * this.grid.cellSize;
+
+        for (let i = 0; i < missileCount; i++) {
+            const offsetAngle = this.angle + (i - (missileCount - 1) / 2) * 0.3;
+            const startX = this.x + Math.cos(offsetAngle) * this.grid.cellSize * 0.3;
+            const startY = this.y + Math.sin(offsetAngle) * this.grid.cellSize * 0.3;
+
+            const dx = this.target.x - startX;
+            const dy = this.target.y - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            projectiles.push({
+                type: 'missile',
+                x: startX,
+                y: startY,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                damage: this.config.damage,
+                config: this.config,
+                target: this.target,
+                homingStrength: this.config.homingStrength || 0.15,
+                aoeRadius: (this.config.explosionRadius || 1.5) * this.grid.cellSize,
+                sourceX: startX,
+                sourceY: startY,
+                hitEnemies: [],
+                life: 3.0,
+                trail: []
+            });
+        }
+    }
+
+    firePlasma(projectiles) {
+        const speed = (this.config.projectileSpeed || 12) * this.grid.cellSize;
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        projectiles.push({
+            type: 'plasma',
+            x: this.x,
+            y: this.y,
+            vx: (dx / dist) * speed,
+            vy: (dy / dist) * speed,
+            damage: this.config.damage,
+            config: this.config,
+            aoeRadius: (this.config.aoeRadius || 1.2) * this.grid.cellSize,
+            plasmaSize: this.config.plasmaSize || 15,
+            sourceX: this.x,
+            sourceY: this.y,
+            hitEnemies: [],
+            life: 2.0,
+            trail: [],
+            pulsePhase: 0
+        });
+    }
+
+    fireCryo(projectiles, game) {
+        // Continuous beam that slows and sometimes freezes
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+
+            if (dist <= this.range) {
+                enemy.takeDamage(this.config.damage * 0.1);
+                if (enemy.applySlow) {
+                    enemy.applySlow(this.config.slowAmount || 0.6);
+                }
+                enemy.frosted = true;
+
+                // Chance to freeze completely
+                if (Math.random() < (this.config.freezeChance || 0.1)) {
+                    enemy.frozen = true;
+                    enemy.frozenTime = 1.0;
+                }
+            }
+        }
+
+        // Visual beam to target
+        projectiles.push({
+            type: 'cryo-beam',
+            x: this.target.x,
+            y: this.target.y,
+            startX: this.x,
+            startY: this.y,
+            config: this.config,
+            life: 0.1,
+            particles: []
+        });
+    }
+
+    fireGatling(projectiles) {
+        const spread = this.config.spread || 0.15;
+        const speed = (this.config.projectileSpeed || 25) * this.grid.cellSize;
+        const angle = this.angle + (Math.random() - 0.5) * spread;
+
+        projectiles.push({
+            type: 'gatling',
+            x: this.x + Math.cos(this.angle) * this.grid.cellSize * 0.5,
+            y: this.y + Math.sin(this.angle) * this.grid.cellSize * 0.5,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            damage: this.config.damage,
+            config: this.config,
+            sourceX: this.x,
+            sourceY: this.y,
+            hitEnemies: [],
+            life: 0.5
+        });
+
+        // Update spin animation
+        if (!this.spinAngle) this.spinAngle = 0;
+        this.spinAngle += this.config.spinSpeed || 0.5;
+    }
+
+    fireEMP(projectiles, game) {
+        const empRadius = (this.config.empRadius || 4) * this.grid.cellSize;
+
+        // Damage and stun all enemies in radius
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+
+            if (dist <= empRadius) {
+                enemy.takeDamage(this.config.damage);
+                enemy.stunned = true;
+                enemy.stunnedTime = this.config.stunDuration || 2.0;
+            }
+        }
+
+        // EMP wave effect
+        projectiles.push({
+            type: 'emp-wave',
+            x: this.x,
+            y: this.y,
+            radius: 0,
+            maxRadius: empRadius,
+            config: this.config,
+            life: 0.5,
+            waveCount: this.config.waveCount || 3
+        });
+    }
+
+    // === TOURELLES 3x3 ===
+    fireMegaTesla(projectiles, game) {
+        const targets = [];
+        const arcCount = this.config.arcCount || 3;
+        const chainTargets = this.config.chainTargets || 8;
+
+        // Find multiple initial targets
+        const sortedEnemies = [...game.enemies]
+            .filter(e => !e.dead)
+            .map(e => ({ enemy: e, dist: Math.sqrt((this.x - e.x) ** 2 + (this.y - e.y) ** 2) }))
+            .filter(e => e.dist <= this.range)
+            .sort((a, b) => a.dist - b.dist);
+
+        for (let arc = 0; arc < Math.min(arcCount, sortedEnemies.length); arc++) {
+            const chainList = [sortedEnemies[arc].enemy];
+            let current = sortedEnemies[arc].enemy;
+
+            // Chain to additional targets
+            for (let i = 1; i < Math.ceil(chainTargets / arcCount); i++) {
+                const chainRange = (this.config.chainRange || 4) * this.grid.cellSize;
+                let next = null;
+                let closestDist = Infinity;
+
+                for (const e of game.enemies) {
+                    if (e.dead || chainList.includes(e)) continue;
+                    const dist = Math.sqrt((current.x - e.x) ** 2 + (current.y - e.y) ** 2);
+                    if (dist <= chainRange && dist < closestDist) {
+                        next = e;
+                        closestDist = dist;
+                    }
+                }
+
+                if (next) {
+                    chainList.push(next);
+                    current = next;
+                }
+            }
+
+            targets.push(chainList);
+        }
+
+        // Create lightning for each chain
+        for (const chain of targets) {
+            let prevX = this.x;
+            let prevY = this.y;
+
+            for (const enemy of chain) {
+                enemy.takeDamage(this.config.damage);
+
+                projectiles.push({
+                    type: 'mega-tesla',
+                    x: enemy.x,
+                    y: enemy.y,
+                    startX: prevX,
+                    startY: prevY,
+                    config: this.config,
+                    life: 0.25,
+                    boltWidth: this.config.boltWidth || 6,
+                    branches: Math.floor(Math.random() * 3) + 1
+                });
+
+                prevX = enemy.x;
+                prevY = enemy.y;
+            }
+        }
+    }
+
+    fireMegaRailgun(projectiles, game) {
+        const beamEndX = this.x + Math.cos(this.angle) * this.range * 1.5;
+        const beamEndY = this.y + Math.sin(this.angle) * this.range * 1.5;
+
+        // Hit all enemies in line with massive damage
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = this.pointToLineDistance(enemy.x, enemy.y, this.x, this.y, beamEndX, beamEndY);
+            const enemySize = (enemy.config?.size || 0.6) * this.grid.cellSize / 2;
+
+            if (dist <= enemySize + 15) {
+                enemy.takeDamage(this.config.damage);
+            }
+        }
+
+        // Massive visual beam
+        projectiles.push({
+            type: 'mega-railgun',
+            x: beamEndX,
+            y: beamEndY,
+            startX: this.x,
+            startY: this.y,
+            config: this.config,
+            life: 0.4,
+            chargePhase: 0,
+            coreWidth: this.config.beamWidth || 12
+        });
+    }
+
+    fireRocketArray(projectiles) {
+        const rocketCount = this.config.rocketCount || 6;
+        const speed = (this.config.projectileSpeed || 10) * this.grid.cellSize;
+        const salvoDelay = this.config.salvoDelay || 0.1;
+
+        for (let i = 0; i < rocketCount; i++) {
+            const offsetAngle = (i / rocketCount) * Math.PI * 2;
+            const startOffset = this.grid.cellSize * 0.8;
+            const startX = this.x + Math.cos(offsetAngle) * startOffset;
+            const startY = this.y + Math.sin(offsetAngle) * startOffset;
+
+            const dx = this.target.x - startX;
+            const dy = this.target.y - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            projectiles.push({
+                type: 'rocket',
+                x: startX,
+                y: startY,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                damage: this.config.damage,
+                config: this.config,
+                target: this.target,
+                homingStrength: this.config.homingStrength || 0.12,
+                aoeRadius: (this.config.explosionRadius || 1.8) * this.grid.cellSize,
+                sourceX: startX,
+                sourceY: startY,
+                hitEnemies: [],
+                life: 4.0,
+                trail: [],
+                delay: i * salvoDelay
+            });
+        }
+    }
+
+    fireLaserArray(projectiles, game) {
+        const laserCount = this.config.laserCount || 4;
+        const sortedEnemies = [...game.enemies]
+            .filter(e => !e.dead)
+            .map(e => ({ enemy: e, dist: Math.sqrt((this.x - e.x) ** 2 + (this.y - e.y) ** 2) }))
+            .filter(e => e.dist <= this.range)
+            .sort((a, b) => a.dist - b.dist);
+
+        for (let i = 0; i < Math.min(laserCount, sortedEnemies.length); i++) {
+            const enemy = sortedEnemies[i].enemy;
+            enemy.takeDamage(this.config.damage);
+
+            projectiles.push({
+                type: 'laser-array',
+                x: enemy.x,
+                y: enemy.y,
+                startX: this.x,
+                startY: this.y,
+                config: this.config,
+                life: 0.15,
+                laserIndex: i
+            });
+        }
+    }
+
+    fireParticle(projectiles, game) {
+        const beamEndX = this.x + Math.cos(this.angle) * this.range;
+        const beamEndY = this.y + Math.sin(this.angle) * this.range;
+
+        // Hit enemies in line
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = this.pointToLineDistance(enemy.x, enemy.y, this.x, this.y, beamEndX, beamEndY);
+            if (dist <= 20) {
+                enemy.takeDamage(this.config.damage);
+            }
+        }
+
+        projectiles.push({
+            type: 'particle-beam',
+            x: beamEndX,
+            y: beamEndY,
+            startX: this.x,
+            startY: this.y,
+            config: this.config,
+            life: 0.3,
+            particles: [],
+            particleCount: this.config.particleCount || 50
+        });
+    }
+
+    fireNuclear(projectiles) {
+        const speed = (this.config.projectileSpeed || 6) * this.grid.cellSize;
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        projectiles.push({
+            type: 'nuclear',
+            x: this.x,
+            y: this.y,
+            vx: (dx / dist) * speed,
+            vy: (dy / dist) * speed,
+            damage: this.config.damage,
+            config: this.config,
+            aoeRadius: (this.config.aoeRadius || 5) * this.grid.cellSize,
+            targetX: this.target.x,
+            targetY: this.target.y,
+            sourceX: this.x,
+            sourceY: this.y,
+            hitEnemies: [],
+            life: 5.0,
+            arcHeight: 3
+        });
+    }
+
+    fireStorm(projectiles, game) {
+        const stormRadius = (this.config.stormRadius || 5) * this.grid.cellSize;
+        const lightningStrikes = this.config.lightningStrikes || 5;
+
+        // Create storm cloud effect
+        projectiles.push({
+            type: 'storm-cloud',
+            x: this.target.x,
+            y: this.target.y,
+            radius: stormRadius,
+            config: this.config,
+            life: 1.0,
+            strikes: []
+        });
+
+        // Strike random enemies in the storm area
+        const enemiesInRange = game.enemies.filter(e => {
+            if (e.dead) return false;
+            const dist = Math.sqrt((this.target.x - e.x) ** 2 + (this.target.y - e.y) ** 2);
+            return dist <= stormRadius;
+        });
+
+        for (let i = 0; i < Math.min(lightningStrikes, enemiesInRange.length); i++) {
+            const enemy = enemiesInRange[Math.floor(Math.random() * enemiesInRange.length)];
+            if (enemy) {
+                enemy.takeDamage(this.config.damage);
+
+                projectiles.push({
+                    type: 'storm-bolt',
+                    x: enemy.x,
+                    y: enemy.y,
+                    startX: enemy.x,
+                    startY: enemy.y - 200,
+                    config: this.config,
+                    life: 0.2,
+                    delay: i * 0.1
+                });
+            }
+        }
+    }
+
+    fireDeathRay(projectiles, game) {
+        if (!this.heatLevel) this.heatLevel = 0;
+
+        const beamEndX = this.x + Math.cos(this.angle) * this.range;
+        const beamEndY = this.y + Math.sin(this.angle) * this.range;
+
+        // Continuous damage to all in line
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = this.pointToLineDistance(enemy.x, enemy.y, this.x, this.y, beamEndX, beamEndY);
+            if (dist <= 15) {
+                enemy.takeDamage(this.config.damage * 0.1);
+            }
+        }
+
+        // Heat buildup visual
+        this.heatLevel = Math.min(100, this.heatLevel + 2);
+
+        projectiles.push({
+            type: 'death-ray',
+            x: beamEndX,
+            y: beamEndY,
+            startX: this.x,
+            startY: this.y,
+            config: this.config,
+            life: 0.05,
+            heatLevel: this.heatLevel
+        });
+    }
+
+    fireMissileBattery(projectiles) {
+        const missileCount = this.config.missileCount || 12;
+        const speed = (this.config.projectileSpeed || 12) * this.grid.cellSize;
+        const salvoDelay = this.config.salvoDelay || 0.05;
+
+        for (let i = 0; i < missileCount; i++) {
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            const offsetX = (col - 1.5) * this.grid.cellSize * 0.4;
+            const offsetY = (row - 1) * this.grid.cellSize * 0.4;
+
+            const startX = this.x + offsetX;
+            const startY = this.y + offsetY;
+
+            const dx = this.target.x - startX;
+            const dy = this.target.y - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            projectiles.push({
+                type: 'battery-missile',
+                x: startX,
+                y: startY,
+                vx: (dx / dist) * speed * 0.5, // Start slow
+                vy: (dy / dist) * speed * 0.5,
+                maxSpeed: speed,
+                damage: this.config.damage,
+                config: this.config,
+                target: this.target,
+                homingStrength: this.config.homingStrength || 0.2,
+                aoeRadius: (this.config.explosionRadius || 1.2) * this.grid.cellSize,
+                sourceX: startX,
+                sourceY: startY,
+                hitEnemies: [],
+                life: 4.0,
+                trail: [],
+                delay: i * salvoDelay
+            });
+        }
+    }
+
+    fireOrbital(projectiles, game) {
+        const strikeRadius = (this.config.strikeRadius || 3) * this.grid.cellSize;
+        const strikeDelay = this.config.strikeDelay || 1.5;
+
+        // Warning marker
+        projectiles.push({
+            type: 'orbital-warning',
+            x: this.target.x,
+            y: this.target.y,
+            radius: strikeRadius,
+            config: this.config,
+            life: strikeDelay,
+            phase: 0
+        });
+
+        // Delayed strike (will be processed in game update)
+        projectiles.push({
+            type: 'orbital-strike',
+            x: this.target.x,
+            y: this.target.y,
+            radius: strikeRadius,
+            damage: this.config.damage,
+            config: this.config,
+            life: strikeDelay + 0.5,
+            delay: strikeDelay,
+            triggered: false,
+            targetEnemies: [...game.enemies.filter(e => !e.dead)]
+        });
+    }
+
+    fireShockwave(projectiles, game) {
+        const aoeRange = (this.config.aoeRange || 3) * this.grid.cellSize;
+
+        // Damage all enemies in range
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+            if (dist <= aoeRange) {
+                enemy.takeDamage(this.config.damage);
+            }
+        }
+
+        // Shockwave visual effect
+        projectiles.push({
+            type: 'shockwave',
+            x: this.x,
+            y: this.y,
+            radius: 0,
+            maxRadius: aoeRange,
+            config: this.config,
+            life: 0.4
+        });
     }
 
     getProjectileType() {

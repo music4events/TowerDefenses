@@ -235,7 +235,13 @@ export class Renderer {
         const turretColor = config?.color || '#0f3460';
         const size = this.grid.cellSize * turretSize;
 
-        // Special rendering for 3x3 turrets (FLAK)
+        // Special rendering for 2x2 turrets
+        if (config?.gridSize === 2) {
+            this.drawTurret2x2(turret, isSelected, mode);
+            return;
+        }
+
+        // Special rendering for 3x3 turrets
         if (config?.gridSize === 3) {
             this.drawTurret3x3(turret, isSelected, mode);
             return;
@@ -452,6 +458,195 @@ export class Renderer {
         }
     }
 
+    drawTurret2x2(turret, isSelected = false, mode = null) {
+        const { x, y, angle, config, level } = turret;
+        const cellSize = this.grid.cellSize;
+        const totalSize = cellSize * 2;
+        const turretColor = config?.color || '#696969';
+
+        // Selection highlight
+        if (isSelected) {
+            this.ctx.strokeStyle = mode === 'sell' ? '#e74c3c' : mode === 'upgrade' ? '#f39c12' : '#ffffff';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeRect(x - totalSize / 2 - 2, y - totalSize / 2 - 2, totalSize + 4, totalSize + 4);
+        }
+
+        // Base platform
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
+
+        // Main body
+        this.ctx.fillStyle = turretColor;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, totalSize / 2 - 4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = '#0a0a1a';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+
+        // Type-specific rendering
+        if (config?.isMissile) {
+            // Missile launcher - dual missile pods
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            // Missile tubes
+            this.ctx.fillStyle = '#555555';
+            this.ctx.fillRect(-8, -15, 30, 10);
+            this.ctx.fillRect(-8, 5, 30, 10);
+
+            // Missile tips
+            this.ctx.fillStyle = '#ff4400';
+            this.ctx.beginPath();
+            this.ctx.moveTo(22, -10);
+            this.ctx.lineTo(28, -10);
+            this.ctx.lineTo(25, -7);
+            this.ctx.lineTo(25, -13);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.moveTo(22, 10);
+            this.ctx.lineTo(28, 10);
+            this.ctx.lineTo(25, 13);
+            this.ctx.lineTo(25, 7);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            this.ctx.restore();
+        } else if (config?.isPlasma) {
+            // Plasma cannon - glowing orb
+            const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(218, 112, 214, ${pulse})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Glow effect
+            const gradient = this.ctx.createRadialGradient(x, y, 5, x, y, 20);
+            gradient.addColorStop(0, 'rgba(148, 0, 211, 0.5)');
+            gradient.addColorStop(1, 'rgba(148, 0, 211, 0)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 20, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Barrel
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+            this.ctx.fillStyle = '#666666';
+            this.ctx.fillRect(10, -6, 25, 12);
+            this.ctx.restore();
+        } else if (config?.isCryo) {
+            // Cryo tower - ice crystal look
+            this.ctx.fillStyle = '#00ffff';
+            // Crystal shape
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y - 15);
+            this.ctx.lineTo(x + 10, y);
+            this.ctx.lineTo(x, y + 15);
+            this.ctx.lineTo(x - 10, y);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Inner glow
+            this.ctx.fillStyle = 'rgba(170, 255, 255, 0.6)';
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y - 8);
+            this.ctx.lineTo(x + 5, y);
+            this.ctx.lineTo(x, y + 8);
+            this.ctx.lineTo(x - 5, y);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Ice particles effect
+            this.ctx.fillStyle = 'rgba(170, 255, 255, 0.4)';
+            for (let i = 0; i < 6; i++) {
+                const particleAngle = (Date.now() / 1000 + i) % (Math.PI * 2);
+                const px = x + Math.cos(particleAngle) * 18;
+                const py = y + Math.sin(particleAngle) * 18;
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        } else if (config?.isGatling) {
+            // Gatling gun - rotating barrels
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            // Barrel housing
+            this.ctx.fillStyle = '#555555';
+            this.ctx.fillRect(-5, -12, 35, 24);
+
+            // Rotating barrels
+            const spinAngle = turret.spinAngle || 0;
+            this.ctx.save();
+            this.ctx.translate(15, 0);
+            this.ctx.rotate(spinAngle);
+
+            this.ctx.fillStyle = '#333333';
+            for (let i = 0; i < 6; i++) {
+                const bAngle = (i / 6) * Math.PI * 2;
+                this.ctx.fillRect(
+                    Math.cos(bAngle) * 6 - 2,
+                    Math.sin(bAngle) * 6 - 2,
+                    20, 4
+                );
+            }
+            this.ctx.restore();
+            this.ctx.restore();
+        } else if (config?.isEMP) {
+            // EMP tower - electric coils
+            // Center sphere
+            const pulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(100, 149, 237, ${pulse})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Electric arcs
+            this.ctx.strokeStyle = '#6495ed';
+            this.ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                const arcAngle = (Date.now() / 500 + i * Math.PI / 2) % (Math.PI * 2);
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 22, arcAngle, arcAngle + 0.5);
+                this.ctx.stroke();
+            }
+
+            // Coil rings
+            this.ctx.strokeStyle = 'rgba(100, 149, 237, 0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 25, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
+        // Level stars
+        if (level > 1) {
+            const starY = y + totalSize / 2 + 10;
+            this.drawStars(x, starY, level - 1);
+        }
+
+        // Health bar
+        const health = turret.health;
+        const maxHealth = turret.maxHealth || config?.maxHealth || 200;
+        if (health < maxHealth) {
+            const barWidth = totalSize - 8;
+            const barHeight = 5;
+            const barY = y + totalSize / 2 + 3;
+
+            this.ctx.fillStyle = '#333';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
+
+            const healthPercent = health / maxHealth;
+            this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+        }
+    }
+
     drawTurret3x3(turret, isSelected = false, mode = null) {
         const { x, y, angle, config, level } = turret;
         const cellSize = this.grid.cellSize;
@@ -531,7 +726,6 @@ export class Renderer {
         if (config?.isAntiAir) {
             this.ctx.strokeStyle = '#00ddff';
             this.ctx.lineWidth = 2;
-            // Radar waves
             for (let i = 1; i <= 3; i++) {
                 this.ctx.globalAlpha = 0.3 + (i * 0.2);
                 this.ctx.beginPath();
@@ -539,6 +733,206 @@ export class Renderer {
                 this.ctx.stroke();
             }
             this.ctx.globalAlpha = 1;
+        }
+
+        // Type-specific 3x3 rendering
+        if (config?.isMegaTesla) {
+            // Tesla coils
+            for (let i = 0; i < 3; i++) {
+                const coilAngle = (i / 3) * Math.PI * 2 + Date.now() / 1000;
+                const coilX = x + Math.cos(coilAngle) * 25;
+                const coilY = y + Math.sin(coilAngle) * 25;
+
+                this.ctx.fillStyle = '#00ffff';
+                this.ctx.beginPath();
+                this.ctx.arc(coilX, coilY, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Electric arcs
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(coilX, coilY);
+                this.ctx.stroke();
+            }
+
+            // Center orb
+            const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(0, 255, 255, ${pulse})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (config?.isMegaRailgun) {
+            // Massive barrel
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            // Main barrel
+            this.ctx.fillStyle = '#1e90ff';
+            this.ctx.fillRect(-10, -8, 60, 16);
+
+            // Rails
+            this.ctx.fillStyle = '#4169e1';
+            this.ctx.fillRect(-10, -12, 55, 4);
+            this.ctx.fillRect(-10, 8, 55, 4);
+
+            // Capacitor glow
+            const charge = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+            this.ctx.fillStyle = `rgba(0, 191, 255, ${charge})`;
+            this.ctx.beginPath();
+            this.ctx.arc(-5, 0, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        } else if (config?.isRocketArray || config?.isMissileBattery) {
+            // Multiple rocket tubes
+            const tubes = config?.isMissileBattery ? 12 : 6;
+            const rows = config?.isMissileBattery ? 3 : 2;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < tubes / rows; c++) {
+                    const tx = x - 20 + c * 12;
+                    const ty = y - 15 + r * 15;
+                    this.ctx.fillStyle = '#333333';
+                    this.ctx.beginPath();
+                    this.ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = '#ff4500';
+                    this.ctx.beginPath();
+                    this.ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+        } else if (config?.isLaserArray) {
+            // Multiple laser emitters
+            for (let i = 0; i < 4; i++) {
+                const emitterAngle = (i / 4) * Math.PI * 2;
+                const ex = x + Math.cos(emitterAngle) * 20;
+                const ey = y + Math.sin(emitterAngle) * 20;
+
+                this.ctx.fillStyle = '#32cd32';
+                this.ctx.beginPath();
+                this.ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Glow
+                this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                this.ctx.beginPath();
+                this.ctx.arc(ex, ey, 10, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        } else if (config?.isParticle) {
+            // Particle accelerator rings
+            this.ctx.strokeStyle = '#ff1493';
+            this.ctx.lineWidth = 3;
+            const rot = Date.now() / 500;
+            for (let i = 0; i < 2; i++) {
+                this.ctx.beginPath();
+                this.ctx.ellipse(x, y, 25, 15, rot + i * Math.PI / 2, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            // Center particle
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (config?.isNuclear) {
+            // Nuclear symbol
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Radiation symbol
+            this.ctx.fillStyle = '#000000';
+            for (let i = 0; i < 3; i++) {
+                const segAngle = (i / 3) * Math.PI * 2 - Math.PI / 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.arc(x, y, 20, segAngle - 0.4, segAngle + 0.4);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            // Warning glow
+            const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.4;
+            this.ctx.fillStyle = `rgba(255, 255, 0, ${pulse})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 30, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (config?.isStorm) {
+            // Storm cloud
+            this.ctx.fillStyle = '#4b0082';
+            for (let i = 0; i < 5; i++) {
+                const cx = x + (Math.random() - 0.5) * 30;
+                const cy = y + (Math.random() - 0.5) * 20;
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            // Lightning
+            if (Math.random() > 0.7) {
+                this.ctx.strokeStyle = '#da70d6';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x + (Math.random() - 0.5) * 40, y + 30);
+                this.ctx.stroke();
+            }
+        } else if (config?.isDeathRay) {
+            // Death ray emitter
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            // Main emitter
+            this.ctx.fillStyle = '#8b0000';
+            this.ctx.fillRect(-5, -15, 50, 30);
+
+            // Heat vents
+            const heat = turret.heatLevel || 0;
+            this.ctx.fillStyle = `rgb(${100 + heat * 1.5}, ${50 - heat * 0.5}, 0)`;
+            for (let i = 0; i < 3; i++) {
+                this.ctx.fillRect(10 + i * 12, -18, 8, 36);
+            }
+
+            this.ctx.restore();
+        } else if (config?.isOrbital) {
+            // Satellite dish
+            this.ctx.fillStyle = '#ffd700';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 20, Math.PI, Math.PI * 2);
+            this.ctx.fill();
+
+            // Dish details
+            this.ctx.strokeStyle = '#daa520';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 15, Math.PI, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Antenna
+            this.ctx.fillStyle = '#ffd700';
+            this.ctx.fillRect(x - 2, y - 25, 4, 25);
+
+            // Signal rings
+            const signalPhase = (Date.now() / 500) % 1;
+            this.ctx.strokeStyle = `rgba(255, 215, 0, ${1 - signalPhase})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y - 25, 10 + signalPhase * 20, 0, Math.PI * 2);
+            this.ctx.stroke();
+        } else if (!config?.isAntiAir && !config?.barrelCount) {
+            // Default 3x3 barrel
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+            this.ctx.fillStyle = '#444444';
+            this.ctx.fillRect(0, -6, totalSize / 2 + 10, 12);
+            this.ctx.restore();
         }
 
         // Level stars (bigger for 3x3)
@@ -888,6 +1282,351 @@ export class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
             this.ctx.fill();
+        } else if (type === 'missile' || type === 'rocket' || type === 'battery-missile') {
+            // Homing missile with trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const angle = Math.atan2(dy, dx);
+
+            // Trail
+            if (projectile.trail) {
+                projectile.trail.push({ x, y, life: 1 });
+                if (projectile.trail.length > 15) projectile.trail.shift();
+
+                for (let i = 0; i < projectile.trail.length; i++) {
+                    const t = projectile.trail[i];
+                    t.life -= 0.1;
+                    if (t.life > 0) {
+                        this.ctx.fillStyle = `rgba(255, 100, 0, ${t.life * 0.5})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(t.x, t.y, 3 * t.life, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+            }
+
+            // Missile body
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            this.ctx.fillStyle = '#666666';
+            this.ctx.fillRect(-12, -3, 12, 6);
+            this.ctx.fillStyle = projColor;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, 0);
+            this.ctx.lineTo(-4, -5);
+            this.ctx.lineTo(-4, 5);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Flame
+            this.ctx.fillStyle = '#ff6600';
+            this.ctx.beginPath();
+            this.ctx.moveTo(-12, 0);
+            this.ctx.lineTo(-18 - Math.random() * 5, -3);
+            this.ctx.lineTo(-18 - Math.random() * 5, 3);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            this.ctx.restore();
+        } else if (type === 'plasma') {
+            // Plasma ball with pulsing glow
+            const pulse = Math.sin(Date.now() / 50 + (projectile.pulsePhase || 0)) * 0.3 + 0.7;
+            const size = (projectile.plasmaSize || 15) * pulse;
+
+            // Outer glow
+            const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
+            gradient.addColorStop(0, 'rgba(218, 112, 214, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.4)');
+            gradient.addColorStop(1, 'rgba(148, 0, 211, 0)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Core
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Trail
+            if (projectile.trail) {
+                projectile.trail.push({ x, y, life: 1 });
+                if (projectile.trail.length > 10) projectile.trail.shift();
+            }
+        } else if (type === 'cryo-beam') {
+            // Cryo beam with ice particles
+            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+            this.ctx.lineWidth = 6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Inner beam
+            this.ctx.strokeStyle = 'rgba(170, 255, 255, 0.9)';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+
+            // Ice particles along beam
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            for (let i = 0; i < 8; i++) {
+                const t = Math.random();
+                const px = projectile.startX + dx * t + (Math.random() - 0.5) * 10;
+                const py = projectile.startY + dy * t + (Math.random() - 0.5) * 10;
+                this.ctx.fillStyle = 'rgba(200, 255, 255, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, 2 + Math.random() * 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        } else if (type === 'gatling') {
+            // Fast tracer
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+            const trailLength = 15;
+
+            this.ctx.strokeStyle = projColor;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            if (speed > 0) {
+                this.ctx.moveTo(x - (dx / speed) * trailLength, y - (dy / speed) * trailLength);
+            } else {
+                this.ctx.moveTo(x, y);
+            }
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+        } else if (type === 'emp-wave') {
+            // EMP expanding wave
+            const progress = 1 - projectile.life / 0.5;
+            const radius = projectile.maxRadius * progress;
+
+            for (let w = 0; w < (projectile.waveCount || 3); w++) {
+                const waveRadius = radius - w * 15;
+                if (waveRadius > 0) {
+                    this.ctx.strokeStyle = `rgba(100, 149, 237, ${(1 - progress) * 0.8})`;
+                    this.ctx.lineWidth = 4 - w;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, waveRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+
+            // Electric sparks
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 1;
+            for (let i = 0; i < 8; i++) {
+                const sparkAngle = (i / 8) * Math.PI * 2 + Date.now() / 100;
+                const sparkR = radius * 0.8;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + Math.cos(sparkAngle) * sparkR * 0.8, y + Math.sin(sparkAngle) * sparkR * 0.8);
+                this.ctx.lineTo(x + Math.cos(sparkAngle) * sparkR, y + Math.sin(sparkAngle) * sparkR);
+                this.ctx.stroke();
+            }
+        } else if (type === 'mega-tesla') {
+            // Giant lightning bolt with branches
+            this.drawMegaLightning(projectile.startX, projectile.startY, x, y, projectile.boltWidth || 6, projectile.branches || 2);
+        } else if (type === 'mega-railgun') {
+            // Massive beam with charge effect
+            const beamWidth = projectile.coreWidth || 12;
+
+            // Outer glow
+            this.ctx.strokeStyle = 'rgba(0, 191, 255, 0.3)';
+            this.ctx.lineWidth = beamWidth * 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Main beam
+            this.ctx.strokeStyle = config?.beamColor || '#00bfff';
+            this.ctx.lineWidth = beamWidth;
+            this.ctx.stroke();
+
+            // Core
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = beamWidth / 3;
+            this.ctx.stroke();
+
+            // Impact flash
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, beamWidth, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'laser-array') {
+            // Multiple colored laser beams
+            const colors = ['#00ff00', '#00ff44', '#44ff00', '#00ff88'];
+            const color = colors[projectile.laserIndex % colors.length];
+
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Glow
+            this.ctx.strokeStyle = `${color}44`;
+            this.ctx.lineWidth = 8;
+            this.ctx.stroke();
+        } else if (type === 'particle-beam') {
+            // Particle beam with floating particles
+            const beamColor = config?.beamColor || '#ff69b4';
+
+            // Main beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = config?.beamWidth || 8;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Core
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+
+            // Particles
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            for (let i = 0; i < (projectile.particleCount || 50); i++) {
+                const t = Math.random();
+                const offset = (Math.random() - 0.5) * 20;
+                const px = projectile.startX + dx * t + (-dy / dist) * offset;
+                const py = projectile.startY + dy * t + (dx / dist) * offset;
+
+                this.ctx.fillStyle = `rgba(255, 105, 180, ${Math.random() * 0.8})`;
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, 1 + Math.random() * 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        } else if (type === 'nuclear') {
+            // Nuclear missile with arc trajectory
+            const progress = 1 - projectile.life / 5;
+
+            // Calculate arc position
+            const arcHeight = (projectile.arcHeight || 3) * this.grid.cellSize * 50;
+            const arcY = y - Math.sin(progress * Math.PI) * arcHeight * (1 - progress);
+
+            // Trail
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, arcY, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Glow
+            this.ctx.fillStyle = 'rgba(255, 200, 0, 0.3)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, arcY, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Warhead
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.beginPath();
+            this.ctx.arc(x, arcY, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'storm-cloud') {
+            // Storm cloud effect
+            this.ctx.fillStyle = `rgba(75, 0, 130, ${projectile.life * 0.3})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, projectile.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Swirling effect
+            this.ctx.strokeStyle = `rgba(138, 43, 226, ${projectile.life * 0.5})`;
+            this.ctx.lineWidth = 3;
+            const swirl = Date.now() / 200;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, projectile.radius * 0.7, swirl, swirl + Math.PI);
+            this.ctx.stroke();
+        } else if (type === 'storm-bolt') {
+            // Lightning from sky
+            if (projectile.delay <= 0) {
+                this.drawMegaLightning(projectile.startX, projectile.startY, x, y, 4, 3);
+            }
+        } else if (type === 'death-ray') {
+            // Continuous death beam with heat effect
+            const heat = projectile.heatLevel || 0;
+            const heatColor = `rgb(${155 + heat}, ${50 - heat * 0.5}, ${50 - heat * 0.5})`;
+
+            // Outer heat glow
+            this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.2 + heat / 200})`;
+            this.ctx.lineWidth = (config?.beamWidth || 10) + heat / 10;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Main beam
+            this.ctx.strokeStyle = heatColor;
+            this.ctx.lineWidth = config?.beamWidth || 10;
+            this.ctx.stroke();
+
+            // Core
+            this.ctx.strokeStyle = config?.coreColor || '#ffff00';
+            this.ctx.lineWidth = 3;
+            this.ctx.stroke();
+        } else if (type === 'orbital-warning') {
+            // Warning circle that shrinks
+            const progress = projectile.life / 1.5;
+            this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.5 + Math.sin(Date.now() / 50) * 0.3})`;
+            this.ctx.lineWidth = 3;
+            this.ctx.setLineDash([10, 5]);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, projectile.radius * progress, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+
+            // Target crosshairs
+            this.ctx.strokeStyle = '#ff0000';
+            this.ctx.lineWidth = 2;
+            const r = projectile.radius * 0.3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - r, y);
+            this.ctx.lineTo(x + r, y);
+            this.ctx.moveTo(x, y - r);
+            this.ctx.lineTo(x, y + r);
+            this.ctx.stroke();
+        } else if (type === 'orbital-strike') {
+            // The actual strike beam from sky
+            if (projectile.delay <= 0 && !projectile.triggered) {
+                // Massive beam from above
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - 5, -100);
+                this.ctx.lineTo(x + 5, -100);
+                this.ctx.lineTo(x + projectile.radius, y);
+                this.ctx.lineTo(x - projectile.radius, y);
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Impact circle
+                this.ctx.fillStyle = 'rgba(255, 255, 200, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, projectile.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        } else if (type === 'shockwave') {
+            // Expanding electric ring
+            const progress = 1 - projectile.life / 0.4;
+            const radius = projectile.maxRadius * progress;
+
+            this.ctx.strokeStyle = `rgba(0, 212, 255, ${1 - progress})`;
+            this.ctx.lineWidth = 4;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Inner ring
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
+            this.ctx.stroke();
         } else if (type === 'sniper') {
             // Sniper bullet (faster, longer trail)
             this.ctx.fillStyle = projColor;
@@ -900,6 +1639,59 @@ export class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(x, y, 3, 0, Math.PI * 2);
             this.ctx.fill();
+        }
+    }
+
+    drawMegaLightning(x1, y1, x2, y2, width, branches) {
+        // Main bolt
+        this.ctx.strokeStyle = '#00ffff';
+        this.ctx.lineWidth = width;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
+
+        const segments = 8;
+        const dx = (x2 - x1) / segments;
+        const dy = (y2 - y1) / segments;
+        const points = [{ x: x1, y: y1 }];
+
+        for (let i = 1; i < segments; i++) {
+            const offsetX = (Math.random() - 0.5) * 40;
+            const offsetY = (Math.random() - 0.5) * 40;
+            const px = x1 + dx * i + offsetX;
+            const py = y1 + dy * i + offsetY;
+            points.push({ x: px, y: py });
+            this.ctx.lineTo(px, py);
+        }
+
+        this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+
+        // Glow
+        this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        this.ctx.lineWidth = width * 3;
+        this.ctx.stroke();
+
+        // Core
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = width / 3;
+        this.ctx.stroke();
+
+        // Branches
+        for (let b = 0; b < branches; b++) {
+            const branchPoint = points[Math.floor(Math.random() * (points.length - 1)) + 1];
+            if (branchPoint) {
+                const branchAngle = Math.random() * Math.PI * 2;
+                const branchLen = 20 + Math.random() * 30;
+                const bx = branchPoint.x + Math.cos(branchAngle) * branchLen;
+                const by = branchPoint.y + Math.sin(branchAngle) * branchLen;
+
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+                this.ctx.lineWidth = width / 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(branchPoint.x, branchPoint.y);
+                this.ctx.lineTo(bx, by);
+                this.ctx.stroke();
+            }
         }
     }
 
