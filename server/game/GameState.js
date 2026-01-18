@@ -5,7 +5,9 @@ const TURRET_TYPES = {
         range: 4,
         fireRate: 0.1,
         cost: { iron: 100 },
-        projectileSpeed: 15
+        projectileSpeed: 15,
+        health: 100,
+        maxHealth: 100
     },
     'turret-sniper': {
         name: 'Sniper',
@@ -14,7 +16,9 @@ const TURRET_TYPES = {
         fireRate: 1.5,
         cost: { iron: 200, copper: 50 },
         projectileSpeed: 30,
-        penetration: true
+        penetration: true,
+        health: 80,
+        maxHealth: 80
     },
     'turret-artillery': {
         name: 'Artillerie',
@@ -23,7 +27,9 @@ const TURRET_TYPES = {
         fireRate: 2,
         cost: { iron: 300, copper: 100 },
         projectileSpeed: 8,
-        aoeRadius: 2
+        aoeRadius: 2,
+        health: 120,
+        maxHealth: 120
     },
     'turret-flamethrower': {
         name: 'Lance-flammes',
@@ -33,7 +39,9 @@ const TURRET_TYPES = {
         cost: { iron: 150, coal: 30 },
         continuous: true,
         dotDamage: 5,
-        dotDuration: 2
+        dotDuration: 2,
+        health: 90,
+        maxHealth: 90
     },
     'turret-tesla': {
         name: 'Tesla',
@@ -41,7 +49,10 @@ const TURRET_TYPES = {
         range: 5,
         fireRate: 0.8,
         cost: { iron: 400, copper: 150, gold: 50 },
-        chainTargets: 3
+        chainTargets: 3,
+        chainRange: 2,
+        health: 100,
+        maxHealth: 100
     },
     'turret-laser': {
         name: 'Laser',
@@ -49,7 +60,94 @@ const TURRET_TYPES = {
         range: 6,
         fireRate: 0.2,
         cost: { iron: 500, copper: 200, gold: 100 },
-        instantHit: true
+        instantHit: true,
+        health: 80,
+        maxHealth: 80
+    },
+    // === NOUVELLES TOURELLES ===
+    'turret-shotgun': {
+        name: 'Shotgun',
+        damage: 8,
+        range: 4,
+        fireRate: 0.8,
+        cost: { iron: 150, copper: 30 },
+        projectileSpeed: 12,
+        pelletCount: 6,
+        spreadAngle: 0.5,
+        health: 100,
+        maxHealth: 100
+    },
+    'turret-multi-artillery': {
+        name: 'Multi-Artillerie',
+        damage: 25,
+        range: 9,
+        fireRate: 2.5,
+        cost: { iron: 400, copper: 150, coal: 50 },
+        projectileSpeed: 7,
+        aoeRadius: 1.5,
+        shellCount: 3,
+        shellSpread: 1.5,
+        health: 130,
+        maxHealth: 130
+    },
+    'turret-healer': {
+        name: 'Healer',
+        damage: 0,
+        healAmount: 10,
+        range: 4,
+        fireRate: 0.5,
+        cost: { iron: 250, copper: 100, gold: 30 },
+        isHealer: true,
+        health: 80,
+        maxHealth: 80
+    },
+    'turret-slowdown': {
+        name: 'Ralentisseur',
+        damage: 0,
+        slowAmount: 0.4,
+        range: 4,
+        fireRate: 0.1,
+        cost: { iron: 180, copper: 60 },
+        isSlowdown: true,
+        aoeRange: 3,
+        health: 90,
+        maxHealth: 90
+    },
+    'turret-mortar': {
+        name: 'Mortier',
+        damage: 60,
+        range: 14,
+        minRange: 5,
+        fireRate: 3,
+        cost: { iron: 350, copper: 120 },
+        projectileSpeed: 6,
+        aoeRadius: 2.5,
+        health: 110,
+        maxHealth: 110
+    },
+    'turret-railgun': {
+        name: 'Railgun',
+        damage: 70,
+        range: 12,
+        fireRate: 2.5,
+        cost: { iron: 500, copper: 200, gold: 80 },
+        instantHit: true,
+        piercingBeam: true,
+        health: 90,
+        maxHealth: 90
+    },
+    'turret-drone': {
+        name: 'Drone',
+        damage: 12,
+        range: 5,
+        fireRate: 0.3,
+        cost: { iron: 300, copper: 150, gold: 50 },
+        projectileSpeed: 18,
+        isDrone: true,
+        patrolRadius: 4,
+        moveSpeed: 2,
+        health: 60,
+        maxHealth: 60
     }
 };
 
@@ -59,12 +157,50 @@ const BUILDING_TYPES = {
 };
 
 const ENEMY_TYPES = {
-    'grunt': { health: 50, speed: 1, damage: 10, reward: { iron: 5 } },
-    'runner': { health: 30, speed: 2, damage: 5, reward: { iron: 3 } },
-    'tank': { health: 300, speed: 0.5, damage: 30, armor: 0.5, reward: { iron: 20, copper: 5 } },
-    'kamikaze': { health: 20, speed: 2.5, damage: 100, reward: { iron: 8 } },
-    'healer': { health: 80, speed: 1, damage: 0, healAmount: 5, reward: { iron: 15, copper: 5 } },
-    'boss': { health: 2000, speed: 0.3, damage: 100, reward: { iron: 100, copper: 50, gold: 20 } }
+    'grunt': {
+        health: 50, speed: 1, damage: 10, reward: { iron: 5 },
+        turretAttackRange: 1, turretAttackDamage: 5, turretAttackRate: 1.5
+    },
+    'runner': {
+        health: 30, speed: 2, damage: 5, reward: { iron: 3 },
+        turretAttackRange: 0.8, turretAttackDamage: 3, turretAttackRate: 1
+    },
+    'tank': {
+        health: 300, speed: 0.5, damage: 30, armor: 0.5, reward: { iron: 20, copper: 5 },
+        turretAttackRange: 1.2, turretAttackDamage: 15, turretAttackRate: 2
+    },
+    'kamikaze': {
+        health: 20, speed: 2.5, damage: 100, reward: { iron: 8 },
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'healer': {
+        health: 80, speed: 1, damage: 0, healAmount: 5, reward: { iron: 15, copper: 5 },
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'boss': {
+        health: 2000, speed: 0.3, damage: 100, reward: { iron: 100, copper: 50, gold: 20 },
+        turretAttackRange: 1.5, turretAttackDamage: 25, turretAttackRate: 2
+    },
+    // === NOUVEAUX ENNEMIS ===
+    'flying': {
+        health: 40, speed: 1.5, damage: 15, reward: { iron: 10, copper: 3 },
+        isFlying: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'splitter': {
+        health: 100, speed: 0.8, damage: 15, reward: { iron: 12 },
+        splitOnDeath: true, splitCount: 2, splitType: 'splitter-child',
+        turretAttackRange: 1, turretAttackDamage: 6, turretAttackRate: 1.5
+    },
+    'splitter-child': {
+        health: 40, speed: 1.2, damage: 8, reward: { iron: 4 },
+        turretAttackRange: 0.8, turretAttackDamage: 3, turretAttackRate: 1.2
+    },
+    'armored-front': {
+        health: 200, speed: 0.7, damage: 20, reward: { iron: 25, copper: 10 },
+        frontArmor: 0.8, backArmor: 0,
+        turretAttackRange: 1, turretAttackDamage: 10, turretAttackRate: 1.5
+    }
 };
 
 class GameState {
@@ -176,7 +312,8 @@ class GameState {
                 this.updateEnemy(enemy, deltaTime);
             }
 
-            // Remove dead enemies
+            // Remove dead enemies and handle splitters
+            const enemiesToSpawn = [];
             this.enemies = this.enemies.filter(e => {
                 if (!e) return false;
                 if (e.dead && !e.reachedNexus) {
@@ -186,14 +323,41 @@ class GameState {
                             this.resources[res] = (this.resources[res] || 0) + amt;
                         }
                     }
+                    // Handle splitter
+                    if (enemyType && enemyType.splitOnDeath) {
+                        const count = enemyType.splitCount || 2;
+                        const childType = enemyType.splitType || 'splitter-child';
+                        for (let i = 0; i < count; i++) {
+                            enemiesToSpawn.push({
+                                type: childType,
+                                gridX: e.gridX,
+                                gridY: e.gridY
+                            });
+                        }
+                    }
                 }
                 return !e.dead;
             });
+
+            // Spawn splitter children
+            for (const spawn of enemiesToSpawn) {
+                this.spawnSplitterChild(spawn);
+            }
 
             // Update turrets
             for (const turret of this.turrets) {
                 this.updateTurret(turret, deltaTime);
             }
+
+            // Remove destroyed turrets
+            this.turrets = this.turrets.filter(t => {
+                if (t.health !== undefined && t.health <= 0) {
+                    this.grid[t.gridY][t.gridX] = 0;
+                    this.recalculatePaths();
+                    return false;
+                }
+                return true;
+            });
 
             // Update projectiles
             this.updateProjectiles(deltaTime);
@@ -403,8 +567,49 @@ class GameState {
         }
     }
 
+    spawnSplitterChild(spawn) {
+        try {
+            const config = ENEMY_TYPES[spawn.type];
+            if (!config) return;
+
+            const x = spawn.gridX;
+            const y = spawn.gridY;
+
+            const enemy = {
+                id: Date.now() + Math.random(),
+                type: spawn.type,
+                x: x * this.cellSize + this.cellSize / 2 + (Math.random() - 0.5) * 20,
+                y: y * this.cellSize + this.cellSize / 2 + (Math.random() - 0.5) * 20,
+                gridX: x,
+                gridY: y,
+                health: config.health,
+                maxHealth: config.health,
+                speed: config.speed,
+                damage: config.damage,
+                path: [],
+                pathIndex: 0,
+                dead: false,
+                reachedNexus: false,
+                burning: false,
+                burnTime: 0,
+                burnDamage: 0,
+                turretAttackCooldown: 0
+            };
+
+            const path = this.findPath(x, y, this.nexusX, this.nexusY);
+            if (path) {
+                enemy.path = path;
+            }
+            this.enemies.push(enemy);
+        } catch (error) {
+            console.error('Error spawning splitter child:', error);
+        }
+    }
+
     updateEnemy(enemy, deltaTime) {
         if (!enemy || enemy.dead) return;
+
+        const enemyType = ENEMY_TYPES[enemy.type];
 
         // Burning
         if (enemy.burning) {
@@ -413,8 +618,29 @@ class GameState {
             if (enemy.burnTime <= 0) enemy.burning = false;
         }
 
-        // Movement
-        if (enemy.path && enemy.pathIndex < enemy.path.length) {
+        // Attack cooldown
+        if (enemy.turretAttackCooldown === undefined) enemy.turretAttackCooldown = 0;
+        enemy.turretAttackCooldown -= deltaTime;
+
+        // Movement - Flying enemies go directly to nexus
+        const nexusWorldX = this.nexusX * this.cellSize + this.cellSize / 2;
+        const nexusWorldY = this.nexusY * this.cellSize + this.cellSize / 2;
+
+        if (enemyType && enemyType.isFlying) {
+            // Flying: direct path to nexus
+            const dx = nexusWorldX - enemy.x;
+            const dy = nexusWorldY - enemy.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 2) {
+                const slowMult = enemy.slowMultiplier || 1;
+                const moveSpeed = (enemy.speed || 1) * slowMult * this.cellSize * deltaTime;
+                enemy.x += (dx / dist) * moveSpeed;
+                enemy.y += (dy / dist) * moveSpeed;
+                enemy.angle = Math.atan2(dy, dx);
+            }
+        } else if (enemy.path && enemy.pathIndex < enemy.path.length) {
+            // Normal pathing
             const target = enemy.path[enemy.pathIndex];
             if (target) {
                 const targetX = target.x * this.cellSize + this.cellSize / 2;
@@ -425,7 +651,8 @@ class GameState {
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist > 2) {
-                    const moveSpeed = (enemy.speed || 1) * this.cellSize * deltaTime;
+                    const slowMult = enemy.slowMultiplier || 1;
+                    const moveSpeed = (enemy.speed || 1) * slowMult * this.cellSize * deltaTime;
                     enemy.x += (dx / dist) * moveSpeed;
                     enemy.y += (dy / dist) * moveSpeed;
                     enemy.angle = Math.atan2(dy, dx);
@@ -435,13 +662,20 @@ class GameState {
             }
         }
 
+        // Reset slow each frame
+        enemy.slowMultiplier = 1;
+        enemy.frosted = false;
+
         // Update grid position
         enemy.gridX = Math.floor(enemy.x / this.cellSize);
         enemy.gridY = Math.floor(enemy.y / this.cellSize);
 
+        // Attack turrets while passing
+        if (enemyType && enemyType.turretAttackRange > 0 && enemy.turretAttackCooldown <= 0) {
+            this.enemyAttackTurret(enemy, enemyType);
+        }
+
         // Check nexus collision
-        const nexusWorldX = this.nexusX * this.cellSize + this.cellSize / 2;
-        const nexusWorldY = this.nexusY * this.cellSize + this.cellSize / 2;
         const nexusDist = Math.sqrt(
             (enemy.x - nexusWorldX) ** 2 + (enemy.y - nexusWorldY) ** 2
         );
@@ -457,21 +691,145 @@ class GameState {
         }
     }
 
+    enemyAttackTurret(enemy, enemyType) {
+        const attackRange = (enemyType.turretAttackRange || 1) * this.cellSize;
+        const attackDamage = enemyType.turretAttackDamage || 5;
+        const attackRate = enemyType.turretAttackRate || 1.5;
+
+        // Find nearest turret in range
+        let nearestTurret = null;
+        let nearestDist = Infinity;
+
+        for (const turret of this.turrets) {
+            if (turret.health !== undefined && turret.health <= 0) continue;
+
+            const dist = Math.sqrt((enemy.x - turret.x) ** 2 + (enemy.y - turret.y) ** 2);
+            if (dist <= attackRange && dist < nearestDist) {
+                nearestTurret = turret;
+                nearestDist = dist;
+            }
+        }
+
+        if (nearestTurret) {
+            enemy.turretAttackCooldown = attackRate;
+            enemy.isAttackingTurret = true;
+
+            if (nearestTurret.health !== undefined) {
+                nearestTurret.health -= attackDamage;
+            }
+        } else {
+            enemy.isAttackingTurret = false;
+        }
+    }
+
     updateTurret(turret, deltaTime) {
         if (!turret || !turret.config) return;
+        if (turret.health !== undefined && turret.health <= 0) return;
 
         turret.cooldown -= deltaTime;
 
-        // Find target
+        const range = (turret.config.range || 4) * this.cellSize;
+        const minRange = (turret.config.minRange || 0) * this.cellSize;
+
+        // Healer turret - heals other turrets
+        if (turret.config.isHealer) {
+            if (turret.cooldown <= 0) {
+                turret.cooldown = turret.config.fireRate || 0.5;
+                for (const other of this.turrets) {
+                    if (other === turret) continue;
+                    if (other.health === undefined || other.health >= (other.config?.maxHealth || 100)) continue;
+
+                    const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
+                    if (dist <= range) {
+                        const healAmount = turret.config.healAmount || 10;
+                        other.health = Math.min(other.config?.maxHealth || 100, other.health + healAmount);
+                    }
+                }
+            }
+            return;
+        }
+
+        // Slowdown turret - slows enemies in range
+        if (turret.config.isSlowdown) {
+            const slowRange = (turret.config.aoeRange || turret.config.range) * this.cellSize;
+            for (const enemy of this.enemies) {
+                if (!enemy || enemy.dead) continue;
+                const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
+                if (dist <= slowRange) {
+                    enemy.frosted = true;
+                    enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, turret.config.slowAmount || 0.4);
+                }
+            }
+            return;
+        }
+
+        // Drone turret - moves around
+        if (turret.config.isDrone) {
+            if (turret.homeX === undefined) {
+                turret.homeX = turret.x;
+                turret.homeY = turret.y;
+                turret.patrolAngle = 0;
+            }
+            turret.patrolAngle = (turret.patrolAngle || 0) + deltaTime * 0.5;
+
+            const patrolRadius = (turret.config.patrolRadius || 4) * this.cellSize;
+
+            // Find target for drone
+            let target = null;
+            let closestDist = Infinity;
+            for (const enemy of this.enemies) {
+                if (!enemy || enemy.dead) continue;
+                const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
+                if (dist <= range && dist < closestDist) {
+                    target = enemy;
+                    closestDist = dist;
+                }
+            }
+
+            if (target && !target.dead) {
+                // Move towards target
+                const dx = target.x - turret.x;
+                const dy = target.y - turret.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > range * 0.5) {
+                    const moveSpeed = (turret.config.moveSpeed || 2) * this.cellSize * deltaTime;
+                    const newX = turret.x + (dx / dist) * moveSpeed;
+                    const newY = turret.y + (dy / dist) * moveSpeed;
+
+                    const distFromHome = Math.sqrt((newX - turret.homeX) ** 2 + (newY - turret.homeY) ** 2);
+                    if (distFromHome <= patrolRadius) {
+                        turret.x = newX;
+                        turret.y = newY;
+                    }
+                }
+
+                turret.angle = Math.atan2(dy, dx);
+                if (turret.cooldown <= 0) {
+                    this.fireTurret(turret, target);
+                    turret.cooldown = turret.config.fireRate || 0.3;
+                }
+            } else {
+                // Patrol
+                turret.x = turret.homeX + Math.cos(turret.patrolAngle) * patrolRadius * 0.5;
+                turret.y = turret.homeY + Math.sin(turret.patrolAngle) * patrolRadius * 0.5;
+            }
+            return;
+        }
+
+        // Normal turrets - Find target
         let target = null;
         let closestDist = Infinity;
-        const range = (turret.config.range || 4) * this.cellSize;
 
         for (const enemy of this.enemies) {
             if (!enemy || enemy.dead) continue;
             const dist = Math.sqrt(
                 (turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2
             );
+
+            // Check min range (for mortar)
+            if (dist < minRange) continue;
+
             if (dist <= range && dist < closestDist) {
                 target = enemy;
                 closestDist = dist;
@@ -493,18 +851,118 @@ class GameState {
 
         const damage = turret.config.damage || 10;
 
+        // Shotgun - multiple pellets
+        if (turret.config.pelletCount) {
+            const pellets = turret.config.pelletCount || 6;
+            const spread = turret.config.spreadAngle || 0.5;
+            const baseAngle = turret.angle;
+
+            for (let i = 0; i < pellets; i++) {
+                const pelletAngle = baseAngle + (i - (pellets - 1) / 2) * (spread / (pellets - 1));
+                const speed = (turret.config.projectileSpeed || 12) * this.cellSize;
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: 'pellet',
+                    x: turret.x,
+                    y: turret.y,
+                    startX: turret.x,
+                    startY: turret.y,
+                    vx: Math.cos(pelletAngle) * speed,
+                    vy: Math.sin(pelletAngle) * speed,
+                    damage: damage,
+                    aoeRadius: 0,
+                    penetration: false,
+                    hitEnemies: []
+                });
+            }
+            return;
+        }
+
+        // Multi-Artillery - multiple shells
+        if (turret.config.shellCount) {
+            const shells = turret.config.shellCount || 3;
+            const spread = (turret.config.shellSpread || 1.5) * this.cellSize;
+
+            for (let i = 0; i < shells; i++) {
+                const offsetX = (Math.random() - 0.5) * spread;
+                const offsetY = (Math.random() - 0.5) * spread;
+                const targetX = target.x + offsetX;
+                const targetY = target.y + offsetY;
+
+                const dx = targetX - turret.x;
+                const dy = targetY - turret.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    this.projectiles.push({
+                        id: Date.now() + Math.random() + i,
+                        type: 'artillery',
+                        x: turret.x,
+                        y: turret.y,
+                        startX: turret.x,
+                        startY: turret.y,
+                        vx: (dx / dist) * (turret.config.projectileSpeed || 7) * this.cellSize,
+                        vy: (dy / dist) * (turret.config.projectileSpeed || 7) * this.cellSize,
+                        damage: damage,
+                        aoeRadius: turret.config.aoeRadius || 1.5,
+                        penetration: false,
+                        hitEnemies: []
+                    });
+                }
+            }
+            return;
+        }
+
+        // Railgun - piercing beam
+        if (turret.config.piercingBeam) {
+            const beamEndX = turret.x + Math.cos(turret.angle) * (turret.config.range * this.cellSize);
+            const beamEndY = turret.y + Math.sin(turret.angle) * (turret.config.range * this.cellSize);
+
+            // Hit all enemies in line
+            for (const enemy of this.enemies) {
+                if (!enemy || enemy.dead) continue;
+
+                const dist = this.pointToLineDistance(
+                    enemy.x, enemy.y,
+                    turret.x, turret.y,
+                    beamEndX, beamEndY
+                );
+
+                if (dist <= this.cellSize * 0.4) {
+                    enemy.health -= damage;
+                }
+            }
+
+            // Visual beam projectile
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'railgun',
+                x: beamEndX,
+                y: beamEndY,
+                startX: turret.x,
+                startY: turret.y,
+                vx: 0,
+                vy: 0,
+                damage: 0,
+                life: 0.2
+            });
+            return;
+        }
+
         if (turret.config.instantHit) {
             target.health -= damage;
         } else if (turret.config.chainTargets) {
             // Tesla chain
             let current = target;
             const hitTargets = [];
+            const chainRange = (turret.config.chainRange || 2) * this.cellSize;
             for (let i = 0; i < turret.config.chainTargets; i++) {
                 if (current && !current.dead) {
                     current.health -= damage;
                     hitTargets.push(current);
                     // Find next target
-                    current = this.findNearestEnemy(current.x, current.y, 2 * this.cellSize, hitTargets);
+                    current = this.findNearestEnemy(current.x, current.y, chainRange, hitTargets);
                 }
             }
         } else if (turret.config.continuous) {
@@ -522,7 +980,7 @@ class GameState {
             if (dist > 0) {
                 // Determine projectile type from turret type
                 let projType = 'bullet';
-                if (turret.type === 'turret-artillery') projType = 'artillery';
+                if (turret.type === 'turret-artillery' || turret.type === 'turret-mortar') projType = 'artillery';
                 else if (turret.type === 'turret-sniper') projType = 'sniper';
 
                 this.projectiles.push({
@@ -541,6 +999,26 @@ class GameState {
                 });
             }
         }
+    }
+
+    pointToLineDistance(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+
+        if (lenSq !== 0) param = dot / lenSq;
+
+        let xx, yy;
+        if (param < 0) { xx = x1; yy = y1; }
+        else if (param > 1) { xx = x2; yy = y2; }
+        else { xx = x1 + param * C; yy = y1 + param * D; }
+
+        return Math.sqrt((px - xx) ** 2 + (py - yy) ** 2);
     }
 
     findNearestEnemy(x, y, range, exclude = []) {
@@ -633,7 +1111,7 @@ class GameState {
 
         if (buildingType.startsWith('turret-')) {
             const config = TURRET_TYPES[buildingType];
-            this.turrets.push({
+            const turret = {
                 id: Date.now(),
                 type: buildingType,
                 gridX,
@@ -645,8 +1123,19 @@ class GameState {
                 config: { ...config }, // Copy config so we can modify it
                 level: 1,
                 maxLevel: 5,
+                health: config.health || 100,
+                maxHealth: config.maxHealth || 100,
                 playerId
-            });
+            };
+
+            // Drone turrets have home position
+            if (config.isDrone) {
+                turret.homeX = worldX;
+                turret.homeY = worldY;
+                turret.patrolAngle = 0;
+            }
+
+            this.turrets.push(turret);
             this.grid[gridY][gridX] = 1;
         } else if (buildingType === 'wall') {
             this.walls.push({
@@ -938,7 +1427,10 @@ class GameState {
                 health: e.health,
                 maxHealth: e.maxHealth,
                 angle: e.angle,
-                burning: e.burning
+                burning: e.burning,
+                frosted: e.frosted,
+                slowMultiplier: e.slowMultiplier,
+                isAttackingTurret: e.isAttackingTurret
             })),
             turrets: this.turrets.map(t => ({
                 id: t.id,
@@ -951,7 +1443,11 @@ class GameState {
                 level: t.level || 1,
                 damage: t.config?.damage,
                 range: t.config?.range,
-                fireRate: t.config?.fireRate
+                fireRate: t.config?.fireRate,
+                health: t.health,
+                maxHealth: t.maxHealth || t.config?.maxHealth || 100,
+                homeX: t.homeX,
+                homeY: t.homeY
             })),
             walls: this.walls.map(w => ({
                 id: w.id,

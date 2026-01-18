@@ -47,6 +47,16 @@ export class Enemy {
         this.attackCooldown = 0;
         this.attackRate = 1; // Attack every 1 second
         this.isAttackingWall = false;
+
+        // Turret attacking (while passing)
+        this.turretAttackCooldown = 0;
+        this.isAttackingTurret = false;
+
+        // Flying enemy - visual flag
+        this.isFlying = this.config.isFlying || false;
+
+        // Frosted effect
+        this.frosted = false;
     }
 
     setPath(path) {
@@ -94,11 +104,19 @@ export class Enemy {
             }
         }
 
-        // Attack cooldown
+        // Attack cooldowns
         this.attackCooldown -= deltaTime;
+        this.turretAttackCooldown -= deltaTime;
 
-        // If no path or stuck, find and attack nearest wall
-        if ((!this.path || this.path.length === 0 || this.pathIndex >= this.path.length) && game) {
+        // Reset frosted each frame (reapplied by slowdown turrets)
+        this.frosted = false;
+
+        // Flying enemies move directly towards nexus, ignoring walls
+        if (this.config.isFlying) {
+            this.updateFlying(deltaTime, nexus);
+        }
+        // Normal ground movement
+        else if ((!this.path || this.path.length === 0 || this.pathIndex >= this.path.length) && game) {
             this.findAndAttackWall(game, deltaTime, nexus);
         } else {
             this.isAttackingWall = false;
@@ -120,6 +138,11 @@ export class Enemy {
                     this.updateTarget();
                 }
             }
+        }
+
+        // Attack turrets while passing (if has turret attack capability)
+        if (game && this.config.turretAttackRange > 0) {
+            this.attackNearbyTurrets(game, deltaTime);
         }
 
         // Update grid position
@@ -228,13 +251,29 @@ export class Enemy {
         }
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, sourceX = null, sourceY = null) {
         // Ignore damage during spawn protection
         if (this.spawnProtection > 0) return;
 
-        // Apply armor
+        // Apply normal armor
         if (this.config.armor) {
             amount *= (1 - this.config.armor);
+        }
+
+        // Apply directional armor (armored-front)
+        if (this.config.frontArmor !== undefined && sourceX !== null && sourceY !== null) {
+            const angleToSource = Math.atan2(sourceY - this.y, sourceX - this.x);
+            let angleDiff = Math.abs(angleToSource - this.angle);
+
+            // Normalize to 0-PI range
+            if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+
+            // If hit from front (within 90 degrees of facing direction)
+            if (angleDiff < Math.PI / 2) {
+                amount *= (1 - this.config.frontArmor);
+            } else if (this.config.backArmor !== undefined) {
+                amount *= (1 - this.config.backArmor);
+            }
         }
 
         this.health -= amount;
@@ -283,5 +322,56 @@ export class Enemy {
 
     getReward() {
         return this.config.reward || { iron: 5 };
+    }
+
+    updateFlying(deltaTime, nexus) {
+        // Flying enemies move directly towards nexus, ignoring pathfinding
+        const dx = nexus.x - this.x;
+        const dy = nexus.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 2) {
+            const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
+            this.x += (dx / dist) * moveSpeed;
+            this.y += (dy / dist) * moveSpeed;
+            this.angle = Math.atan2(dy, dx);
+        }
+    }
+
+    attackNearbyTurrets(game, deltaTime) {
+        if (this.turretAttackCooldown > 0) {
+            this.isAttackingTurret = false;
+            return;
+        }
+
+        const attackRange = this.config.turretAttackRange * this.grid.cellSize;
+        const attackDamage = this.config.turretAttackDamage || 5;
+        const attackRate = this.config.turretAttackRate || 1.5;
+
+        // Find nearest turret in range
+        let nearestTurret = null;
+        let nearestDist = Infinity;
+
+        for (const turret of game.turrets) {
+            if (turret.isDestroyed && turret.isDestroyed()) continue;
+
+            const dist = Math.sqrt((this.x - turret.x) ** 2 + (this.y - turret.y) ** 2);
+            if (dist <= attackRange && dist < nearestDist) {
+                nearestTurret = turret;
+                nearestDist = dist;
+            }
+        }
+
+        if (nearestTurret) {
+            this.isAttackingTurret = true;
+            this.turretAttackCooldown = attackRate;
+
+            // Deal damage to turret
+            if (nearestTurret.takeDamage) {
+                nearestTurret.takeDamage(attackDamage);
+            }
+        } else {
+            this.isAttackingTurret = false;
+        }
     }
 }

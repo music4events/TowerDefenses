@@ -135,6 +135,37 @@ export class Renderer {
         const turretColor = config?.color || '#0f3460';
         const size = this.grid.cellSize * turretSize;
 
+        // Draw drone connection line to home
+        if (config?.isDrone && turret.homeX !== undefined) {
+            this.ctx.strokeStyle = 'rgba(147, 112, 219, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([3, 3]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(turret.homeX, turret.homeY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+
+            // Draw home base marker
+            this.ctx.fillStyle = 'rgba(147, 112, 219, 0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(turret.homeX, turret.homeY, 6, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // Draw slowdown zone
+        if (config?.isSlowdown) {
+            const slowRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            this.ctx.fillStyle = config.frostColor || 'rgba(136, 221, 255, 0.15)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, slowRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = config.frostColor || 'rgba(136, 221, 255, 0.4)';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        }
+
         // Selection/mode highlight
         if (isSelected) {
             this.ctx.strokeStyle = mode === 'sell' ? '#e74c3c' : mode === 'upgrade' ? '#f39c12' : '#ffffff';
@@ -155,20 +186,38 @@ export class Renderer {
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
-        // Barrel (triangle pointing at angle)
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.save();
-        this.ctx.translate(x, y);
-        this.ctx.rotate(angle);
+        // Barrel (triangle pointing at angle) - skip for healer/slowdown
+        if (!config?.isHealer && !config?.isSlowdown) {
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
 
-        this.ctx.beginPath();
-        this.ctx.moveTo(size / 2 + 5, 0);
-        this.ctx.lineTo(size / 4, -4);
-        this.ctx.lineTo(size / 4, 4);
-        this.ctx.closePath();
-        this.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.moveTo(size / 2 + 5, 0);
+            this.ctx.lineTo(size / 4, -4);
+            this.ctx.lineTo(size / 4, 4);
+            this.ctx.closePath();
+            this.ctx.fill();
 
-        this.ctx.restore();
+            this.ctx.restore();
+        }
+
+        // Healer cross symbol
+        if (config?.isHealer) {
+            this.ctx.fillStyle = '#ffffff';
+            const crossSize = size / 4;
+            this.ctx.fillRect(x - crossSize / 4, y - crossSize, crossSize / 2, crossSize * 2);
+            this.ctx.fillRect(x - crossSize, y - crossSize / 4, crossSize * 2, crossSize / 2);
+        }
+
+        // Slowdown snowflake indicator
+        if (config?.isSlowdown) {
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 6, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
 
         // Cooldown indicator
         if (cooldown > 0) {
@@ -183,6 +232,47 @@ export class Renderer {
         // Draw upgrade stars
         if (level && level > 1) {
             this.drawStars(x, y + size / 2 + 8, level - 1);
+        }
+
+        // Health bar when damaged
+        const health = turret.health;
+        const maxHealth = turret.maxHealth || config?.maxHealth || 100;
+        if (health !== undefined && health < maxHealth) {
+            const barWidth = size;
+            const barHeight = 4;
+            const barY = y - size / 2 - 6;
+
+            this.ctx.fillStyle = '#333';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
+
+            const healthPercent = health / maxHealth;
+            this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+        }
+    }
+
+    drawHealerBeams(turret) {
+        if (!turret.healTargets || turret.healTargets.length === 0) return;
+
+        const beamColor = turret.config?.beamColor || '#88ff88';
+        for (const target of turret.healTargets) {
+            // Draw healing beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = 3;
+            this.ctx.globalAlpha = 0.7;
+            this.ctx.beginPath();
+            this.ctx.moveTo(turret.x, turret.y);
+            this.ctx.lineTo(target.x, target.y);
+            this.ctx.stroke();
+
+            // Healing glow on target
+            this.ctx.fillStyle = beamColor;
+            this.ctx.globalAlpha = 0.4;
+            this.ctx.beginPath();
+            this.ctx.arc(target.x, target.y, 10, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.globalAlpha = 1;
         }
     }
 
@@ -300,6 +390,14 @@ export class Renderer {
         const enemyColor = config?.color || '#ff4444';
         const size = this.grid.cellSize * enemySize;
 
+        // Flying enemies - draw shadow on ground
+        if (config?.isFlying || enemy.isFlying) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            this.ctx.beginPath();
+            this.ctx.ellipse(x + 5, y + 5, size / 2, size / 4, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
         // Triangle pointing towards movement direction
         this.ctx.fillStyle = enemyColor;
         this.ctx.save();
@@ -314,7 +412,31 @@ export class Renderer {
         this.ctx.closePath();
         this.ctx.fill();
 
+        // Armored-front - draw front shield indicator
+        if (config?.frontArmor) {
+            this.ctx.strokeStyle = '#cccccc';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, size / 2 + 2, -Math.PI / 3, Math.PI / 3);
+            this.ctx.stroke();
+        }
+
         this.ctx.restore();
+
+        // Flying wings indicator
+        if (config?.isFlying || enemy.isFlying) {
+            const wingSpan = size * 0.8;
+            const wingFlap = Math.sin(Date.now() / 100) * 3;
+
+            this.ctx.strokeStyle = enemyColor;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y);
+            this.ctx.lineTo(x - wingSpan / 2, y - wingSpan / 4 + wingFlap);
+            this.ctx.moveTo(x, y);
+            this.ctx.lineTo(x + wingSpan / 2, y - wingSpan / 4 + wingFlap);
+            this.ctx.stroke();
+        }
 
         // Health bar
         if (health < maxHealth) {
@@ -336,6 +458,37 @@ export class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(x, y, size / 2 + 3, 0, Math.PI * 2);
             this.ctx.fill();
+        }
+
+        // Frosted/slowed effect
+        if (enemy.frosted || enemy.slowMultiplier < 1) {
+            this.ctx.strokeStyle = 'rgba(136, 221, 255, 0.8)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 2 + 2, 0, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Ice crystals
+            this.ctx.fillStyle = 'rgba(200, 240, 255, 0.6)';
+            for (let i = 0; i < 4; i++) {
+                const crystalAngle = (i * Math.PI / 2) + Date.now() / 1000;
+                const cx = x + Math.cos(crystalAngle) * (size / 2 + 5);
+                const cy = y + Math.sin(crystalAngle) * (size / 2 + 5);
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Attacking turret indicator
+        if (enemy.isAttackingTurret) {
+            this.ctx.strokeStyle = '#ff0000';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([2, 2]);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 2 + 4, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
         }
     }
 
@@ -365,6 +518,40 @@ export class Renderer {
             this.ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, ${projectile.life || 1})`;
             this.ctx.beginPath();
             this.ctx.arc(x, y, 4 + Math.random() * 4, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'pellet') {
+            // Small shotgun pellet
+            this.ctx.fillStyle = projColor;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'railgun') {
+            // Piercing beam
+            const beamColor = config?.beamColor || '#6495ed';
+            const beamWidth = config?.beamWidth || 4;
+
+            // Main beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = beamWidth;
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Glow effect
+            this.ctx.strokeStyle = 'rgba(100, 149, 237, 0.4)';
+            this.ctx.lineWidth = beamWidth * 2;
+            this.ctx.stroke();
+
+            // Inner bright core
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        } else if (type === 'sniper') {
+            // Sniper bullet (faster, longer trail)
+            this.ctx.fillStyle = projColor;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 4, 0, Math.PI * 2);
             this.ctx.fill();
         } else {
             // Default bullet

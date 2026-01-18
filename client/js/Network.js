@@ -234,12 +234,16 @@ export class Network {
                     localTurret = new Turret(serverTurret.gridX, serverTurret.gridY, serverTurret.type, this.game.grid);
                     localTurret.id = serverTurret.id;
                     localTurret.level = serverTurret.level || 1;
+                    localTurret.health = serverTurret.health;
+                    localTurret.maxHealth = serverTurret.maxHealth || 100;
                     this.game.turrets.push(localTurret);
                 }
             } else {
                 // Update existing turret
                 localTurret.angle = serverTurret.angle;
                 localTurret.level = serverTurret.level || localTurret.level;
+                localTurret.health = serverTurret.health;
+                localTurret.maxHealth = serverTurret.maxHealth || localTurret.maxHealth;
             }
 
             // Sync upgraded stats if turret exists and has config
@@ -247,6 +251,16 @@ export class Network {
                 if (serverTurret.damage !== undefined) localTurret.config.damage = serverTurret.damage;
                 if (serverTurret.range !== undefined) localTurret.config.range = serverTurret.range;
                 if (serverTurret.fireRate !== undefined) localTurret.config.fireRate = serverTurret.fireRate;
+            }
+
+            // Sync drone position
+            if (localTurret) {
+                localTurret.x = serverTurret.x;
+                localTurret.y = serverTurret.y;
+                if (serverTurret.homeX !== undefined) {
+                    localTurret.homeX = serverTurret.homeX;
+                    localTurret.homeY = serverTurret.homeY;
+                }
             }
         }
 
@@ -354,6 +368,9 @@ export class Network {
                     localEnemy.health = serverEnemy.health;
                     localEnemy.angle = serverEnemy.angle || localEnemy.angle;
                     localEnemy.burning = serverEnemy.burning;
+                    localEnemy.frosted = serverEnemy.frosted;
+                    localEnemy.slowMultiplier = serverEnemy.slowMultiplier || 1;
+                    localEnemy.isAttackingTurret = serverEnemy.isAttackingTurret;
                 }
             }
 

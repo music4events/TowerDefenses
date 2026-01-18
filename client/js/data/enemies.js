@@ -6,7 +6,11 @@ export const ENEMY_TYPES = {
         damage: 10,
         color: '#ff4444',
         size: 0.6,
-        reward: { iron: 5 }
+        reward: { iron: 5 },
+        // Attack turrets while passing
+        turretAttackRange: 1,
+        turretAttackDamage: 5,
+        turretAttackRate: 1.5
     },
     'runner': {
         name: 'Runner',
@@ -15,7 +19,10 @@ export const ENEMY_TYPES = {
         damage: 5,
         color: '#ff8844',
         size: 0.5,
-        reward: { iron: 3 }
+        reward: { iron: 3 },
+        turretAttackRange: 0.8,
+        turretAttackDamage: 3,
+        turretAttackRate: 1
     },
     'tank': {
         name: 'Tank',
@@ -24,8 +31,11 @@ export const ENEMY_TYPES = {
         damage: 30,
         color: '#aa2222',
         size: 0.9,
-        armor: 0.5, // 50% damage reduction
-        reward: { iron: 20, copper: 5 }
+        armor: 0.5,
+        reward: { iron: 20, copper: 5 },
+        turretAttackRange: 1.2,
+        turretAttackDamage: 15,
+        turretAttackRate: 2
     },
     'kamikaze': {
         name: 'Kamikaze',
@@ -36,7 +46,10 @@ export const ENEMY_TYPES = {
         size: 0.5,
         explodeOnDeath: true,
         explosionRadius: 1.5,
-        reward: { iron: 8 }
+        reward: { iron: 8 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
     },
     'healer': {
         name: 'Healer',
@@ -48,7 +61,10 @@ export const ENEMY_TYPES = {
         healAmount: 5,
         healRange: 2,
         healRate: 1,
-        reward: { iron: 15, copper: 5 }
+        reward: { iron: 15, copper: 5 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
     },
     'boss': {
         name: 'Boss',
@@ -61,6 +77,64 @@ export const ENEMY_TYPES = {
         minionType: 'grunt',
         minionCount: 3,
         minionRate: 5,
-        reward: { iron: 100, copper: 50, gold: 20 }
+        reward: { iron: 100, copper: 50, gold: 20 },
+        turretAttackRange: 1.5,
+        turretAttackDamage: 25,
+        turretAttackRate: 2
+    },
+    // === NOUVEAUX ENNEMIS ===
+    'flying': {
+        name: 'Flying',
+        health: 40,
+        speed: 1.5,
+        damage: 15,
+        color: '#66ccff',
+        size: 0.5,
+        isFlying: true,
+        reward: { iron: 10, copper: 3 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    'splitter': {
+        name: 'Splitter',
+        health: 100,
+        speed: 0.8,
+        damage: 15,
+        color: '#99ff66',
+        size: 0.7,
+        splitOnDeath: true,
+        splitCount: 2,
+        splitType: 'splitter-child',
+        reward: { iron: 12 },
+        turretAttackRange: 1,
+        turretAttackDamage: 6,
+        turretAttackRate: 1.5
+    },
+    'splitter-child': {
+        name: 'Splitter Child',
+        health: 40,
+        speed: 1.2,
+        damage: 8,
+        color: '#ccff99',
+        size: 0.4,
+        reward: { iron: 4 },
+        turretAttackRange: 0.8,
+        turretAttackDamage: 3,
+        turretAttackRate: 1.2
+    },
+    'armored-front': {
+        name: 'Armored Front',
+        health: 200,
+        speed: 0.7,
+        damage: 20,
+        color: '#888888',
+        size: 0.8,
+        frontArmor: 0.8,
+        backArmor: 0,
+        reward: { iron: 25, copper: 10 },
+        turretAttackRange: 1,
+        turretAttackDamage: 10,
+        turretAttackRate: 1.5
     }
 };

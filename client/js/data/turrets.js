@@ -3,12 +3,14 @@ export const TURRET_TYPES = {
         name: 'Mitrailleuse',
         damage: 5,
         range: 4,
-        fireRate: 0.1, // seconds between shots
+        fireRate: 0.1,
         color: '#4a9eff',
         cost: { iron: 100 },
         projectileSpeed: 15,
         projectileColor: '#ffff00',
-        size: 0.8
+        size: 0.8,
+        health: 100,
+        maxHealth: 100
     },
     'turret-sniper': {
         name: 'Sniper',
@@ -20,7 +22,9 @@ export const TURRET_TYPES = {
         projectileSpeed: 30,
         projectileColor: '#ff00ff',
         penetration: true,
-        size: 0.7
+        size: 0.7,
+        health: 80,
+        maxHealth: 80
     },
     'turret-artillery': {
         name: 'Artillerie',
@@ -32,7 +36,9 @@ export const TURRET_TYPES = {
         projectileSpeed: 8,
         projectileColor: '#ff6600',
         aoeRadius: 2,
-        size: 0.9
+        size: 0.9,
+        health: 120,
+        maxHealth: 120
     },
     'turret-flamethrower': {
         name: 'Lance-flammes',
@@ -44,7 +50,9 @@ export const TURRET_TYPES = {
         continuous: true,
         dotDamage: 5,
         dotDuration: 2,
-        size: 0.8
+        size: 0.8,
+        health: 90,
+        maxHealth: 90
     },
     'turret-tesla': {
         name: 'Tesla',
@@ -55,7 +63,9 @@ export const TURRET_TYPES = {
         cost: { iron: 400, copper: 150, gold: 50 },
         chainTargets: 3,
         chainRange: 2,
-        size: 0.85
+        size: 0.85,
+        health: 100,
+        maxHealth: 100
     },
     'turret-laser': {
         name: 'Laser',
@@ -66,6 +76,116 @@ export const TURRET_TYPES = {
         cost: { iron: 500, copper: 200, gold: 100 },
         accuracy: 1,
         instantHit: true,
-        size: 0.75
+        size: 0.75,
+        health: 80,
+        maxHealth: 80
+    },
+    // === NOUVELLES TOURELLES ===
+    'turret-shotgun': {
+        name: 'Shotgun',
+        damage: 8,
+        range: 4,
+        fireRate: 0.8,
+        color: '#8b4513',
+        cost: { iron: 150, copper: 30 },
+        projectileSpeed: 12,
+        projectileColor: '#ffcc00',
+        pelletCount: 6,
+        spreadAngle: 0.5,
+        size: 0.8,
+        health: 100,
+        maxHealth: 100
+    },
+    'turret-multi-artillery': {
+        name: 'Multi-Artillerie',
+        damage: 25,
+        range: 9,
+        fireRate: 2.5,
+        color: '#cc6600',
+        cost: { iron: 400, copper: 150, coal: 50 },
+        projectileSpeed: 7,
+        projectileColor: '#ff8800',
+        aoeRadius: 1.5,
+        shellCount: 3,
+        shellSpread: 1.5,
+        size: 0.95,
+        health: 130,
+        maxHealth: 130
+    },
+    'turret-healer': {
+        name: 'Healer',
+        damage: 0,
+        healAmount: 10,
+        range: 4,
+        fireRate: 0.5,
+        color: '#44ff44',
+        cost: { iron: 250, copper: 100, gold: 30 },
+        isHealer: true,
+        beamColor: '#88ff88',
+        size: 0.8,
+        health: 80,
+        maxHealth: 80
+    },
+    'turret-slowdown': {
+        name: 'Ralentisseur',
+        damage: 0,
+        slowAmount: 0.4,
+        range: 4,
+        fireRate: 0.1,
+        color: '#88ddff',
+        cost: { iron: 180, copper: 60 },
+        isSlowdown: true,
+        aoeRange: 3,
+        frostColor: '#aaeeff',
+        size: 0.8,
+        health: 90,
+        maxHealth: 90
+    },
+    'turret-mortar': {
+        name: 'Mortier',
+        damage: 60,
+        range: 14,
+        minRange: 5,
+        fireRate: 3,
+        color: '#556b2f',
+        cost: { iron: 350, copper: 120 },
+        projectileSpeed: 6,
+        projectileColor: '#8b4513',
+        aoeRadius: 2.5,
+        arcHeight: 3,
+        size: 0.9,
+        health: 110,
+        maxHealth: 110
+    },
+    'turret-railgun': {
+        name: 'Railgun',
+        damage: 70,
+        range: 12,
+        fireRate: 2.5,
+        color: '#4169e1',
+        cost: { iron: 500, copper: 200, gold: 80 },
+        instantHit: true,
+        piercingBeam: true,
+        beamColor: '#6495ed',
+        beamWidth: 4,
+        size: 0.85,
+        health: 90,
+        maxHealth: 90
+    },
+    'turret-drone': {
+        name: 'Drone',
+        damage: 12,
+        range: 5,
+        fireRate: 0.3,
+        color: '#9370db',
+        cost: { iron: 300, copper: 150, gold: 50 },
+        projectileSpeed: 18,
+        projectileColor: '#dda0dd',
+        isDrone: true,
+        patrolRadius: 4,
+        moveSpeed: 2,
+        size: 0.6,
+        health: 60,
+        maxHealth: 60
     }
 };

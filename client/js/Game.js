@@ -320,21 +320,43 @@ export class Game {
             }
 
             // Remove dead enemies and collect rewards
+            const enemiesToSpawn = [];
             this.enemies = this.enemies.filter(enemy => {
                 if (enemy.age === undefined || enemy.age < 1.0) {
                     enemy.dead = false;
                     return true;
                 }
                 if (enemy.dead) {
-                    if (!enemy.reachedNexus && enemy.getReward) {
-                        const reward = enemy.getReward();
-                        for (const [resource, amount] of Object.entries(reward)) {
-                            this.resources[resource] = (this.resources[resource] || 0) + amount;
+                    if (!enemy.reachedNexus) {
+                        // Collect reward
+                        if (enemy.getReward) {
+                            const reward = enemy.getReward();
+                            for (const [resource, amount] of Object.entries(reward)) {
+                                this.resources[resource] = (this.resources[resource] || 0) + amount;
+                            }
+                        }
+
+                        // Splitter enemies spawn children on death
+                        if (enemy.config?.splitOnDeath) {
+                            const count = enemy.config.splitCount || 2;
+                            const childType = enemy.config.splitType || 'splitter-child';
+                            for (let i = 0; i < count; i++) {
+                                enemiesToSpawn.push({
+                                    gridX: enemy.gridX,
+                                    gridY: enemy.gridY,
+                                    type: childType
+                                });
+                            }
                         }
                     }
                 }
                 return !enemy.dead;
             });
+
+            // Spawn splitter children
+            for (const spawn of enemiesToSpawn) {
+                this.spawnEnemy(spawn.gridX, spawn.gridY, spawn.type);
+            }
 
             // Update turrets
             for (const turret of this.turrets) {
@@ -342,6 +364,16 @@ export class Game {
                     turret.update(deltaTime, this.enemies, this.projectiles, this);
                 }
             }
+
+            // Remove destroyed turrets
+            this.turrets = this.turrets.filter(turret => {
+                if (turret.isDestroyed && turret.isDestroyed()) {
+                    this.grid.removeBuilding(turret.gridX, turret.gridY);
+                    this.recalculateEnemyPaths();
+                    return false;
+                }
+                return true;
+            });
 
             // Update projectiles
             this.updateProjectiles(deltaTime);
@@ -488,6 +520,11 @@ export class Game {
             // Draw range when hovering or selected (check config exists)
             if ((turret === hoveredTurret || turret === this.selectedTurret) && turret.config?.range) {
                 this.renderer.drawRangeIndicator(turret.x, turret.y, turret.config.range);
+            }
+
+            // Draw healer beams
+            if (turret.config?.isHealer && turret.healTargets) {
+                this.renderer.drawHealerBeams(turret);
             }
         }
 

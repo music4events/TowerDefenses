@@ -4,8 +4,8 @@ export class Turret {
     constructor(gridX, gridY, type, grid) {
         this.grid = grid;
         this.type = type;
-        this.config = { ...TURRET_TYPES[type] }; // Copy config for upgrades
-        this.baseConfig = TURRET_TYPES[type]; // Keep original
+        this.config = { ...TURRET_TYPES[type] };
+        this.baseConfig = TURRET_TYPES[type];
 
         const worldPos = grid.gridToWorld(gridX, gridY);
         this.x = worldPos.x;
@@ -22,6 +22,24 @@ export class Turret {
         this.totalInvested = this.calculateTotalCost(this.baseConfig.cost);
 
         this.range = this.config.range * grid.cellSize;
+
+        // Health system
+        this.health = this.config.health || 100;
+        this.maxHealth = this.config.maxHealth || this.config.health || 100;
+        this.destroyed = false;
+
+        // Healer turret
+        this.healTargets = [];
+
+        // Drone turret
+        if (this.config.isDrone) {
+            this.homeX = this.x;
+            this.homeY = this.y;
+            this.droneX = this.x;
+            this.droneY = this.y;
+            this.patrolAngle = 0;
+            this.patrolRadius = (this.config.patrolRadius || 4) * grid.cellSize;
+        }
     }
 
     calculateTotalCost(cost) {
@@ -32,10 +50,25 @@ export class Turret {
         return total;
     }
 
+    // Health methods
+    takeDamage(amount) {
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.destroyed = true;
+        }
+    }
+
+    heal(amount) {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+    }
+
+    isDestroyed() {
+        return this.destroyed || this.health <= 0;
+    }
+
     getUpgradeCost() {
         if (this.level >= this.maxLevel) return null;
-
-        // Upgrade cost = 50% of base cost per level
         const multiplier = 0.5 * this.level;
         const cost = {};
         for (const [resource, amount] of Object.entries(this.baseConfig.cost)) {
@@ -48,17 +81,18 @@ export class Turret {
         if (this.level >= this.maxLevel) return false;
 
         this.level++;
-
-        // Upgrade stats: +15% per level
         const bonus = 1 + (this.level - 1) * 0.15;
 
         this.config.damage = Math.floor(this.baseConfig.damage * bonus);
         this.config.range = this.baseConfig.range * (1 + (this.level - 1) * 0.1);
         this.config.fireRate = this.baseConfig.fireRate / (1 + (this.level - 1) * 0.1);
 
+        // Upgrade health too
+        this.maxHealth = Math.floor((this.baseConfig.maxHealth || 100) * bonus);
+        this.health = Math.min(this.health + 20, this.maxHealth);
+
         this.range = this.config.range * this.grid.cellSize;
 
-        // Track investment for sell value
         const upgradeCost = this.getUpgradeCost();
         if (upgradeCost) {
             this.totalInvested += this.calculateTotalCost(upgradeCost);
@@ -68,7 +102,6 @@ export class Turret {
     }
 
     getSellValue() {
-        // Return 75% of total invested (base + upgrades)
         const value = {};
         for (const [resource, amount] of Object.entries(this.baseConfig.cost)) {
             const ratio = amount / this.calculateTotalCost(this.baseConfig.cost);
@@ -83,12 +116,33 @@ export class Turret {
             level: this.level,
             damage: this.config.damage,
             range: this.config.range.toFixed(1),
-            fireRate: (1 / this.config.fireRate).toFixed(1) + '/s'
+            fireRate: (1 / this.config.fireRate).toFixed(1) + '/s',
+            health: this.health,
+            maxHealth: this.maxHealth
         };
     }
 
     update(deltaTime, enemies, projectiles, game) {
+        if (this.isDestroyed()) return;
+
         this.cooldown -= deltaTime;
+
+        // Healer turret - heals other turrets
+        if (this.config.isHealer) {
+            this.updateHealer(deltaTime, game);
+            return;
+        }
+
+        // Slowdown turret - slows enemies in range
+        if (this.config.isSlowdown) {
+            this.updateSlowdown(deltaTime, enemies);
+            return;
+        }
+
+        // Drone turret - moves around
+        if (this.config.isDrone) {
+            this.updateDrone(deltaTime, enemies);
+        }
 
         // Find target
         this.target = this.findTarget(enemies);
@@ -99,7 +153,6 @@ export class Turret {
             const dy = this.target.y - this.y;
             this.angle = Math.atan2(dy, dx);
 
-            // Fire if ready
             if (this.cooldown <= 0) {
                 this.fire(projectiles, game);
                 this.cooldown = this.config.fireRate;
@@ -107,14 +160,85 @@ export class Turret {
         }
     }
 
+    updateHealer(deltaTime, game) {
+        this.healTargets = [];
+        if (this.cooldown <= 0) {
+            this.cooldown = this.config.fireRate;
+
+            for (const turret of game.turrets) {
+                if (turret === this) continue;
+                if (turret.isDestroyed()) continue;
+                if (turret.health >= turret.maxHealth) continue;
+
+                const dist = Math.sqrt((this.x - turret.x) ** 2 + (this.y - turret.y) ** 2);
+                if (dist <= this.range) {
+                    turret.heal(this.config.healAmount || 10);
+                    this.healTargets.push(turret);
+                }
+            }
+        }
+    }
+
+    updateSlowdown(deltaTime, enemies) {
+        const slowRange = (this.config.aoeRange || this.config.range) * this.grid.cellSize;
+
+        for (const enemy of enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+            if (dist <= slowRange) {
+                enemy.frosted = true;
+                if (enemy.applySlow) {
+                    enemy.applySlow(this.config.slowAmount || 0.5);
+                } else {
+                    enemy.slowMultiplier = this.config.slowAmount || 0.5;
+                }
+            }
+        }
+    }
+
+    updateDrone(deltaTime, enemies) {
+        this.patrolAngle += deltaTime * 0.5;
+
+        if (this.target && !this.target.dead) {
+            // Move towards target
+            const dx = this.target.x - this.droneX;
+            const dy = this.target.y - this.droneY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > this.range * 0.5) {
+                const moveSpeed = (this.config.moveSpeed || 2) * this.grid.cellSize * deltaTime;
+                const newX = this.droneX + (dx / dist) * moveSpeed;
+                const newY = this.droneY + (dy / dist) * moveSpeed;
+
+                const distFromHome = Math.sqrt((newX - this.homeX) ** 2 + (newY - this.homeY) ** 2);
+                if (distFromHome <= this.patrolRadius) {
+                    this.droneX = newX;
+                    this.droneY = newY;
+                }
+            }
+        } else {
+            // Circular patrol
+            this.droneX = this.homeX + Math.cos(this.patrolAngle) * this.patrolRadius * 0.5;
+            this.droneY = this.homeY + Math.sin(this.patrolAngle) * this.patrolRadius * 0.5;
+        }
+
+        // Update turret position for firing
+        this.x = this.droneX;
+        this.y = this.droneY;
+    }
+
     findTarget(enemies) {
         let closest = null;
         let closestDist = Infinity;
+        const minRange = (this.config.minRange || 0) * this.grid.cellSize;
 
         for (const enemy of enemies) {
             if (enemy.dead) continue;
 
             const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+
+            // Check minimum range (for mortar)
+            if (dist < minRange) continue;
 
             if (dist <= this.range && dist < closestDist) {
                 closest = enemy;
@@ -130,8 +254,25 @@ export class Turret {
 
         const projectileType = this.getProjectileType();
 
+        // Shotgun - multiple pellets
+        if (this.config.pelletCount) {
+            this.fireShotgun(projectiles);
+            return;
+        }
+
+        // Multi-Artillery - multiple shells
+        if (this.config.shellCount) {
+            this.fireMultiArtillery(projectiles);
+            return;
+        }
+
+        // Railgun - piercing beam
+        if (this.config.piercingBeam) {
+            this.fireRailgun(projectiles, game);
+            return;
+        }
+
         if (this.config.instantHit) {
-            // Laser - instant hit
             this.target.takeDamage(this.config.damage);
             projectiles.push({
                 type: 'laser',
@@ -143,13 +284,10 @@ export class Turret {
                 life: 0.1
             });
         } else if (this.config.chainTargets) {
-            // Tesla - chain lightning
             this.fireChainLightning(projectiles, game);
         } else if (this.config.continuous) {
-            // Flamethrower - continuous damage
             this.fireFlame(projectiles);
         } else {
-            // Standard projectile
             const dx = this.target.x - this.x;
             const dy = this.target.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -164,16 +302,123 @@ export class Turret {
                 config: this.config,
                 aoeRadius: this.config.aoeRadius ? this.config.aoeRadius * this.grid.cellSize : 0,
                 penetration: this.config.penetration || false,
+                sourceX: this.x,
+                sourceY: this.y,
                 hitEnemies: []
             });
         }
+    }
+
+    fireShotgun(projectiles) {
+        const pellets = this.config.pelletCount || 6;
+        const spread = this.config.spreadAngle || 0.5;
+        const baseAngle = this.angle;
+
+        for (let i = 0; i < pellets; i++) {
+            const pelletAngle = baseAngle + (i - (pellets - 1) / 2) * (spread / (pellets - 1));
+            const speed = (this.config.projectileSpeed || 12) * this.grid.cellSize;
+
+            projectiles.push({
+                type: 'pellet',
+                x: this.x,
+                y: this.y,
+                vx: Math.cos(pelletAngle) * speed,
+                vy: Math.sin(pelletAngle) * speed,
+                damage: this.config.damage,
+                config: this.config,
+                sourceX: this.x,
+                sourceY: this.y,
+                hitEnemies: []
+            });
+        }
+    }
+
+    fireMultiArtillery(projectiles) {
+        const shells = this.config.shellCount || 3;
+        const spread = (this.config.shellSpread || 1.5) * this.grid.cellSize;
+
+        for (let i = 0; i < shells; i++) {
+            const offsetX = (Math.random() - 0.5) * spread;
+            const offsetY = (Math.random() - 0.5) * spread;
+            const targetX = this.target.x + offsetX;
+            const targetY = this.target.y + offsetY;
+
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            projectiles.push({
+                type: 'artillery',
+                x: this.x,
+                y: this.y,
+                vx: (dx / dist) * (this.config.projectileSpeed || 7) * this.grid.cellSize,
+                vy: (dy / dist) * (this.config.projectileSpeed || 7) * this.grid.cellSize,
+                damage: this.config.damage,
+                config: this.config,
+                aoeRadius: (this.config.aoeRadius || 1.5) * this.grid.cellSize,
+                sourceX: this.x,
+                sourceY: this.y,
+                hitEnemies: []
+            });
+        }
+    }
+
+    fireRailgun(projectiles, game) {
+        const beamEndX = this.x + Math.cos(this.angle) * this.range;
+        const beamEndY = this.y + Math.sin(this.angle) * this.range;
+
+        // Hit all enemies in line
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+
+            const dist = this.pointToLineDistance(
+                enemy.x, enemy.y,
+                this.x, this.y,
+                beamEndX, beamEndY
+            );
+
+            const enemySize = (enemy.config?.size || 0.6) * this.grid.cellSize / 2;
+            if (dist <= enemySize + 5) {
+                enemy.takeDamage(this.config.damage);
+            }
+        }
+
+        // Visual beam
+        projectiles.push({
+            type: 'railgun',
+            x: beamEndX,
+            y: beamEndY,
+            startX: this.x,
+            startY: this.y,
+            config: this.config,
+            life: 0.2
+        });
+    }
+
+    pointToLineDistance(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+
+        if (lenSq !== 0) param = dot / lenSq;
+
+        let xx, yy;
+        if (param < 0) { xx = x1; yy = y1; }
+        else if (param > 1) { xx = x2; yy = y2; }
+        else { xx = x1 + param * C; yy = y1 + param * D; }
+
+        return Math.sqrt((px - xx) ** 2 + (py - yy) ** 2);
     }
 
     fireChainLightning(projectiles, game) {
         const targets = [this.target];
         let currentTarget = this.target;
 
-        // Find chain targets
         for (let i = 1; i < this.config.chainTargets; i++) {
             const chainRange = this.config.chainRange * this.grid.cellSize;
             let nextTarget = null;
@@ -201,7 +446,6 @@ export class Turret {
             }
         }
 
-        // Apply damage and create visual effects
         let prevX = this.x;
         let prevY = this.y;
 
@@ -224,7 +468,6 @@ export class Turret {
     }
 
     fireFlame(projectiles) {
-        // Create flame particles
         const spread = 0.3;
         const baseAngle = this.angle;
 
@@ -250,6 +493,7 @@ export class Turret {
     getProjectileType() {
         if (this.type.includes('artillery')) return 'artillery';
         if (this.type.includes('sniper')) return 'sniper';
+        if (this.type.includes('mortar')) return 'artillery';
         return 'bullet';
     }
 
