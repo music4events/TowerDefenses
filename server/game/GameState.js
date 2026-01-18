@@ -720,9 +720,11 @@ class GameState {
             }
 
             // Scaling: HP, speed, damage, and attack range increase with difficulty
-            const speedMult = 1 + (this.endlessDifficulty - 1) * 0.15;
-            const damageMult = 1 + (this.endlessDifficulty - 1) * 0.2;
-            const attackRangeMult = 1 + (this.endlessDifficulty - 1) * 0.1;
+            // Use logarithmic scaling for speed/damage to prevent extreme values
+            const speedMult = Math.min(5, 1 + Math.log10(this.endlessDifficulty) * 1.5); // Max 5x speed
+            const damageMult = Math.min(10, 1 + Math.log10(this.endlessDifficulty) * 3); // Max 10x damage
+            const attackRangeMult = Math.min(3, 1 + Math.log10(this.endlessDifficulty) * 0.8); // Max 3x range
+            // HP scales linearly with wave number (wave 132 = 132x HP)
 
             const enemy = {
                 id: Date.now() + Math.random(),

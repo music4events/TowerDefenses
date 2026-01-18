@@ -369,9 +369,10 @@ export class WaveManager {
         const enemy = this.game.spawnEnemy(spawn.x, spawn.y, type);
         if (enemy) {
             // Scale all stats based on difficulty
-            const healthMult = this.endlessDifficulty;
-            const speedMult = 1 + (this.endlessDifficulty - 1) * 0.15;
-            const damageMult = 1 + (this.endlessDifficulty - 1) * 0.2;
+            // Use logarithmic scaling for speed/damage to prevent extreme values
+            const healthMult = this.endlessDifficulty; // HP scales linearly
+            const speedMult = Math.min(5, 1 + Math.log10(this.endlessDifficulty) * 1.5); // Max 5x speed
+            const damageMult = Math.min(10, 1 + Math.log10(this.endlessDifficulty) * 3); // Max 10x damage
 
             enemy.maxHealth *= healthMult;
             enemy.health = enemy.maxHealth;
