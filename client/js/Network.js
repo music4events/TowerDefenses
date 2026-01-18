@@ -111,6 +111,23 @@ export class Network {
             this.game.gameOver = true;
             this.game.ui.showGameOver();
         });
+
+        this.socket.on('gameSpeedChanged', (data) => {
+            this.game.gameSpeed = data.speed;
+            this.updateSpeedButtons(data.speed);
+        });
+    }
+
+    updateSpeedButtons(speed) {
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.speed) === speed);
+        });
+    }
+
+    setGameSpeed(speed) {
+        if (this.socket) {
+            this.socket.emit('setGameSpeed', { speed });
+        }
     }
 
     createRoom(playerName) {
@@ -303,6 +320,7 @@ export class Network {
                 if (serverTurret.damage !== undefined) localTurret.config.damage = serverTurret.damage;
                 if (serverTurret.range !== undefined) localTurret.config.range = serverTurret.range;
                 if (serverTurret.fireRate !== undefined) localTurret.config.fireRate = serverTurret.fireRate;
+                if (serverTurret.aoeRange !== undefined) localTurret.config.aoeRange = serverTurret.aoeRange;
             }
 
             // Sync drone position and boost states

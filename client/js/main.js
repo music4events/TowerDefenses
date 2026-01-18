@@ -176,6 +176,9 @@ class App {
         const canvas = document.getElementById('gameCanvas');
         this.game = new Game(canvas, false, null, null, this.selectedGameMode);
 
+        // Setup speed control buttons
+        this.setupSpeedButtons();
+
         console.log(`Tower Defense - Mode Solo (${this.selectedGameMode})`);
         console.log('Raccourcis: 1-8 pour selectionner, clic gauche pour placer, clic droit pour annuler');
     }
@@ -192,11 +195,23 @@ class App {
         this.game = new Game(canvas, true, this.network, initialState, gameMode);
         this.network.game = this.game;
 
-        // Setup chat
+        // Setup chat and speed buttons
         this.setupChat();
+        this.setupSpeedButtons();
 
         console.log('Tower Defense - Mode Multijoueur');
         console.log('Code de la partie:', this.network.roomCode);
+    }
+
+    setupSpeedButtons() {
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const speed = parseInt(btn.dataset.speed);
+                if (this.game) {
+                    this.game.setGameSpeed(speed);
+                }
+            });
+        });
     }
 
     setupChat() {

@@ -46,6 +46,7 @@ export class Game {
         this.waveNumber = 0;
         this.gameOver = false;
         this.lastTime = 0;
+        this.gameSpeed = 1; // Speed multiplier (1, 2, 5, 10)
 
         // Action modes
         this.actionMode = null; // null, 'sell', 'upgrade'
@@ -80,6 +81,23 @@ export class Game {
 
         // Start game loop
         this.start();
+    }
+
+    setGameSpeed(speed) {
+        const validSpeeds = [1, 2, 5, 10];
+        if (!validSpeeds.includes(speed)) return;
+
+        if (this.isMultiplayer && this.network) {
+            // In multiplayer, send to server (only host can change)
+            this.network.setGameSpeed(speed);
+        } else {
+            // In solo, change directly
+            this.gameSpeed = speed;
+            // Update button states
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.speed) === speed);
+            });
+        }
     }
 
     setActionMode(mode) {
@@ -298,13 +316,16 @@ export class Game {
     update(deltaTime) {
         // ===== SOLO MODE: Full game logic =====
         if (!this.isMultiplayer) {
+            // Apply game speed multiplier in solo mode
+            const adjustedDelta = deltaTime * this.gameSpeed;
+
             // Update wave manager
-            this.waveManager.update(deltaTime);
+            this.waveManager.update(adjustedDelta);
 
             // Update extractors
             for (const extractor of this.extractors) {
                 if (extractor.update) {
-                    extractor.update(deltaTime);
+                    extractor.update(adjustedDelta);
                     if (extractor.stored > 0 && extractor.collect) {
                         const collected = extractor.collect();
                         this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
@@ -315,7 +336,7 @@ export class Game {
             // Update enemies
             for (const enemy of this.enemies) {
                 if (enemy.update) {
-                    enemy.update(deltaTime, this.nexus, this.enemies, this);
+                    enemy.update(adjustedDelta, this.nexus, this.enemies, this);
                 }
             }
 
@@ -361,7 +382,7 @@ export class Game {
             // Update turrets
             for (const turret of this.turrets) {
                 if (turret.update) {
-                    turret.update(deltaTime, this.enemies, this.projectiles, this);
+                    turret.update(adjustedDelta, this.enemies, this.projectiles, this);
                 }
             }
 
@@ -376,7 +397,10 @@ export class Game {
             });
 
             // Update projectiles
-            this.updateProjectiles(deltaTime);
+            this.updateProjectiles(adjustedDelta);
+
+            // Progressive path recalculation (spread work over frames to avoid lag)
+            this.progressivePathRecalc(5);
 
             // Check game over
             if (this.nexus.isDestroyed()) {
@@ -670,12 +694,25 @@ export class Game {
         // Server handles pathfinding in multiplayer
         if (this.isMultiplayer) return;
 
+        // Mark all enemies for progressive path recalculation
         for (const enemy of this.enemies) {
-            if (enemy.setPath) {
-                const path = this.grid.findPath(enemy.gridX, enemy.gridY, this.nexus.gridX, this.nexus.gridY);
-                if (path) {
-                    enemy.setPath(path);
+            enemy.needsPathRecalc = true;
+        }
+    }
+
+    progressivePathRecalc(maxPerFrame = 5) {
+        // Process a limited number of path recalculations per frame to avoid lag
+        let recalculated = 0;
+        for (const enemy of this.enemies) {
+            if (enemy.needsPathRecalc && recalculated < maxPerFrame) {
+                if (enemy.setPath) {
+                    const path = this.grid.findPath(enemy.gridX, enemy.gridY, this.nexus.gridX, this.nexus.gridY);
+                    if (path) {
+                        enemy.setPath(path);
+                    }
                 }
+                enemy.needsPathRecalc = false;
+                recalculated++;
             }
         }
     }

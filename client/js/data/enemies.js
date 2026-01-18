@@ -136,5 +136,83 @@ export const ENEMY_TYPES = {
         turretAttackRange: 1,
         turretAttackDamage: 10,
         turretAttackRate: 1.5
+    },
+    // === TROUPES AERIENNES ===
+    'flying-bomber': {
+        name: 'Flying Bomber',
+        health: 60,
+        speed: 1.2,
+        damage: 25,
+        color: '#4488ff',
+        size: 0.6,
+        isFlying: true,
+        reward: { iron: 15, copper: 5 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    'flying-swarm': {
+        name: 'Flying Swarm',
+        health: 20,
+        speed: 2.0,
+        damage: 8,
+        color: '#88ccff',
+        size: 0.35,
+        isFlying: true,
+        reward: { iron: 5 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    // === KAMIKAZE AMELIORE ===
+    'kamikaze-spawner': {
+        name: 'Kamikaze Spawner',
+        health: 30,
+        speed: 3,
+        damage: 80,
+        color: '#ff6600',
+        size: 0.5,
+        splitOnDeath: true,
+        splitCount: 3,
+        splitType: 'runner',
+        reward: { iron: 12 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    // === AVION TRANSPORT ===
+    'transport': {
+        name: 'Transport',
+        health: 150,
+        speed: 0.8,
+        damage: 10,
+        color: '#669966',
+        size: 0.9,
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'grunt',
+        spawnInterval: 3,
+        spawnCount: 1,
+        reward: { iron: 30, copper: 10 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    'transport-elite': {
+        name: 'Transport Elite',
+        health: 250,
+        speed: 0.6,
+        damage: 15,
+        color: '#448844',
+        size: 1.1,
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'runner',
+        spawnInterval: 2,
+        spawnCount: 2,
+        reward: { iron: 50, copper: 20, gold: 5 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
     }
 };

@@ -257,6 +257,22 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Set game speed (host only)
+    socket.on('setGameSpeed', (data) => {
+        if (!currentRoom) return;
+
+        const room = rooms.get(currentRoom);
+        if (!room || !room.started) return;
+
+        // Only host can change speed
+        if (room.host !== socket.id) return;
+
+        const speed = parseInt(data.speed);
+        if (room.gameState.setGameSpeed(speed)) {
+            io.to(currentRoom).emit('gameSpeedChanged', { speed });
+        }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);

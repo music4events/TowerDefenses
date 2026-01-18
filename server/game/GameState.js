@@ -233,6 +233,42 @@ const ENEMY_TYPES = {
         health: 200, speed: 0.7, damage: 20, reward: { iron: 25, copper: 10 },
         frontArmor: 0.8, backArmor: 0,
         turretAttackRange: 1, turretAttackDamage: 10, turretAttackRate: 1.5
+    },
+    // === TROUPES AERIENNES ===
+    'flying-bomber': {
+        health: 60, speed: 1.2, damage: 25, reward: { iron: 15, copper: 5 },
+        isFlying: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'flying-swarm': {
+        health: 20, speed: 2.0, damage: 8, reward: { iron: 5 },
+        isFlying: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    // === KAMIKAZE AMELIORE ===
+    'kamikaze-spawner': {
+        health: 30, speed: 3, damage: 80, reward: { iron: 12 },
+        splitOnDeath: true, splitCount: 3, splitType: 'runner',
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    // === AVION TRANSPORT ===
+    'transport': {
+        health: 150, speed: 0.8, damage: 10, reward: { iron: 30, copper: 10 },
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'grunt',
+        spawnInterval: 3, // Spawn every 3 seconds
+        spawnCount: 1,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'transport-elite': {
+        health: 250, speed: 0.6, damage: 15, reward: { iron: 50, copper: 20, gold: 5 },
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'runner',
+        spawnInterval: 2,
+        spawnCount: 2,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
     }
 };
 
@@ -269,6 +305,18 @@ class GameState {
 
         // Effects to send to client (explosions, deaths)
         this.pendingEffects = [];
+
+        // Game speed multiplier (1, 2, 5, 10)
+        this.gameSpeed = 1;
+    }
+
+    setGameSpeed(speed) {
+        const validSpeeds = [1, 2, 5, 10];
+        if (validSpeeds.includes(speed)) {
+            this.gameSpeed = speed;
+            return true;
+        }
+        return false;
     }
 
     init() {
@@ -328,20 +376,23 @@ class GameState {
 
     update(deltaTime) {
         try {
+            // Apply game speed multiplier
+            const adjustedDelta = deltaTime * this.gameSpeed;
+
             // NOTE: pendingEffects is NOT cleared here - it accumulates between syncs
             // It gets cleared in serializeForSync() after being sent to clients
 
             // Wave/Endless management based on game mode
             if (this.gameMode === 'endless') {
-                this.updateEndless(deltaTime);
+                this.updateEndless(adjustedDelta);
             } else {
-                this.updateWaves(deltaTime);
+                this.updateWaves(adjustedDelta);
             }
 
             // Update extractors
             for (const extractor of this.extractors) {
                 if (!extractor) continue;
-                extractor.timer = (extractor.timer || 0) + deltaTime;
+                extractor.timer = (extractor.timer || 0) + adjustedDelta;
                 const extractionTime = 1 / (extractor.extractionRate || 1);
                 if (extractor.timer >= extractionTime) {
                     extractor.timer = 0;
@@ -354,7 +405,7 @@ class GameState {
 
             // Update enemies
             for (const enemy of this.enemies) {
-                this.updateEnemy(enemy, deltaTime);
+                this.updateEnemy(enemy, adjustedDelta);
             }
 
             // Remove dead enemies and handle splitters
@@ -411,14 +462,14 @@ class GameState {
             // Update booster turrets FIRST so they can set boost flags
             for (const turret of this.turrets) {
                 if (turret.config?.isSpeedBooster || turret.config?.isDamageBooster) {
-                    this.updateTurret(turret, deltaTime);
+                    this.updateTurret(turret, adjustedDelta);
                 }
             }
 
             // Update all other turrets
             for (const turret of this.turrets) {
                 if (!turret.config?.isSpeedBooster && !turret.config?.isDamageBooster) {
-                    this.updateTurret(turret, deltaTime);
+                    this.updateTurret(turret, adjustedDelta);
                 }
             }
 
@@ -433,7 +484,10 @@ class GameState {
             });
 
             // Update projectiles
-            this.updateProjectiles(deltaTime);
+            this.updateProjectiles(adjustedDelta);
+
+            // Progressive path recalculation (spreads work over multiple frames)
+            this.progressivePathRecalc(5);
         } catch (error) {
             console.error('Error in GameState.update:', error);
         }
@@ -501,10 +555,18 @@ class GameState {
             // Choose enemy type based on difficulty
             const types = ['grunt'];
             if (this.endlessDifficulty >= 1.2) types.push('runner');
+            if (this.endlessDifficulty >= 1.4) types.push('flying');
             if (this.endlessDifficulty >= 1.5) types.push('tank');
+            if (this.endlessDifficulty >= 1.6) types.push('flying-swarm');
             if (this.endlessDifficulty >= 1.8) types.push('kamikaze');
             if (this.endlessDifficulty >= 2.0) types.push('healer');
+            if (this.endlessDifficulty >= 2.0) types.push('splitter');
+            if (this.endlessDifficulty >= 2.2) types.push('flying-bomber');
+            if (this.endlessDifficulty >= 2.5) types.push('kamikaze-spawner');
+            if (this.endlessDifficulty >= 2.5) types.push('armored-front');
+            if (this.endlessDifficulty >= 2.8) types.push('transport');
             if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05) types.push('boss');
+            if (this.endlessDifficulty >= 3.5) types.push('transport-elite');
 
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -526,6 +588,9 @@ class GameState {
                 return;
             }
 
+            // Scaling: HP increases with difficulty, speed increases slightly
+            const speedMult = 1 + (this.endlessDifficulty - 1) * 0.15;
+
             const enemy = {
                 id: Date.now() + Math.random(),
                 type: type,
@@ -535,7 +600,7 @@ class GameState {
                 gridY: y,
                 health: config.health * this.endlessDifficulty,
                 maxHealth: config.health * this.endlessDifficulty,
-                speed: config.speed,
+                speed: config.speed * speedMult,
                 damage: config.damage,
                 path: [],
                 pathIndex: 0,
@@ -543,7 +608,8 @@ class GameState {
                 reachedNexus: false,
                 burning: false,
                 burnTime: 0,
-                burnDamage: 0
+                burnDamage: 0,
+                spawnTimer: 0 // For transport units
             };
 
             const path = this.findPath(x, y, this.nexusX, this.nexusY);
@@ -627,6 +693,46 @@ class GameState {
             const count = Math.floor(this.waveNumber / 8);
             for (let i = 0; i < count; i++) {
                 this.enemiesToSpawn.push({ type: 'healer', delay: 8 + i * 4 });
+            }
+        }
+
+        // Flying swarm - from wave 9
+        if (this.waveNumber >= 9) {
+            const count = Math.floor(this.waveNumber / 9) * 2;
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'flying-swarm', delay: 3 + i * 0.5 });
+            }
+        }
+
+        // Kamikaze spawner - from wave 10
+        if (this.waveNumber >= 10) {
+            const count = Math.floor(this.waveNumber / 10);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'kamikaze-spawner', delay: 5 + i * 3 });
+            }
+        }
+
+        // Flying bomber - from wave 12
+        if (this.waveNumber >= 12) {
+            const count = Math.floor(this.waveNumber / 12);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'flying-bomber', delay: 6 + i * 2.5 });
+            }
+        }
+
+        // Transport - from wave 15
+        if (this.waveNumber >= 15) {
+            const count = Math.floor(this.waveNumber / 15);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'transport', delay: 8 + i * 5 });
+            }
+        }
+
+        // Transport elite - from wave 20
+        if (this.waveNumber >= 20) {
+            const count = Math.floor(this.waveNumber / 20);
+            for (let i = 0; i < count; i++) {
+                this.enemiesToSpawn.push({ type: 'transport-elite', delay: 10 + i * 6 });
             }
         }
 
@@ -731,6 +837,58 @@ class GameState {
         }
     }
 
+    spawnTransportUnit(transport, transportType) {
+        try {
+            const spawnType = transportType.spawnType || 'grunt';
+            const spawnCount = transportType.spawnCount || 1;
+            const config = ENEMY_TYPES[spawnType];
+            if (!config) return;
+
+            // Get ground position below the transport
+            const gridX = Math.floor(transport.x / this.cellSize);
+            const gridY = Math.floor(transport.y / this.cellSize);
+
+            for (let i = 0; i < spawnCount; i++) {
+                const enemy = {
+                    id: Date.now() + Math.random() + i,
+                    type: spawnType,
+                    x: transport.x + (Math.random() - 0.5) * 30,
+                    y: transport.y + (Math.random() - 0.5) * 30,
+                    gridX: gridX,
+                    gridY: gridY,
+                    health: config.health,
+                    maxHealth: config.health,
+                    speed: config.speed,
+                    damage: config.damage,
+                    path: [],
+                    pathIndex: 0,
+                    dead: false,
+                    reachedNexus: false,
+                    burning: false,
+                    burnTime: 0,
+                    burnDamage: 0,
+                    turretAttackCooldown: 0
+                };
+
+                const path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
+                if (path) {
+                    enemy.path = path;
+                }
+                this.enemies.push(enemy);
+            }
+
+            // Add visual effect for spawn
+            this.pendingEffects.push({
+                type: 'spawn',
+                x: transport.x,
+                y: transport.y,
+                color: '#88ff88'
+            });
+        } catch (error) {
+            console.error('Error spawning transport unit:', error);
+        }
+    }
+
     updateEnemy(enemy, deltaTime) {
         if (!enemy || enemy.dead) return;
 
@@ -746,6 +904,18 @@ class GameState {
         // Attack cooldown
         if (enemy.turretAttackCooldown === undefined) enemy.turretAttackCooldown = 0;
         enemy.turretAttackCooldown -= deltaTime;
+
+        // Transport planes spawn units while moving
+        if (enemyType && enemyType.isTransport) {
+            if (enemy.spawnTimer === undefined) enemy.spawnTimer = 0;
+            enemy.spawnTimer += deltaTime;
+
+            if (enemy.spawnTimer >= (enemyType.spawnInterval || 3)) {
+                enemy.spawnTimer = 0;
+                // Spawn units at current position
+                this.spawnTransportUnit(enemy, enemyType);
+            }
+        }
 
         // Movement - Flying enemies go directly to nexus
         const nexusWorldX = this.nexusX * this.cellSize + this.cellSize / 2;
@@ -1530,6 +1700,10 @@ class GameState {
             if (turret.config.fireRate > 0.05) {
                 turret.config.fireRate = turret.config.fireRate * 0.9;
             }
+            // Also upgrade aoeRange for slowdown/shockwave turrets
+            if (turret.config.aoeRange) {
+                turret.config.aoeRange = turret.config.aoeRange * 1.1;
+            }
 
             return { success: true, type: 'turret', level: turret.level };
         }
@@ -1590,11 +1764,26 @@ class GameState {
     }
 
     recalculatePaths() {
+        // Mark all enemies for path recalculation (will be done progressively)
         for (const enemy of this.enemies) {
-            const path = this.findPath(enemy.gridX, enemy.gridY, this.nexusX, this.nexusY);
-            if (path) {
-                enemy.path = path;
-                enemy.pathIndex = 0;
+            enemy.needsPathRecalc = true;
+        }
+    }
+
+    // Progressive path recalculation - call this in update loop
+    progressivePathRecalc(maxPerFrame = 5) {
+        let recalculated = 0;
+        for (const enemy of this.enemies) {
+            if (enemy.needsPathRecalc && recalculated < maxPerFrame) {
+                const gridX = Math.floor(enemy.x / this.cellSize);
+                const gridY = Math.floor(enemy.y / this.cellSize);
+                const path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
+                if (path) {
+                    enemy.path = path;
+                    enemy.pathIndex = 0;
+                }
+                enemy.needsPathRecalc = false;
+                recalculated++;
             }
         }
     }
@@ -1722,6 +1911,7 @@ class GameState {
                 damage: t.config?.damage,
                 range: t.config?.range,
                 fireRate: t.config?.fireRate,
+                aoeRange: t.config?.aoeRange, // For slowdown/shockwave zones
                 health: t.health,
                 maxHealth: t.maxHealth || t.config?.maxHealth || 100,
                 homeX: t.homeX,
