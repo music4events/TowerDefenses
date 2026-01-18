@@ -429,6 +429,7 @@ export class Network {
                         config: config,
                         angle: serverEnemy.angle || 0,
                         burning: serverEnemy.burning,
+                        ignoreWalls: serverEnemy.ignoreWalls || false,
                         dead: false,
                         age: 1 // Mark as not new to prevent instant removal
                     };
@@ -444,6 +445,7 @@ export class Network {
                     localEnemy.frosted = serverEnemy.frosted;
                     localEnemy.slowMultiplier = serverEnemy.slowMultiplier || 1;
                     localEnemy.isAttackingTurret = serverEnemy.isAttackingTurret;
+                    localEnemy.ignoreWalls = serverEnemy.ignoreWalls || false;
                 }
             }
 

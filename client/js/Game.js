@@ -20,14 +20,33 @@ export class Game {
         this.network = network;
         this.gameMode = gameMode; // 'waves' or 'endless'
 
-        // Set canvas size (larger map)
-        this.canvas.width = 50 * this.cellSize; // 1600
-        this.canvas.height = 38 * this.cellSize; // 1216
+        // Map size (3x larger: 150x114 cells)
+        this.mapWidth = 150 * this.cellSize;  // 4800
+        this.mapHeight = 114 * this.cellSize; // 3648
 
-        // Initialize systems
-        this.grid = new Grid(this.canvas.width, this.canvas.height, this.cellSize);
-        this.renderer = new Renderer(this.canvas, this.grid);
-        this.inputHandler = new InputHandler(this.canvas, this.grid);
+        // Viewport/canvas size (what we actually see)
+        this.canvas.width = Math.min(1600, window.innerWidth - 280);
+        this.canvas.height = Math.min(900, window.innerHeight - 40);
+
+        // Camera/viewport position and zoom
+        this.camera = {
+            x: 0,
+            y: 0,
+            zoom: 1,
+            minZoom: 0.25,
+            maxZoom: 2,
+            isPanning: false,
+            lastMouseX: 0,
+            lastMouseY: 0
+        };
+
+        // Initialize systems with map size (not canvas size)
+        this.grid = new Grid(this.mapWidth, this.mapHeight, this.cellSize);
+        this.renderer = new Renderer(this.canvas, this.grid, this.camera);
+        this.inputHandler = new InputHandler(this.canvas, this.grid, this.camera);
+
+        // Setup zoom and pan controls
+        this.setupCameraControls();
 
         // Game state
         this.resources = {
@@ -79,8 +98,95 @@ export class Game {
         this.inputHandler.onPlace = (x, y, building) => this.handleClick(x, y, building);
         this.inputHandler.onSelect = (x, y) => this.handleClick(x, y, null);
 
+        // Center camera on nexus
+        this.centerCameraOnNexus();
+
         // Start game loop
         this.start();
+    }
+
+    setupCameraControls() {
+        // Mouse wheel for zoom
+        this.canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(this.camera.minZoom, Math.min(this.camera.maxZoom, this.camera.zoom * zoomFactor));
+
+            // Zoom towards mouse position
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate world position under mouse before zoom
+            const worldX = (mouseX / this.camera.zoom) + this.camera.x;
+            const worldY = (mouseY / this.camera.zoom) + this.camera.y;
+
+            this.camera.zoom = newZoom;
+
+            // Adjust camera to keep mouse position stable
+            this.camera.x = worldX - (mouseX / this.camera.zoom);
+            this.camera.y = worldY - (mouseY / this.camera.zoom);
+
+            this.clampCamera();
+        });
+
+        // Middle mouse button for panning
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1) { // Middle mouse button
+                e.preventDefault();
+                this.camera.isPanning = true;
+                this.camera.lastMouseX = e.clientX;
+                this.camera.lastMouseY = e.clientY;
+                this.canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.camera.isPanning) {
+                const deltaX = e.clientX - this.camera.lastMouseX;
+                const deltaY = e.clientY - this.camera.lastMouseY;
+                this.camera.x -= deltaX / this.camera.zoom;
+                this.camera.y -= deltaY / this.camera.zoom;
+                this.camera.lastMouseX = e.clientX;
+                this.camera.lastMouseY = e.clientY;
+                this.clampCamera();
+            }
+        });
+
+        this.canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 1) {
+                this.camera.isPanning = false;
+                this.canvas.style.cursor = 'crosshair';
+            }
+        });
+
+        // Also stop panning if mouse leaves canvas
+        this.canvas.addEventListener('mouseleave', () => {
+            this.camera.isPanning = false;
+            this.canvas.style.cursor = 'crosshair';
+        });
+
+        // Prevent context menu on middle click
+        this.canvas.addEventListener('auxclick', (e) => {
+            if (e.button === 1) e.preventDefault();
+        });
+    }
+
+    clampCamera() {
+        // Clamp camera to map bounds
+        const maxX = Math.max(0, this.mapWidth - (this.canvas.width / this.camera.zoom));
+        const maxY = Math.max(0, this.mapHeight - (this.canvas.height / this.camera.zoom));
+        this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
+    }
+
+    centerCameraOnNexus() {
+        // Center camera on nexus position
+        const nexusWorldX = this.nexus.x;
+        const nexusWorldY = this.nexus.y;
+        this.camera.x = nexusWorldX - (this.canvas.width / this.camera.zoom / 2);
+        this.camera.y = nexusWorldY - (this.canvas.height / this.camera.zoom / 2);
+        this.clampCamera();
     }
 
     setGameSpeed(speed) {
@@ -529,6 +635,7 @@ export class Game {
 
     render(deltaTime) {
         this.renderer.clear();
+        this.renderer.applyCamera();
         this.renderer.drawGrid();
         this.renderer.drawResources();
 
@@ -594,6 +701,8 @@ export class Game {
 
         // Draw death effects
         this.renderer.drawDeathEffects(deltaTime);
+
+        this.renderer.restoreCamera();
     }
 
     placeBuilding(gridX, gridY, buildingType) {

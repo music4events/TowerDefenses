@@ -16,7 +16,7 @@ const TURRET_TYPES = {
         fireRate: 1.5,
         cost: { iron: 200, copper: 50 },
         projectileSpeed: 30,
-        penetration: true,
+        penetration: false, // Stops on impact
         health: 80,
         maxHealth: 80
     },
@@ -212,7 +212,9 @@ const ENEMY_TYPES = {
     },
     'boss': {
         health: 2000, speed: 0.3, damage: 100, reward: { iron: 100, copper: 50, gold: 20 },
-        turretAttackRange: 1.5, turretAttackDamage: 25, turretAttackRate: 2
+        turretAttackRange: 1.5, turretAttackDamage: 25, turretAttackRate: 2,
+        // Boss spawns minions
+        isSpawner: true, spawnType: 'grunt', spawnInterval: 4, spawnCount: 2
     },
     // === NOUVEAUX ENNEMIS ===
     'flying': {
@@ -269,14 +271,33 @@ const ENEMY_TYPES = {
         spawnInterval: 2,
         spawnCount: 2,
         turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    // === BOSS AERIENS ===
+    'flying-boss': {
+        health: 1500, speed: 0.5, damage: 80, reward: { iron: 150, copper: 80, gold: 30 },
+        isFlying: true,
+        isSpawner: true, spawnType: 'flying-swarm', spawnInterval: 3, spawnCount: 3,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'carrier-boss': {
+        health: 3000, speed: 0.3, damage: 50, reward: { iron: 200, copper: 100, gold: 50 },
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'flying-bomber', spawnInterval: 2, spawnCount: 2,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'mega-boss': {
+        health: 5000, speed: 0.2, damage: 200, reward: { iron: 300, copper: 150, gold: 100 },
+        turretAttackRange: 2, turretAttackDamage: 50, turretAttackRate: 1.5,
+        isSpawner: true, spawnType: 'tank', spawnInterval: 5, spawnCount: 1
     }
 };
 
 class GameState {
     constructor(gameMode = 'waves') {
         this.cellSize = 32;
-        this.cols = 50;
-        this.rows = 38;
+        this.cols = 150;  // 3x larger map
+        this.rows = 114;  // 3x larger map
         this.gameMode = gameMode; // 'waves' or 'endless'
 
         this.resources = { iron: 500, copper: 0, coal: 0, gold: 0 };
@@ -351,8 +372,8 @@ class GameState {
 
     generateResources() {
         const types = ['iron', 'copper', 'coal', 'gold'];
-        // More resources for larger map
-        const counts = { iron: 25, copper: 18, coal: 12, gold: 8 };
+        // 3x more resources for 3x larger map
+        const counts = { iron: 75, copper: 54, coal: 36, gold: 24 };
 
         for (const type of types) {
             let placed = 0;
@@ -567,6 +588,9 @@ class GameState {
             if (this.endlessDifficulty >= 2.8) types.push('transport');
             if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05) types.push('boss');
             if (this.endlessDifficulty >= 3.5) types.push('transport-elite');
+            if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03) types.push('flying-boss');
+            if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02) types.push('carrier-boss');
+            if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01) types.push('mega-boss');
 
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -588,8 +612,10 @@ class GameState {
                 return;
             }
 
-            // Scaling: HP increases with difficulty, speed increases slightly
+            // Scaling: HP, speed, damage, and attack range increase with difficulty
             const speedMult = 1 + (this.endlessDifficulty - 1) * 0.15;
+            const damageMult = 1 + (this.endlessDifficulty - 1) * 0.2;
+            const attackRangeMult = 1 + (this.endlessDifficulty - 1) * 0.1;
 
             const enemy = {
                 id: Date.now() + Math.random(),
@@ -601,7 +627,9 @@ class GameState {
                 health: config.health * this.endlessDifficulty,
                 maxHealth: config.health * this.endlessDifficulty,
                 speed: config.speed * speedMult,
-                damage: config.damage,
+                damage: config.damage * damageMult,
+                turretAttackRange: (config.turretAttackRange || 0) * attackRangeMult,
+                turretAttackDamage: (config.turretAttackDamage || 0) * damageMult,
                 path: [],
                 pathIndex: 0,
                 dead: false,
@@ -609,14 +637,17 @@ class GameState {
                 burning: false,
                 burnTime: 0,
                 burnDamage: 0,
-                spawnTimer: 0 // For transport units
+                spawnTimer: 0 // For transport/spawner units
             };
 
             const path = this.findPath(x, y, this.nexusX, this.nexusY);
             if (path) {
                 enemy.path = path;
-                this.enemies.push(enemy);
+            } else {
+                // No path found - mark enemy to go through walls
+                enemy.ignoreWalls = true;
             }
+            this.enemies.push(enemy);
         } catch (error) {
             console.error('Error in spawnEndlessEnemy:', error);
         }
@@ -741,6 +772,21 @@ class GameState {
             this.enemiesToSpawn.push({ type: 'boss', delay: 10 });
         }
 
+        // Flying boss every 15 waves (starting wave 15)
+        if (this.waveNumber >= 15 && this.waveNumber % 15 === 0) {
+            this.enemiesToSpawn.push({ type: 'flying-boss', delay: 12 });
+        }
+
+        // Carrier boss every 25 waves (starting wave 25)
+        if (this.waveNumber >= 25 && this.waveNumber % 25 === 0) {
+            this.enemiesToSpawn.push({ type: 'carrier-boss', delay: 15 });
+        }
+
+        // Mega boss every 50 waves (starting wave 50)
+        if (this.waveNumber >= 50 && this.waveNumber % 50 === 0) {
+            this.enemiesToSpawn.push({ type: 'mega-boss', delay: 20 });
+        }
+
         this.enemiesToSpawn.sort((a, b) => a.delay - b.delay);
     }
 
@@ -764,35 +810,43 @@ class GameState {
                 return;
             }
 
-            // Scaling: HP increases 10% per wave, speed increases 3% per wave
+            // Scaling: HP increases 10% per wave, speed 3%, damage 5%, attack range 3%
             const healthMult = 1 + (this.waveNumber - 1) * 0.1;
             const speedMult = 1 + (this.waveNumber - 1) * 0.03;
+            const damageMult = 1 + (this.waveNumber - 1) * 0.05;
+            const attackRangeMult = 1 + (this.waveNumber - 1) * 0.03;
 
-        const enemy = {
-            id: Date.now() + Math.random(),
-            type: enemyData.type,
-            x: x * this.cellSize + this.cellSize / 2,
-            y: y * this.cellSize + this.cellSize / 2,
-            gridX: x,
-            gridY: y,
-            health: config.health * healthMult,
-            maxHealth: config.health * healthMult,
-            speed: config.speed * speedMult,
-            damage: config.damage,
-            path: [],
-            pathIndex: 0,
-            dead: false,
-            reachedNexus: false,
-            burning: false,
-            burnTime: 0,
-            burnDamage: 0
-        };
+            const enemy = {
+                id: Date.now() + Math.random(),
+                type: enemyData.type,
+                x: x * this.cellSize + this.cellSize / 2,
+                y: y * this.cellSize + this.cellSize / 2,
+                gridX: x,
+                gridY: y,
+                health: config.health * healthMult,
+                maxHealth: config.health * healthMult,
+                speed: config.speed * speedMult,
+                damage: config.damage * damageMult,
+                turretAttackRange: (config.turretAttackRange || 0) * attackRangeMult,
+                turretAttackDamage: (config.turretAttackDamage || 0) * damageMult,
+                path: [],
+                pathIndex: 0,
+                dead: false,
+                reachedNexus: false,
+                burning: false,
+                burnTime: 0,
+                burnDamage: 0,
+                spawnTimer: 0
+            };
 
-        const path = this.findPath(x, y, this.nexusX, this.nexusY);
-        if (path) {
-            enemy.path = path;
+            const path = this.findPath(x, y, this.nexusX, this.nexusY);
+            if (path) {
+                enemy.path = path;
+            } else {
+                // No path found - mark enemy to go through walls
+                enemy.ignoreWalls = true;
+            }
             this.enemies.push(enemy);
-        }
         } catch (error) {
             console.error('Error spawning enemy:', error);
         }
@@ -905,8 +959,8 @@ class GameState {
         if (enemy.turretAttackCooldown === undefined) enemy.turretAttackCooldown = 0;
         enemy.turretAttackCooldown -= deltaTime;
 
-        // Transport planes spawn units while moving
-        if (enemyType && enemyType.isTransport) {
+        // Transport planes and spawner enemies spawn units while moving
+        if (enemyType && (enemyType.isTransport || enemyType.isSpawner)) {
             if (enemy.spawnTimer === undefined) enemy.spawnTimer = 0;
             enemy.spawnTimer += deltaTime;
 
@@ -917,12 +971,12 @@ class GameState {
             }
         }
 
-        // Movement - Flying enemies go directly to nexus
+        // Movement - Flying enemies or enemies with no path go directly to nexus
         const nexusWorldX = this.nexusX * this.cellSize + this.cellSize / 2;
         const nexusWorldY = this.nexusY * this.cellSize + this.cellSize / 2;
 
-        if (enemyType && enemyType.isFlying) {
-            // Flying: direct path to nexus
+        if ((enemyType && enemyType.isFlying) || enemy.ignoreWalls) {
+            // Flying or ignoreWalls: direct path to nexus (through walls if needed)
             const dx = nexusWorldX - enemy.x;
             const dy = nexusWorldY - enemy.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -965,8 +1019,9 @@ class GameState {
         enemy.gridX = Math.floor(enemy.x / this.cellSize);
         enemy.gridY = Math.floor(enemy.y / this.cellSize);
 
-        // Attack turrets while passing
-        if (enemyType && enemyType.turretAttackRange > 0 && enemy.turretAttackCooldown <= 0) {
+        // Attack turrets while passing (use scaled range from enemy or base from config)
+        const attackRange = enemy.turretAttackRange || (enemyType?.turretAttackRange || 0);
+        if (attackRange > 0 && enemy.turretAttackCooldown <= 0) {
             this.enemyAttackTurret(enemy, enemyType);
         }
 
@@ -987,8 +1042,9 @@ class GameState {
     }
 
     enemyAttackTurret(enemy, enemyType) {
-        const attackRange = (enemyType.turretAttackRange || 1) * this.cellSize;
-        const attackDamage = enemyType.turretAttackDamage || 5;
+        // Use enemy's scaled values if available, otherwise use base config
+        const attackRange = (enemy.turretAttackRange || enemyType.turretAttackRange || 1) * this.cellSize;
+        const attackDamage = enemy.turretAttackDamage || enemyType.turretAttackDamage || 5;
         const attackRate = enemyType.turretAttackRate || 1.5;
 
         // Find nearest turret in range
@@ -1897,7 +1953,8 @@ class GameState {
                 burning: e.burning,
                 frosted: e.frosted,
                 slowMultiplier: e.slowMultiplier,
-                isAttackingTurret: e.isAttackingTurret
+                isAttackingTurret: e.isAttackingTurret,
+                ignoreWalls: e.ignoreWalls || false
             })),
             turrets: this.turrets.map(t => ({
                 id: t.id,

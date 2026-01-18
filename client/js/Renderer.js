@@ -1,10 +1,11 @@
 import { RESOURCE_TYPES } from './data/buildings.js';
 
 export class Renderer {
-    constructor(canvas, grid) {
+    constructor(canvas, grid, camera = null) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.grid = grid;
+        this.camera = camera || { x: 0, y: 0, zoom: 1 };
 
         // Colors
         this.colors = {
@@ -23,33 +24,52 @@ export class Renderer {
         this.deathEffects = [];
     }
 
+    // Apply camera transform
+    applyCamera() {
+        this.ctx.save();
+        this.ctx.scale(this.camera.zoom, this.camera.zoom);
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+    }
+
+    // Restore camera transform
+    restoreCamera() {
+        this.ctx.restore();
+    }
+
     clear() {
         this.ctx.fillStyle = this.colors.background;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     drawGrid() {
+        // Calculate visible range for performance
+        const startX = Math.max(0, Math.floor(this.camera.x / this.grid.cellSize) - 1);
+        const endX = Math.min(this.grid.cols, Math.ceil((this.camera.x + this.canvas.width / this.camera.zoom) / this.grid.cellSize) + 1);
+        const startY = Math.max(0, Math.floor(this.camera.y / this.grid.cellSize) - 1);
+        const endY = Math.min(this.grid.rows, Math.ceil((this.camera.y + this.canvas.height / this.camera.zoom) / this.grid.cellSize) + 1);
+
         this.ctx.strokeStyle = this.colors.gridLine;
         this.ctx.lineWidth = 1;
 
-        for (let x = 0; x <= this.grid.cols; x++) {
+        // Only draw visible grid lines
+        for (let x = startX; x <= endX; x++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(x * this.grid.cellSize, 0);
-            this.ctx.lineTo(x * this.grid.cellSize, this.canvas.height);
+            this.ctx.moveTo(x * this.grid.cellSize, startY * this.grid.cellSize);
+            this.ctx.lineTo(x * this.grid.cellSize, endY * this.grid.cellSize);
             this.ctx.stroke();
         }
 
-        for (let y = 0; y <= this.grid.rows; y++) {
+        for (let y = startY; y <= endY; y++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y * this.grid.cellSize);
-            this.ctx.lineTo(this.canvas.width, y * this.grid.cellSize);
+            this.ctx.moveTo(startX * this.grid.cellSize, y * this.grid.cellSize);
+            this.ctx.lineTo(endX * this.grid.cellSize, y * this.grid.cellSize);
             this.ctx.stroke();
         }
 
-        // Draw border cells (non-buildable)
+        // Draw border cells (non-buildable) - only visible ones
         this.ctx.fillStyle = 'rgba(50, 50, 80, 0.5)';
-        for (let y = 0; y < this.grid.rows; y++) {
-            for (let x = 0; x < this.grid.cols; x++) {
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
                 if (this.grid.cells[y] && this.grid.cells[y][x] === 4) {
                     this.ctx.fillRect(
                         x * this.grid.cellSize,
@@ -63,9 +83,15 @@ export class Renderer {
     }
 
     drawResources() {
-        for (let y = 0; y < this.grid.rows; y++) {
-            for (let x = 0; x < this.grid.cols; x++) {
-                if (this.grid.cells[y][x] === 2) {
+        // Calculate visible range for performance
+        const startX = Math.max(0, Math.floor(this.camera.x / this.grid.cellSize) - 1);
+        const endX = Math.min(this.grid.cols, Math.ceil((this.camera.x + this.canvas.width / this.camera.zoom) / this.grid.cellSize) + 1);
+        const startY = Math.max(0, Math.floor(this.camera.y / this.grid.cellSize) - 1);
+        const endY = Math.min(this.grid.rows, Math.ceil((this.camera.y + this.canvas.height / this.camera.zoom) / this.grid.cellSize) + 1);
+
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                if (this.grid.cells[y] && this.grid.cells[y][x] === 2) {
                     const resourceType = this.grid.resourceMap[y][x];
                     const resource = RESOURCE_TYPES[resourceType];
 

@@ -214,5 +214,56 @@ export const ENEMY_TYPES = {
         turretAttackRange: 0,
         turretAttackDamage: 0,
         turretAttackRate: 999
+    },
+    // === BOSS AERIENS ===
+    'flying-boss': {
+        name: 'Flying Boss',
+        health: 1500,
+        speed: 0.5,
+        damage: 80,
+        color: '#cc44ff',
+        size: 1.3,
+        isFlying: true,
+        isSpawner: true,
+        spawnType: 'flying-swarm',
+        spawnInterval: 3,
+        spawnCount: 3,
+        reward: { iron: 150, copper: 80, gold: 30 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    'carrier-boss': {
+        name: 'Carrier Boss',
+        health: 3000,
+        speed: 0.3,
+        damage: 50,
+        color: '#44cc88',
+        size: 1.6,
+        isFlying: true,
+        isTransport: true,
+        spawnType: 'flying-bomber',
+        spawnInterval: 2,
+        spawnCount: 2,
+        reward: { iron: 200, copper: 100, gold: 50 },
+        turretAttackRange: 0,
+        turretAttackDamage: 0,
+        turretAttackRate: 999
+    },
+    'mega-boss': {
+        name: 'Mega Boss',
+        health: 5000,
+        speed: 0.2,
+        damage: 200,
+        color: '#ff0000',
+        size: 2.0,
+        isSpawner: true,
+        spawnType: 'tank',
+        spawnInterval: 5,
+        spawnCount: 1,
+        reward: { iron: 300, copper: 150, gold: 100 },
+        turretAttackRange: 2,
+        turretAttackDamage: 50,
+        turretAttackRate: 1.5
     }
 };

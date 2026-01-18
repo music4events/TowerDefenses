@@ -28,8 +28,8 @@ export class Grid {
 
     generateResources() {
         const resourceTypes = ['iron', 'copper', 'coal', 'gold'];
-        // More resources for larger map
-        const resourceCounts = { iron: 25, copper: 18, coal: 12, gold: 8 };
+        // 3x more resources for 3x larger map
+        const resourceCounts = { iron: 75, copper: 54, coal: 36, gold: 24 };
 
         for (const type of resourceTypes) {
             let placed = 0;

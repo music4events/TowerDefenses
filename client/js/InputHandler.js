@@ -1,10 +1,13 @@
 export class InputHandler {
-    constructor(canvas, grid) {
+    constructor(canvas, grid, camera = null) {
         this.canvas = canvas;
         this.grid = grid;
+        this.camera = camera || { x: 0, y: 0, zoom: 1 };
 
-        this.mouseX = 0;
+        this.mouseX = 0;  // Screen coordinates
         this.mouseY = 0;
+        this.worldX = 0;  // World coordinates (after camera transform)
+        this.worldY = 0;
         this.gridX = 0;
         this.gridY = 0;
 
@@ -32,7 +35,11 @@ export class InputHandler {
         this.mouseX = e.clientX - rect.left;
         this.mouseY = e.clientY - rect.top;
 
-        const gridPos = this.grid.worldToGrid(this.mouseX, this.mouseY);
+        // Convert screen coordinates to world coordinates using camera
+        this.worldX = (this.mouseX / this.camera.zoom) + this.camera.x;
+        this.worldY = (this.mouseY / this.camera.zoom) + this.camera.y;
+
+        const gridPos = this.grid.worldToGrid(this.worldX, this.worldY);
         this.gridX = gridPos.x;
         this.gridY = gridPos.y;
     }
@@ -100,6 +107,10 @@ export class InputHandler {
     }
 
     getMouseWorldPosition() {
+        return { x: this.worldX, y: this.worldY };
+    }
+
+    getMouseScreenPosition() {
         return { x: this.mouseX, y: this.mouseY };
     }
 }
