@@ -640,6 +640,22 @@ export class Game {
                 }
             }
 
+            // Special handling for flak that reaches target area
+            if (proj.type === 'flak' && proj.targetX !== undefined) {
+                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
+                if (distToTarget < 15) {
+                    // Explode at target position
+                    if (proj.aoeRadius > 0) {
+                        this.renderer.addFlakExplosion(proj.x, proj.y, proj.aoeRadius * 2);
+                        if (!this.isMultiplayer) {
+                            this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
+                        }
+                    }
+                    this.projectiles.splice(i, 1);
+                    continue;
+                }
+            }
+
             // Move projectile
             if (proj.vx !== undefined) {
                 proj.x += proj.vx * deltaTime;

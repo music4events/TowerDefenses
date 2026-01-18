@@ -43,11 +43,15 @@ export const TURRET_TYPES = {
     'turret-flamethrower': {
         name: 'Lance-flammes',
         damage: 15,
-        range: 3,
-        fireRate: 0.05,
+        range: 4,                 // Portée augmentée
+        fireRate: 0.04,           // Plus rapide
         color: '#e74c3c',
         cost: { iron: 150, coal: 30 },
         continuous: true,
+        projectileSpeed: 7,       // Flammes plus rapides
+        flameCount: 6,            // Plus de particules
+        flameLife: 0.9,           // Durée plus longue
+        flameSpread: 0.35,
         dotDamage: 5,
         dotDuration: 2,
         size: 0.8,
@@ -335,18 +339,20 @@ export const TURRET_TYPES = {
     'turret-flak': {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
-        damage: 5,
-        range: 12,
-        fireRate: 0.15,           // Tir très rapide!
+        damage: 8,
+        range: 14,
+        fireRate: 0.08,           // Tir ULTRA rapide!
         color: '#2a5caa',
         cost: { iron: 800, copper: 300, gold: 100 },
-        projectileSpeed: 30,
+        projectileSpeed: 35,
         projectileColor: '#00ddff',
 
         isAntiAir: true,
-        flakCount: 6,             // 6 projectiles par salve
-        flakSpread: 2.0,          // Plus de dispersion
+        flakCount: 12,            // 12 projectiles par salve!
+        flakSpread: 2.5,          // Plus de dispersion
         barrelCount: 2,
+        flakExplosion: true,      // Explosions à l'impact!
+        flakExplosionRadius: 0.5, // Petit rayon AOE
 
         size: 2.8,
         health: 400,
@@ -523,21 +529,21 @@ export const TURRET_TYPES = {
     'turret-missile-battery': {
         name: 'Missile Battery',
         gridSize: 3,
-        damage: 50,               // Plus de dégâts!
+        damage: 55,               // Plus de dégâts!
         range: 18,
-        fireRate: 2.0,            // Plus rapide!
+        fireRate: 1.8,            // Plus rapide!
         color: '#556b2f',
         cost: { iron: 1200, copper: 500, gold: 200 },
-        projectileSpeed: 16,      // Missiles rapides!
+        projectileSpeed: 18,      // Missiles rapides!
         projectileColor: '#9acd32',
 
         isMissileBattery: true,
-        missileCount: 16,         // 16 missiles par salve!
+        missileCount: 12,         // 12 missiles comme demandé!
         isMissile: true,
-        homingStrength: 0.3,      // Guidage amélioré!
-        salvoDelay: 0.03,         // Salve ultra rapide!
+        homingStrength: 0.35,     // Guidage amélioré!
+        salvoDelay: 0.04,         // Salve rapide!
         trailColor: '#adff2f',
-        explosionRadius: 1.5,     // Explosions plus grosses!
+        explosionRadius: 1.8,     // Grosses explosions!
 
         size: 2.8,
         health: 520,

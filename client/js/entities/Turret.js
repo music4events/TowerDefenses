@@ -319,7 +319,7 @@ export class Turret {
             return;
         }
         if (this.config.isMissileBattery) {
-            this.fireMissileBattery(projectiles);
+            this.fireMissileBattery(projectiles, game);
             return;
         }
         if (this.config.isOrbital) {
@@ -545,35 +545,40 @@ export class Turret {
     }
 
     fireFlame(projectiles) {
-        const spread = 0.3;
+        const spread = this.config.flameSpread || 0.4;
         const baseAngle = this.angle;
+        const flameCount = this.config.flameCount || 5;  // Plus de particules!
+        const flameLife = this.config.flameLife || 0.8;  // Durée plus longue!
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < flameCount; i++) {
             const angle = baseAngle + (Math.random() - 0.5) * spread;
-            const speed = this.config.projectileSpeed || 5;
+            const speed = (this.config.projectileSpeed || 6) * (0.8 + Math.random() * 0.4);
+            const size = 8 + Math.random() * 12;  // Taille variable
 
             projectiles.push({
                 type: 'flame',
-                x: this.x,
-                y: this.y,
+                x: this.x + Math.cos(baseAngle) * this.grid.cellSize * 0.3,
+                y: this.y + Math.sin(baseAngle) * this.grid.cellSize * 0.3,
                 vx: Math.cos(angle) * speed * this.grid.cellSize,
                 vy: Math.sin(angle) * speed * this.grid.cellSize,
                 damage: this.config.damage * 0.1,
                 config: this.config,
-                life: 0.3,
+                life: flameLife * (0.7 + Math.random() * 0.6),  // Durée variable
                 dotDamage: this.config.dotDamage,
-                dotDuration: this.config.dotDuration
+                dotDuration: this.config.dotDuration,
+                size: size,
+                startSize: size
             });
         }
     }
 
     fireFlak(projectiles) {
         const flakCount = this.config.flakCount || 12;
-        const spreadRadius = (this.config.flakSpread || 1.5) * this.grid.cellSize;
+        const spreadRadius = (this.config.flakSpread || 2.5) * this.grid.cellSize;
         const barrels = this.config.barrelCount || 2;
-        const speed = (this.config.projectileSpeed || 25) * this.grid.cellSize;
+        const speed = (this.config.projectileSpeed || 35) * this.grid.cellSize;
 
-        const barrelOffset = this.grid.cellSize * 0.3;
+        const barrelOffset = this.grid.cellSize * 0.4;
 
         for (let i = 0; i < flakCount; i++) {
             const barrelSide = (i % barrels === 0) ? -1 : 1;
@@ -591,7 +596,7 @@ export class Turret {
             const dy = targetY - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            const delay = (i / flakCount) * 0.2;
+            const delay = (i / flakCount) * 0.15;  // Salve plus rapide
 
             projectiles.push({
                 type: 'flak',
@@ -607,7 +612,10 @@ export class Turret {
                 targetY: targetY,
                 hitEnemies: [],
                 delay: delay,
-                life: 1.0
+                life: 0.8,
+                // AOE explosion on impact
+                aoeRadius: this.config.flakExplosion ? (this.config.flakExplosionRadius || 0.5) * this.grid.cellSize : 0,
+                isFlak: true
             });
         }
     }
@@ -1054,10 +1062,26 @@ export class Turret {
         });
     }
 
-    fireMissileBattery(projectiles) {
+    fireMissileBattery(projectiles, game) {
+        // Target the STRONGEST enemy (highest HP) in range
+        let strongestEnemy = null;
+        let maxHealth = 0;
+
+        if (game && game.enemies) {
+            for (const enemy of game.enemies) {
+                if (enemy.dead) continue;
+                const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+                if (dist <= this.range && enemy.health > maxHealth) {
+                    maxHealth = enemy.health;
+                    strongestEnemy = enemy;
+                }
+            }
+        }
+
+        const target = strongestEnemy || this.target;
         const missileCount = this.config.missileCount || 12;
-        const speed = (this.config.projectileSpeed || 12) * this.grid.cellSize;
-        const salvoDelay = this.config.salvoDelay || 0.05;
+        const speed = (this.config.projectileSpeed || 16) * this.grid.cellSize;
+        const salvoDelay = this.config.salvoDelay || 0.03;
 
         for (let i = 0; i < missileCount; i++) {
             const row = Math.floor(i / 4);
@@ -1068,22 +1092,25 @@ export class Turret {
             const startX = this.x + offsetX;
             const startY = this.y + offsetY;
 
-            const dx = this.target.x - startX;
-            const dy = this.target.y - startY;
+            const dx = target.x - startX;
+            const dy = target.y - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Add slight random spread for visual effect
+            const spreadAngle = (Math.random() - 0.5) * 0.3;
 
             projectiles.push({
                 type: 'battery-missile',
                 x: startX,
                 y: startY,
-                vx: (dx / dist) * speed * 0.5, // Start slow
-                vy: (dy / dist) * speed * 0.5,
+                vx: (dx / dist) * speed * 0.6 * Math.cos(spreadAngle),
+                vy: (dy / dist) * speed * 0.6 * Math.sin(spreadAngle),
                 maxSpeed: speed,
                 damage: this.config.damage,
                 config: this.config,
-                target: this.target,
-                homingStrength: this.config.homingStrength || 0.2,
-                aoeRadius: (this.config.explosionRadius || 1.2) * this.grid.cellSize,
+                target: target,
+                homingStrength: this.config.homingStrength || 0.3,
+                aoeRadius: (this.config.explosionRadius || 1.5) * this.grid.cellSize,
                 sourceX: startX,
                 sourceY: startY,
                 hitEnemies: [],

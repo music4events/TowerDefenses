@@ -1221,11 +1221,44 @@ export class Renderer {
             // Electric arc
             this.drawLightning(projectile.startX, projectile.startY, x, y, '#00d4ff');
         } else if (type === 'flame') {
-            // Flame particle
-            this.ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, ${projectile.life || 1})`;
+            // Epic flame particle with gradient and glow
+            const lifeRatio = projectile.life / 1.0;  // Assuming max life ~1
+            const size = (projectile.size || 10) * (0.3 + lifeRatio * 0.7);
+
+            // Color transitions from white/yellow -> orange -> red as it fades
+            const r = 255;
+            const g = Math.floor(255 * lifeRatio * lifeRatio);  // Yellow fades faster
+            const b = Math.floor(100 * lifeRatio * lifeRatio * lifeRatio);
+
+            // Outer glow
+            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
+            glowGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lifeRatio * 0.8})`);
+            glowGradient.addColorStop(0.5, `rgba(255, ${Math.floor(g * 0.6)}, 0, ${lifeRatio * 0.4})`);
+            glowGradient.addColorStop(1, `rgba(255, 50, 0, 0)`);
+            this.ctx.fillStyle = glowGradient;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 4 + Math.random() * 4, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
             this.ctx.fill();
+
+            // Core flame
+            const coreGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size);
+            coreGradient.addColorStop(0, `rgba(255, 255, 200, ${lifeRatio})`);
+            coreGradient.addColorStop(0.3, `rgba(255, ${g}, 50, ${lifeRatio * 0.9})`);
+            coreGradient.addColorStop(1, `rgba(255, 100, 0, ${lifeRatio * 0.5})`);
+            this.ctx.fillStyle = coreGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Sparks
+            if (Math.random() > 0.7) {
+                this.ctx.fillStyle = `rgba(255, 255, 100, ${lifeRatio})`;
+                const sparkX = x + (Math.random() - 0.5) * size * 2;
+                const sparkY = y + (Math.random() - 0.5) * size * 2;
+                this.ctx.beginPath();
+                this.ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
         } else if (type === 'pellet') {
             // Small shotgun pellet
             this.ctx.fillStyle = projColor;
@@ -1969,6 +2002,18 @@ export class Renderer {
         });
     }
 
+    addFlakExplosion(x, y, radius) {
+        // Small flak burst explosion
+        this.explosions.push({
+            x, y,
+            radius: 0,
+            maxRadius: radius,
+            alpha: 1,
+            time: 0,
+            isFlakExplosion: true
+        });
+    }
+
     drawExplosions(deltaTime) {
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const exp = this.explosions[i];
@@ -2167,6 +2212,40 @@ export class Renderer {
                     const py = exp.y + Math.sin(pAngle) * pDist;
                     this.ctx.beginPath();
                     this.ctx.arc(px, py, 3 + Math.random() * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+            } else if (exp.isFlakExplosion) {
+                // Small flak burst - cyan/white flash
+                const duration = 0.2;
+                exp.alpha = 1 - exp.time / duration;
+                exp.radius = exp.maxRadius * (exp.time / 0.1);
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Flash burst
+                const flashGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
+                flashGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.alpha})`);
+                flashGradient.addColorStop(0.3, `rgba(0, 221, 255, ${exp.alpha * 0.8})`);
+                flashGradient.addColorStop(0.7, `rgba(0, 150, 255, ${exp.alpha * 0.4})`);
+                flashGradient.addColorStop(1, `rgba(0, 100, 200, 0)`);
+                this.ctx.fillStyle = flashGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Sparks
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
+                for (let s = 0; s < 4; s++) {
+                    const sparkAngle = (s / 4) * Math.PI * 2 + exp.time * 10;
+                    const sparkDist = exp.radius * 0.8;
+                    const sx = exp.x + Math.cos(sparkAngle) * sparkDist;
+                    const sy = exp.y + Math.sin(sparkAngle) * sparkDist;
+                    this.ctx.beginPath();
+                    this.ctx.arc(sx, sy, 2, 0, Math.PI * 2);
                     this.ctx.fill();
                 }
 
