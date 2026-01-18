@@ -32,8 +32,8 @@ export class Game {
         this.camera = {
             x: 0,
             y: 0,
-            zoom: 1,
-            minZoom: 0.25,
+            zoom: 0.5,  // Start zoomed out to see more of the map
+            minZoom: 0.2,
             maxZoom: 2,
             isPanning: false,
             lastMouseX: 0,

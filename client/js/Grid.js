@@ -18,7 +18,12 @@ export class Grid {
             this.cells[y] = [];
             this.resourceMap[y] = [];
             for (let x = 0; x < this.cols; x++) {
-                this.cells[y][x] = 0;
+                // Mark borders as non-buildable (cell value 4)
+                if (x === 0 || x === this.cols - 1 || y === 0 || y === this.rows - 1) {
+                    this.cells[y][x] = 4; // Border - walkable but not buildable
+                } else {
+                    this.cells[y][x] = 0;
+                }
                 this.resourceMap[y][x] = null;
             }
         }
