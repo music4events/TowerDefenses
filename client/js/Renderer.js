@@ -45,6 +45,21 @@ export class Renderer {
             this.ctx.lineTo(this.canvas.width, y * this.grid.cellSize);
             this.ctx.stroke();
         }
+
+        // Draw border cells (non-buildable)
+        this.ctx.fillStyle = 'rgba(50, 50, 80, 0.5)';
+        for (let y = 0; y < this.grid.rows; y++) {
+            for (let x = 0; x < this.grid.cols; x++) {
+                if (this.grid.cells[y] && this.grid.cells[y][x] === 4) {
+                    this.ctx.fillRect(
+                        x * this.grid.cellSize,
+                        y * this.grid.cellSize,
+                        this.grid.cellSize,
+                        this.grid.cellSize
+                    );
+                }
+            }
+        }
     }
 
     drawResources() {

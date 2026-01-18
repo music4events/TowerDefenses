@@ -6,7 +6,7 @@ export class Grid {
         this.cols = Math.floor(width / cellSize);
         this.rows = Math.floor(height / cellSize);
 
-        // Grid cells: 0 = empty, 1 = occupied, 2 = resource, 3 = nexus, 4 = blocked
+        // Grid cells: 0 = empty, 1 = occupied, 2 = resource, 3 = nexus, 4 = border (walkable, not buildable)
         this.cells = [];
         this.resourceMap = []; // Type of resource at each cell
 
@@ -28,7 +28,8 @@ export class Grid {
 
     generateResources() {
         const resourceTypes = ['iron', 'copper', 'coal', 'gold'];
-        const resourceCounts = { iron: 15, copper: 10, coal: 8, gold: 5 };
+        // More resources for larger map
+        const resourceCounts = { iron: 25, copper: 18, coal: 12, gold: 8 };
 
         for (const type of resourceTypes) {
             let placed = 0;
@@ -192,9 +193,9 @@ export class Grid {
     isWalkable(x, y) {
         if (!this.isValidCell(x, y)) return false;
         const cell = this.cells[y][x];
-        // Can walk on empty (0), resource (2), nexus (3)
-        // Cannot walk on occupied (1) or blocked (4)
-        return cell === 0 || cell === 2 || cell === 3;
+        // Can walk on empty (0), resource (2), nexus (3), border (4)
+        // Cannot walk on occupied (1)
+        return cell === 0 || cell === 2 || cell === 3 || cell === 4;
     }
 
     reconstructPath(cameFrom, current) {

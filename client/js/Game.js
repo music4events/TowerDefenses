@@ -20,9 +20,9 @@ export class Game {
         this.network = network;
         this.gameMode = gameMode; // 'waves' or 'endless'
 
-        // Set canvas size
-        this.canvas.width = 40 * this.cellSize; // 1280
-        this.canvas.height = 30 * this.cellSize; // 960
+        // Set canvas size (larger map)
+        this.canvas.width = 50 * this.cellSize; // 1600
+        this.canvas.height = 38 * this.cellSize; // 1216
 
         // Initialize systems
         this.grid = new Grid(this.canvas.width, this.canvas.height, this.cellSize);

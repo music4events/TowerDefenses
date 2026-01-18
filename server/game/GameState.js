@@ -239,8 +239,8 @@ const ENEMY_TYPES = {
 class GameState {
     constructor(gameMode = 'waves') {
         this.cellSize = 32;
-        this.cols = 40;
-        this.rows = 30;
+        this.cols = 50;
+        this.rows = 38;
         this.gameMode = gameMode; // 'waves' or 'endless'
 
         this.resources = { iron: 500, copper: 0, coal: 0, gold: 0 };
@@ -277,7 +277,12 @@ class GameState {
             this.grid[y] = [];
             this.resourceMap[y] = [];
             for (let x = 0; x < this.cols; x++) {
-                this.grid[y][x] = 0;
+                // Mark borders as non-buildable (cell value 4)
+                if (x === 0 || x === this.cols - 1 || y === 0 || y === this.rows - 1) {
+                    this.grid[y][x] = 4; // Border - walkable but not buildable
+                } else {
+                    this.grid[y][x] = 0;
+                }
                 this.resourceMap[y][x] = null;
             }
         }
@@ -298,7 +303,8 @@ class GameState {
 
     generateResources() {
         const types = ['iron', 'copper', 'coal', 'gold'];
-        const counts = { iron: 15, copper: 10, coal: 8, gold: 5 };
+        // More resources for larger map
+        const counts = { iron: 25, copper: 18, coal: 12, gold: 8 };
 
         for (const type of types) {
             let placed = 0;
@@ -1646,7 +1652,8 @@ class GameState {
     isWalkable(x, y) {
         if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) return false;
         const cell = this.grid[y][x];
-        return cell === 0 || cell === 2 || cell === 3;
+        // 0 = empty, 2 = resource, 3 = nexus, 4 = border (walkable but not buildable)
+        return cell === 0 || cell === 2 || cell === 3 || cell === 4;
     }
 
     reconstructPath(cameFrom, current) {
