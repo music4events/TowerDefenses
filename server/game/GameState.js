@@ -159,7 +159,8 @@ class GameState {
         // Update extractors
         for (const extractor of this.extractors) {
             extractor.timer += deltaTime;
-            if (extractor.timer >= 1) {
+            const extractionTime = 1 / (extractor.extractionRate || 1);
+            if (extractor.timer >= extractionTime) {
                 extractor.timer = 0;
                 this.resources[extractor.resourceType] =
                     (this.resources[extractor.resourceType] || 0) + 1;
@@ -604,7 +605,9 @@ class GameState {
                 y: worldY,
                 angle: 0,
                 cooldown: 0,
-                config,
+                config: { ...config }, // Copy config so we can modify it
+                level: 1,
+                maxLevel: 5,
                 playerId
             });
             this.grid[gridY][gridX] = 1;
@@ -631,6 +634,9 @@ class GameState {
                     y: worldY,
                     resourceType,
                     timer: 0,
+                    level: 1,
+                    maxLevel: 5,
+                    extractionRate: 1, // Resources per second
                     playerId
                 });
                 this.grid[gridY][gridX] = 1;
@@ -638,6 +644,124 @@ class GameState {
         }
 
         return { success: true };
+    }
+
+    sellBuilding(gridX, gridY, playerId) {
+        // Find turret at position
+        const turretIndex = this.turrets.findIndex(t => t.gridX === gridX && t.gridY === gridY);
+        if (turretIndex > -1) {
+            const turret = this.turrets[turretIndex];
+            const baseCost = TURRET_TYPES[turret.type]?.cost || {};
+
+            // 75% refund, scaled by level
+            const refundMultiplier = 0.75 * (1 + (turret.level - 1) * 0.5);
+            for (const [res, amt] of Object.entries(baseCost)) {
+                this.resources[res] = (this.resources[res] || 0) + Math.floor(amt * refundMultiplier);
+            }
+
+            this.turrets.splice(turretIndex, 1);
+            this.grid[gridY][gridX] = 0;
+            return { success: true, type: 'turret' };
+        }
+
+        // Find extractor at position
+        const extractorIndex = this.extractors.findIndex(e => e.gridX === gridX && e.gridY === gridY);
+        if (extractorIndex > -1) {
+            const extractor = this.extractors[extractorIndex];
+            const baseCost = BUILDING_TYPES['extractor']?.cost || { iron: 50 };
+
+            // 75% refund, scaled by level
+            const refundMultiplier = 0.75 * (1 + (extractor.level - 1) * 0.5);
+            for (const [res, amt] of Object.entries(baseCost)) {
+                this.resources[res] = (this.resources[res] || 0) + Math.floor(amt * refundMultiplier);
+            }
+
+            this.extractors.splice(extractorIndex, 1);
+            this.grid[gridY][gridX] = 2; // Back to resource cell
+            return { success: true, type: 'extractor' };
+        }
+
+        // Find wall at position
+        const wallIndex = this.walls.findIndex(w => w.gridX === gridX && w.gridY === gridY);
+        if (wallIndex > -1) {
+            const baseCost = BUILDING_TYPES['wall']?.cost || { iron: 20 };
+
+            // 75% refund
+            for (const [res, amt] of Object.entries(baseCost)) {
+                this.resources[res] = (this.resources[res] || 0) + Math.floor(amt * 0.75);
+            }
+
+            this.walls.splice(wallIndex, 1);
+            this.grid[gridY][gridX] = 0;
+            this.recalculatePaths();
+            return { success: true, type: 'wall' };
+        }
+
+        return { success: false, message: 'No building at this position' };
+    }
+
+    upgradeBuilding(gridX, gridY, playerId) {
+        // Find turret at position
+        const turret = this.turrets.find(t => t.gridX === gridX && t.gridY === gridY);
+        if (turret) {
+            if (turret.level >= turret.maxLevel) {
+                return { success: false, message: 'Already max level' };
+            }
+
+            // Upgrade cost: 50% of base cost per level
+            const baseCost = TURRET_TYPES[turret.type]?.cost || {};
+            const upgradeCost = {};
+            for (const [res, amt] of Object.entries(baseCost)) {
+                upgradeCost[res] = Math.floor(amt * 0.5 * turret.level);
+            }
+
+            if (!this.canAfford(upgradeCost)) {
+                return { success: false, message: 'Not enough resources' };
+            }
+
+            // Deduct cost
+            for (const [res, amt] of Object.entries(upgradeCost)) {
+                this.resources[res] -= amt;
+            }
+
+            // Apply upgrade
+            turret.level++;
+            turret.config.damage = Math.floor(turret.config.damage * 1.25);
+            turret.config.range = turret.config.range * 1.1;
+            if (turret.config.fireRate > 0.05) {
+                turret.config.fireRate = turret.config.fireRate * 0.9;
+            }
+
+            return { success: true, type: 'turret', level: turret.level };
+        }
+
+        // Find extractor at position
+        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
+        if (extractor) {
+            if (extractor.level >= extractor.maxLevel) {
+                return { success: false, message: 'Already max level' };
+            }
+
+            // Upgrade cost: 30 iron + 10 per level
+            const upgradeCost = { iron: 30 + extractor.level * 10 };
+
+            if (!this.canAfford(upgradeCost)) {
+                return { success: false, message: 'Not enough resources' };
+            }
+
+            // Deduct cost
+            for (const [res, amt] of Object.entries(upgradeCost)) {
+                this.resources[res] -= amt;
+            }
+
+            // Apply upgrade: +50% extraction rate per level
+            extractor.level++;
+            extractor.extractionRate = 1 + (extractor.level - 1) * 0.5;
+
+            return { success: true, type: 'extractor', level: extractor.level };
+        }
+
+        return { success: false, message: 'No upgradeable building at this position' };
     }
 
     canPlace(gridX, gridY, buildingType) {
@@ -803,7 +927,9 @@ class GameState {
                 gridY: e.gridY,
                 x: e.x,
                 y: e.y,
-                resourceType: e.resourceType
+                resourceType: e.resourceType,
+                level: e.level || 1,
+                extractionRate: e.extractionRate || 1
             })),
             projectiles: this.projectiles.map(p => ({
                 id: p.id,

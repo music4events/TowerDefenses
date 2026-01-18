@@ -19,6 +19,10 @@ export class Extractor {
         this.extractionTimer = 0;
         this.stored = 0;
         this.maxStorage = 50;
+
+        // Upgrade system
+        this.level = 1;
+        this.maxLevel = 5;
     }
 
     update(deltaTime) {
@@ -45,5 +49,29 @@ export class Extractor {
 
     isDestroyed() {
         return this.health <= 0;
+    }
+
+    upgrade() {
+        if (this.level >= this.maxLevel) return false;
+
+        this.level++;
+        // +50% extraction rate per level
+        this.extractionRate = (this.config.extractionRate || 1) * (1 + (this.level - 1) * 0.5);
+        // +20 max storage per level
+        this.maxStorage = 50 + (this.level - 1) * 20;
+
+        return true;
+    }
+
+    getUpgradeCost() {
+        if (this.level >= this.maxLevel) return null;
+        return { iron: 30 + this.level * 10 };
+    }
+
+    getSellValue() {
+        // 75% refund scaled by level
+        const baseCost = this.config.cost?.iron || 50;
+        const refundMultiplier = 0.75 * (1 + (this.level - 1) * 0.5);
+        return { iron: Math.floor(baseCost * refundMultiplier) };
     }
 }

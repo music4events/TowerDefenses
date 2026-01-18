@@ -186,6 +186,58 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Player sells building
+    socket.on('sellBuilding', (data) => {
+        if (!currentRoom) return;
+
+        const room = rooms.get(currentRoom);
+        if (!room || !room.started) return;
+
+        const result = room.gameState.sellBuilding(
+            data.gridX,
+            data.gridY,
+            socket.id
+        );
+
+        if (result.success) {
+            io.to(currentRoom).emit('buildingSold', {
+                gridX: data.gridX,
+                gridY: data.gridY,
+                playerId: socket.id,
+                resources: room.gameState.resources
+            });
+        } else {
+            socket.emit('sellFailed', { message: result.message });
+        }
+    });
+
+    // Player upgrades building
+    socket.on('upgradeBuilding', (data) => {
+        if (!currentRoom) return;
+
+        const room = rooms.get(currentRoom);
+        if (!room || !room.started) return;
+
+        const result = room.gameState.upgradeBuilding(
+            data.gridX,
+            data.gridY,
+            socket.id
+        );
+
+        if (result.success) {
+            io.to(currentRoom).emit('buildingUpgraded', {
+                gridX: data.gridX,
+                gridY: data.gridY,
+                type: result.type,
+                level: result.level,
+                playerId: socket.id,
+                resources: room.gameState.resources
+            });
+        } else {
+            socket.emit('upgradeFailed', { message: result.message });
+        }
+    });
+
     // Chat message
     socket.on('chatMessage', (data) => {
         if (!currentRoom) return;

@@ -266,7 +266,7 @@ export class Renderer {
     }
 
     drawExtractor(extractor) {
-        const { x, y, resourceType } = extractor;
+        const { x, y, resourceType, level } = extractor;
         const size = this.grid.cellSize * 0.8;
 
         const resource = RESOURCE_TYPES[resourceType];
@@ -275,8 +275,9 @@ export class Renderer {
         this.ctx.fillStyle = '#4a5568';
         this.ctx.fillRect(x - size / 2, y - size / 2, size, size);
 
-        // Rotating drill animation
-        const rotation = (Date.now() / 500) % (Math.PI * 2);
+        // Rotating drill animation - faster with higher level
+        const speedMultiplier = 1 + (level ? (level - 1) * 0.5 : 0);
+        const rotation = (Date.now() / (500 / speedMultiplier)) % (Math.PI * 2);
         this.ctx.save();
         this.ctx.translate(x, y);
         this.ctx.rotate(rotation);
@@ -285,6 +286,11 @@ export class Renderer {
         this.ctx.fillRect(-size / 6, -size / 3, size / 3, size / 1.5);
 
         this.ctx.restore();
+
+        // Draw upgrade stars
+        if (level && level > 1) {
+            this.drawStars(x, y + size / 2 + 8, level - 1);
+        }
     }
 
     drawEnemy(enemy) {

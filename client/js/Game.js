@@ -99,13 +99,18 @@ export class Game {
             return;
         }
 
-        // Check if clicking on a turret
+        // Check if clicking on a building (turret, extractor, wall)
         const turret = this.getTurretAt(gridX, gridY);
+        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
+        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
+        const hasBuilding = turret || extractor || wall;
 
-        if (this.actionMode === 'sell' && turret) {
-            this.sellTurret(turret);
-        } else if (this.actionMode === 'upgrade' && turret) {
-            this.upgradeTurret(turret);
+        if (this.actionMode === 'sell' && hasBuilding) {
+            this.sellBuilding(gridX, gridY);
+            this.selectedTurret = null;
+        } else if (this.actionMode === 'upgrade' && (turret || extractor)) {
+            this.upgradeBuilding(gridX, gridY);
+            this.selectedTurret = turret || null;
         } else if (turret) {
             this.selectedTurret = turret;
         } else {
@@ -122,10 +127,46 @@ export class Game {
         return this.getTurretAt(gridPos.x, gridPos.y);
     }
 
-    sellTurret(turret) {
-        // Not supported in multiplayer yet
-        if (this.isMultiplayer) return;
+    sellBuilding(gridX, gridY) {
+        // In multiplayer, send to server
+        if (this.isMultiplayer && this.network) {
+            this.network.sellBuilding(gridX, gridY);
+            return;
+        }
 
+        // Solo mode: handle locally
+        const turret = this.getTurretAt(gridX, gridY);
+        if (turret) {
+            this.sellTurret(turret);
+            return;
+        }
+
+        // Check for extractor
+        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
+        if (extractor) {
+            // Refund based on level
+            const sellValue = extractor.getSellValue ? extractor.getSellValue() : { iron: 37 };
+            for (const [resource, amount] of Object.entries(sellValue)) {
+                this.resources[resource] = (this.resources[resource] || 0) + amount;
+            }
+            const index = this.extractors.indexOf(extractor);
+            if (index > -1) this.extractors.splice(index, 1);
+            this.grid.removeBuilding(gridX, gridY);
+            return;
+        }
+
+        // Check for wall
+        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
+        if (wall) {
+            this.resources.iron = (this.resources.iron || 0) + 15;
+            const index = this.walls.indexOf(wall);
+            if (index > -1) this.walls.splice(index, 1);
+            this.grid.removeBuilding(gridX, gridY);
+            this.recalculateEnemyPaths();
+        }
+    }
+
+    sellTurret(turret) {
         if (!turret.getSellValue) return;
         const sellValue = turret.getSellValue();
 
@@ -149,10 +190,32 @@ export class Game {
         this.selectedTurret = null;
     }
 
-    upgradeTurret(turret) {
-        // Not supported in multiplayer yet
-        if (this.isMultiplayer) return;
+    upgradeBuilding(gridX, gridY) {
+        // In multiplayer, send to server
+        if (this.isMultiplayer && this.network) {
+            this.network.upgradeBuilding(gridX, gridY);
+            return;
+        }
 
+        // Solo mode: handle locally
+        const turret = this.getTurretAt(gridX, gridY);
+        if (turret) {
+            this.upgradeTurret(turret);
+            return;
+        }
+
+        // Check for extractor (solo upgrade)
+        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
+        if (extractor && extractor.upgrade) {
+            const cost = { iron: 30 + (extractor.level || 1) * 10 };
+            if (this.canAfford(cost)) {
+                this.resources.iron -= cost.iron;
+                extractor.upgrade();
+            }
+        }
+    }
+
+    upgradeTurret(turret) {
         if (!turret.level || !turret.maxLevel) return;
         if (turret.level >= turret.maxLevel) return;
 

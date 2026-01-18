@@ -137,6 +137,18 @@ export class Network {
         }
     }
 
+    sellBuilding(gridX, gridY) {
+        if (this.socket) {
+            this.socket.emit('sellBuilding', { gridX, gridY });
+        }
+    }
+
+    upgradeBuilding(gridX, gridY) {
+        if (this.socket) {
+            this.socket.emit('upgradeBuilding', { gridX, gridY });
+        }
+    }
+
     sendChatMessage(message) {
         if (this.socket) {
             this.socket.emit('chatMessage', { message });
