@@ -573,21 +573,22 @@ export class Turret {
     }
 
     fireFlak(projectiles) {
-        const flakCount = this.config.flakCount || 12;
-        const spreadRadius = (this.config.flakSpread || 2.5) * this.grid.cellSize;
+        const flakCount = this.config.flakCount || 16;
+        const spreadRadius = (this.config.flakSpread || 3) * this.grid.cellSize;
         const barrels = this.config.barrelCount || 2;
-        const speed = (this.config.projectileSpeed || 35) * this.grid.cellSize;
+        const speed = (this.config.projectileSpeed || 40) * this.grid.cellSize;
 
-        const barrelOffset = this.grid.cellSize * 0.4;
+        const barrelOffset = this.grid.cellSize * 0.5;
 
         for (let i = 0; i < flakCount; i++) {
             const barrelSide = (i % barrels === 0) ? -1 : 1;
             const perpAngle = this.angle + Math.PI / 2;
 
-            const startX = this.x + Math.cos(perpAngle) * barrelOffset * barrelSide;
-            const startY = this.y + Math.sin(perpAngle) * barrelOffset * barrelSide;
+            const startX = this.x + Math.cos(perpAngle) * barrelOffset * barrelSide + Math.cos(this.angle) * this.grid.cellSize * 0.8;
+            const startY = this.y + Math.sin(perpAngle) * barrelOffset * barrelSide + Math.sin(this.angle) * this.grid.cellSize * 0.8;
 
-            const spreadAngle = Math.random() * Math.PI * 2;
+            // Spread targets in a cone towards the enemy
+            const spreadAngle = this.angle + (Math.random() - 0.5) * 0.8;
             const spreadDist = Math.random() * spreadRadius;
             const targetX = this.target.x + Math.cos(spreadAngle) * spreadDist;
             const targetY = this.target.y + Math.sin(spreadAngle) * spreadDist;
@@ -596,7 +597,7 @@ export class Turret {
             const dy = targetY - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            const delay = (i / flakCount) * 0.15;  // Salve plus rapide
+            const delay = (i / flakCount) * 0.08;  // Very fast salvo
 
             projectiles.push({
                 type: 'flak',
@@ -612,9 +613,9 @@ export class Turret {
                 targetY: targetY,
                 hitEnemies: [],
                 delay: delay,
-                life: 0.8,
-                // AOE explosion on impact
-                aoeRadius: this.config.flakExplosion ? (this.config.flakExplosionRadius || 0.5) * this.grid.cellSize : 0,
+                life: 1.2,
+                // AOE explosion on impact - ALWAYS enabled
+                aoeRadius: (this.config.flakExplosionRadius || 0.8) * this.grid.cellSize,
                 isFlak: true
             });
         }
@@ -963,30 +964,33 @@ export class Turret {
         }
 
         const target = strongestEnemy || this.target;
-        const speed = (this.config.projectileSpeed || 8) * this.grid.cellSize;
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = (this.config.projectileSpeed || 6) * this.grid.cellSize;
+
+        // Initial upward launch direction (then homes in)
+        const launchAngle = this.angle - Math.PI / 6; // Slightly up from target direction
 
         projectiles.push({
             type: 'nuclear',
             x: this.x,
             y: this.y,
-            vx: (dx / dist) * speed,
-            vy: (dy / dist) * speed,
+            vx: Math.cos(launchAngle) * speed * 0.5,
+            vy: Math.sin(launchAngle) * speed * 0.5 - speed * 0.3, // Upward initial boost
+            maxSpeed: speed * 1.5,
             damage: this.config.damage,
             config: this.config,
             aoeRadius: (this.config.aoeRadius || 5) * this.grid.cellSize,
+            target: target, // HOMING TARGET
             targetX: target.x,
             targetY: target.y,
             sourceX: this.x,
             sourceY: this.y,
             hitEnemies: [],
-            life: 5.0,
-            arcHeight: 3,
+            life: 8.0,
+            homingStrength: this.config.homingStrength || 0.08, // GUIDED MISSILE
             // Particle trail effect
+            trail: [],
             particles: [],
-            glowSize: 15,
+            glowSize: 20,
             isNuclearMissile: true
         });
     }

@@ -1316,49 +1316,107 @@ export class Renderer {
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'missile' || type === 'rocket' || type === 'battery-missile') {
-            // Homing missile with trail
+            // HOMING MISSILE with epic particle trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(dx * dx + dy * dy);
 
-            // Trail
-            if (projectile.trail) {
-                projectile.trail.push({ x, y, life: 1 });
-                if (projectile.trail.length > 15) projectile.trail.shift();
-
+            // Epic smoke/fire trail
+            if (projectile.trail && projectile.trail.length > 0) {
+                // Draw smoke trail first (behind fire)
                 for (let i = 0; i < projectile.trail.length; i++) {
                     const t = projectile.trail[i];
-                    t.life -= 0.1;
-                    if (t.life > 0) {
-                        this.ctx.fillStyle = `rgba(255, 100, 0, ${t.life * 0.5})`;
+                    const trailProgress = i / projectile.trail.length;
+                    const alpha = t.life * 0.4 * (1 - trailProgress * 0.5);
+
+                    if (alpha > 0.02) {
+                        // Smoke
+                        this.ctx.fillStyle = `rgba(80, 80, 80, ${alpha * 0.5})`;
                         this.ctx.beginPath();
-                        this.ctx.arc(t.x, t.y, 3 * t.life, 0, Math.PI * 2);
+                        this.ctx.arc(t.x, t.y, (t.size || 4) * 1.5 * t.life, 0, Math.PI * 2);
+                        this.ctx.fill();
+
+                        // Fire core
+                        const fireAlpha = t.life * 0.8;
+                        const gradient = this.ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, (t.size || 4) * t.life);
+                        gradient.addColorStop(0, `rgba(255, 255, 200, ${fireAlpha})`);
+                        gradient.addColorStop(0.3, `rgba(255, 150, 50, ${fireAlpha * 0.8})`);
+                        gradient.addColorStop(0.7, `rgba(255, 80, 0, ${fireAlpha * 0.5})`);
+                        gradient.addColorStop(1, `rgba(200, 50, 0, 0)`);
+                        this.ctx.fillStyle = gradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(t.x, t.y, (t.size || 4) * t.life, 0, Math.PI * 2);
                         this.ctx.fill();
                     }
+
+                    t.life -= 0.08;
+                    t.size = (t.size || 4) * 0.97;
                 }
             }
+
+            // Missile glow
+            const glowSize = type === 'battery-missile' ? 15 : 20;
+            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowSize);
+            glowGradient.addColorStop(0, 'rgba(255, 200, 100, 0.6)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.3)');
+            glowGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            this.ctx.fillStyle = glowGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+            this.ctx.fill();
 
             // Missile body
             this.ctx.save();
             this.ctx.translate(x, y);
             this.ctx.rotate(angle);
 
-            this.ctx.fillStyle = '#666666';
-            this.ctx.fillRect(-12, -3, 12, 6);
+            const missileLength = type === 'battery-missile' ? 14 : 18;
+            const missileWidth = type === 'battery-missile' ? 4 : 5;
+
+            // Body with metallic gradient
+            const bodyGradient = this.ctx.createLinearGradient(0, -missileWidth, 0, missileWidth);
+            bodyGradient.addColorStop(0, '#888888');
+            bodyGradient.addColorStop(0.5, '#cccccc');
+            bodyGradient.addColorStop(1, '#666666');
+            this.ctx.fillStyle = bodyGradient;
+            this.ctx.fillRect(-missileLength, -missileWidth/2, missileLength, missileWidth);
+
+            // Warhead (red tip)
             this.ctx.fillStyle = projColor;
             this.ctx.beginPath();
-            this.ctx.moveTo(0, 0);
-            this.ctx.lineTo(-4, -5);
-            this.ctx.lineTo(-4, 5);
+            this.ctx.moveTo(4, 0);
+            this.ctx.lineTo(-2, -missileWidth);
+            this.ctx.lineTo(-2, missileWidth);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Flame
-            this.ctx.fillStyle = '#ff6600';
+            // Fins
+            this.ctx.fillStyle = '#555555';
+            this.ctx.fillRect(-missileLength + 2, -missileWidth - 3, 4, 3);
+            this.ctx.fillRect(-missileLength + 2, missileWidth, 4, 3);
+
+            // Exhaust flame (animated)
+            const flameLength = 12 + Math.random() * 8;
+            const flameGradient = this.ctx.createLinearGradient(-missileLength, 0, -missileLength - flameLength, 0);
+            flameGradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
+            flameGradient.addColorStop(0.3, 'rgba(255, 150, 50, 0.9)');
+            flameGradient.addColorStop(0.6, 'rgba(255, 80, 0, 0.6)');
+            flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            this.ctx.fillStyle = flameGradient;
             this.ctx.beginPath();
-            this.ctx.moveTo(-12, 0);
-            this.ctx.lineTo(-18 - Math.random() * 5, -3);
-            this.ctx.lineTo(-18 - Math.random() * 5, 3);
+            this.ctx.moveTo(-missileLength, -2);
+            this.ctx.lineTo(-missileLength - flameLength, 0);
+            this.ctx.lineTo(-missileLength, 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Inner white hot flame
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.beginPath();
+            this.ctx.moveTo(-missileLength, -1);
+            this.ctx.lineTo(-missileLength - flameLength * 0.4, 0);
+            this.ctx.lineTo(-missileLength, 1);
             this.ctx.closePath();
             this.ctx.fill();
 
@@ -1538,87 +1596,153 @@ export class Renderer {
                 this.ctx.fill();
             }
         } else if (type === 'nuclear') {
-            // EPIC Nuclear missile with particle trail
+            // EPIC GUIDED Nuclear ICBM with radiation trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const angle = Math.atan2(dy, dx);
+            const speed = Math.sqrt(dx * dx + dy * dy);
 
-            // Particle trail
+            // Epic radiation/fire trail
+            if (projectile.trail && projectile.trail.length > 0) {
+                for (let i = 0; i < projectile.trail.length; i++) {
+                    const t = projectile.trail[i];
+                    const progress = i / projectile.trail.length;
+
+                    if (t.life > 0.05) {
+                        // Radiation particles (green/yellow)
+                        const radGradient = this.ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, (t.size || 6) * t.life);
+                        radGradient.addColorStop(0, `rgba(200, 255, 100, ${t.life * 0.9})`);
+                        radGradient.addColorStop(0.4, `rgba(255, 255, 0, ${t.life * 0.6})`);
+                        radGradient.addColorStop(0.7, `rgba(255, 150, 0, ${t.life * 0.4})`);
+                        radGradient.addColorStop(1, `rgba(255, 80, 0, 0)`);
+                        this.ctx.fillStyle = radGradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(t.x, t.y, (t.size || 6) * t.life * 1.5, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+
+                    t.life -= 0.06;
+                    t.size = (t.size || 6) * 0.96;
+                }
+            }
+
+            // Radioactive particles (extra effect)
             if (!projectile.particles) projectile.particles = [];
-            projectile.particles.push({
-                x: x + (Math.random() - 0.5) * 10,
-                y: y + (Math.random() - 0.5) * 10,
-                size: 5 + Math.random() * 8,
-                life: 1,
-                color: Math.random() > 0.5 ? '#ffff00' : '#ff8800'
-            });
-            if (projectile.particles.length > 30) projectile.particles.shift();
+            if (Math.random() < 0.4) {
+                const pAngle = Math.random() * Math.PI * 2;
+                const pDist = 10 + Math.random() * 15;
+                projectile.particles.push({
+                    x: x + Math.cos(pAngle) * pDist,
+                    y: y + Math.sin(pAngle) * pDist,
+                    vx: Math.cos(pAngle) * 30,
+                    vy: Math.sin(pAngle) * 30,
+                    size: 3 + Math.random() * 4,
+                    life: 0.8,
+                    color: Math.random() > 0.5 ? '#00ff00' : '#ffff00'
+                });
+            }
+            if (projectile.particles.length > 25) projectile.particles.shift();
 
-            // Draw particle trail
+            // Draw radioactive sparks
             for (const p of projectile.particles) {
-                p.life -= 0.05;
-                p.size *= 0.95;
+                p.x += p.vx * 0.016;
+                p.y += p.vy * 0.016;
+                p.life -= 0.04;
                 if (p.life > 0) {
                     this.ctx.fillStyle = p.color;
-                    this.ctx.globalAlpha = p.life * 0.7;
+                    this.ctx.globalAlpha = p.life;
                     this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
                     this.ctx.fill();
                 }
             }
             this.ctx.globalAlpha = 1;
 
-            // Radiation glow (pulsing)
-            const pulse = Math.sin(Date.now() / 50) * 0.3 + 0.7;
-            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, 25 * pulse);
-            glowGradient.addColorStop(0, 'rgba(255, 255, 100, 0.8)');
-            glowGradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.4)');
-            glowGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            // Big radiation glow (pulsing)
+            const pulse = Math.sin(Date.now() / 40) * 0.4 + 0.8;
+            const glowSize = 35 * pulse;
+            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowSize);
+            glowGradient.addColorStop(0, 'rgba(200, 255, 100, 0.9)');
+            glowGradient.addColorStop(0.3, 'rgba(255, 255, 0, 0.6)');
+            glowGradient.addColorStop(0.6, 'rgba(255, 150, 0, 0.3)');
+            glowGradient.addColorStop(1, 'rgba(255, 80, 0, 0)');
             this.ctx.fillStyle = glowGradient;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 25 * pulse, 0, Math.PI * 2);
+            this.ctx.arc(x, y, glowSize, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Missile body
+            // ICBM body
             this.ctx.save();
             this.ctx.translate(x, y);
             this.ctx.rotate(angle);
 
-            // Body
-            this.ctx.fillStyle = '#444444';
-            this.ctx.fillRect(-20, -5, 25, 10);
+            // Large missile body with metallic look
+            const bodyLength = 30;
+            const bodyWidth = 8;
 
-            // Warhead (yellow/black radiation symbol)
-            this.ctx.fillStyle = '#ffff00';
+            // Body gradient
+            const bodyGradient = this.ctx.createLinearGradient(0, -bodyWidth, 0, bodyWidth);
+            bodyGradient.addColorStop(0, '#555555');
+            bodyGradient.addColorStop(0.3, '#888888');
+            bodyGradient.addColorStop(0.5, '#aaaaaa');
+            bodyGradient.addColorStop(0.7, '#888888');
+            bodyGradient.addColorStop(1, '#555555');
+            this.ctx.fillStyle = bodyGradient;
+            this.ctx.fillRect(-bodyLength, -bodyWidth/2, bodyLength, bodyWidth);
+
+            // Warhead cone (yellow/black radiation)
+            const whGradient = this.ctx.createLinearGradient(-5, 0, 10, 0);
+            whGradient.addColorStop(0, '#ffff00');
+            whGradient.addColorStop(0.5, '#ffcc00');
+            whGradient.addColorStop(1, '#ff9900');
+            this.ctx.fillStyle = whGradient;
             this.ctx.beginPath();
-            this.ctx.moveTo(5, 0);
-            this.ctx.lineTo(-5, -8);
-            this.ctx.lineTo(-5, 8);
+            this.ctx.moveTo(12, 0);
+            this.ctx.lineTo(-5, -bodyWidth - 2);
+            this.ctx.lineTo(-5, bodyWidth + 2);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Radiation stripes on warhead
+            // Radiation symbol on warhead
             this.ctx.fillStyle = '#000000';
-            this.ctx.fillRect(-3, -6, 2, 12);
-
-            // Exhaust flame
-            this.ctx.fillStyle = '#ff6600';
-            const flameSize = 10 + Math.random() * 8;
             this.ctx.beginPath();
-            this.ctx.moveTo(-20, 0);
-            this.ctx.lineTo(-20 - flameSize, -5);
-            this.ctx.lineTo(-20 - flameSize * 0.7, 0);
-            this.ctx.lineTo(-20 - flameSize, 5);
+            this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+            for (let i = 0; i < 3; i++) {
+                const sAngle = (i / 3) * Math.PI * 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.arc(0, 0, 6, sAngle - 0.3, sAngle + 0.3);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            // Fins
+            this.ctx.fillStyle = '#444444';
+            this.ctx.fillRect(-bodyLength + 3, -bodyWidth - 5, 6, 5);
+            this.ctx.fillRect(-bodyLength + 3, bodyWidth, 6, 5);
+            this.ctx.fillRect(-bodyLength + 3, -3, 6, 6); // Center fin
+
+            // Massive exhaust flame
+            const flameLength = 25 + Math.random() * 15;
+            const flameGradient = this.ctx.createLinearGradient(-bodyLength, 0, -bodyLength - flameLength, 0);
+            flameGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            flameGradient.addColorStop(0.2, 'rgba(255, 255, 100, 0.95)');
+            flameGradient.addColorStop(0.4, 'rgba(255, 150, 50, 0.8)');
+            flameGradient.addColorStop(0.7, 'rgba(255, 80, 0, 0.5)');
+            flameGradient.addColorStop(1, 'rgba(200, 50, 0, 0)');
+            this.ctx.fillStyle = flameGradient;
+            this.ctx.beginPath();
+            this.ctx.moveTo(-bodyLength, -bodyWidth/2 + 1);
+            this.ctx.quadraticCurveTo(-bodyLength - flameLength * 0.7, 0, -bodyLength - flameLength, 0);
+            this.ctx.quadraticCurveTo(-bodyLength - flameLength * 0.7, 0, -bodyLength, bodyWidth/2 - 1);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Inner flame
-            this.ctx.fillStyle = '#ffff00';
+            // White hot core
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
             this.ctx.beginPath();
-            this.ctx.moveTo(-20, 0);
-            this.ctx.lineTo(-20 - flameSize * 0.5, -3);
-            this.ctx.lineTo(-20 - flameSize * 0.5, 3);
-            this.ctx.closePath();
+            this.ctx.ellipse(-bodyLength - 5, 0, flameLength * 0.15, 3, 0, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.restore();
@@ -2288,36 +2412,67 @@ export class Renderer {
                 }
 
             } else if (exp.isFlakExplosion) {
-                // Small flak burst - cyan/white flash
-                const duration = 0.2;
+                // FLAK burst - cyan/orange anti-air explosion
+                const duration = 0.35;
                 exp.alpha = 1 - exp.time / duration;
-                exp.radius = exp.maxRadius * (exp.time / 0.1);
+                exp.radius = exp.maxRadius * Math.min(1, exp.time / 0.08);
 
                 if (exp.alpha <= 0) {
                     this.explosions.splice(i, 1);
                     continue;
                 }
 
-                // Flash burst
+                // Main flash burst
                 const flashGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
                 flashGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.alpha})`);
-                flashGradient.addColorStop(0.3, `rgba(0, 221, 255, ${exp.alpha * 0.8})`);
-                flashGradient.addColorStop(0.7, `rgba(0, 150, 255, ${exp.alpha * 0.4})`);
+                flashGradient.addColorStop(0.2, `rgba(255, 200, 100, ${exp.alpha * 0.9})`);
+                flashGradient.addColorStop(0.5, `rgba(0, 221, 255, ${exp.alpha * 0.7})`);
+                flashGradient.addColorStop(0.8, `rgba(255, 100, 0, ${exp.alpha * 0.4})`);
                 flashGradient.addColorStop(1, `rgba(0, 100, 200, 0)`);
                 this.ctx.fillStyle = flashGradient;
                 this.ctx.beginPath();
                 this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                // Sparks
-                this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
-                for (let s = 0; s < 4; s++) {
-                    const sparkAngle = (s / 4) * Math.PI * 2 + exp.time * 10;
-                    const sparkDist = exp.radius * 0.8;
+                // Shockwave ring
+                this.ctx.strokeStyle = `rgba(0, 200, 255, ${exp.alpha * 0.8})`;
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.radius * 1.3, 0, Math.PI * 2);
+                this.ctx.stroke();
+
+                // Multiple sparks flying outward
+                const sparkCount = 8;
+                for (let s = 0; s < sparkCount; s++) {
+                    const sparkAngle = (s / sparkCount) * Math.PI * 2 + exp.time * 5;
+                    const sparkDist = exp.radius * (0.5 + exp.time * 3);
                     const sx = exp.x + Math.cos(sparkAngle) * sparkDist;
                     const sy = exp.y + Math.sin(sparkAngle) * sparkDist;
+
+                    // Spark trail
+                    this.ctx.strokeStyle = `rgba(255, 200, 100, ${exp.alpha * 0.8})`;
+                    this.ctx.lineWidth = 2;
                     this.ctx.beginPath();
-                    this.ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+                    this.ctx.moveTo(exp.x + Math.cos(sparkAngle) * exp.radius * 0.3, exp.y + Math.sin(sparkAngle) * exp.radius * 0.3);
+                    this.ctx.lineTo(sx, sy);
+                    this.ctx.stroke();
+
+                    // Spark head
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                // Small debris particles
+                this.ctx.fillStyle = `rgba(100, 100, 100, ${exp.alpha * 0.6})`;
+                for (let d = 0; d < 6; d++) {
+                    const debrisAngle = Math.random() * Math.PI * 2;
+                    const debrisDist = exp.radius * (0.3 + Math.random() * 0.7);
+                    const dx = exp.x + Math.cos(debrisAngle) * debrisDist;
+                    const dy = exp.y + Math.sin(debrisAngle) * debrisDist + exp.time * 50;
+                    this.ctx.beginPath();
+                    this.ctx.arc(dx, dy, 2 + Math.random() * 2, 0, Math.PI * 2);
                     this.ctx.fill();
                 }
 

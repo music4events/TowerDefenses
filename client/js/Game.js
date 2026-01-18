@@ -660,26 +660,78 @@ export class Game {
             if (proj.type === 'flak' && proj.targetX !== undefined) {
                 const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
                 if (distToTarget < 15) {
-                    // Explode at target position
+                    // Explode at target position - ALWAYS show visual, damage only in solo
                     if (proj.aoeRadius > 0) {
                         this.renderer.addFlakExplosion(proj.x, proj.y, proj.aoeRadius * 2);
-                        if (!this.isMultiplayer) {
-                            this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
-                        }
+                    }
+                    if (!this.isMultiplayer) {
+                        this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
                     }
                     this.projectiles.splice(i, 1);
                     continue;
                 }
             }
 
+            // === HOMING LOGIC FOR GUIDED MISSILES ===
+            if (proj.homingStrength && proj.target && !proj.target.dead) {
+                const targetX = proj.target.x;
+                const targetY = proj.target.y;
+
+                // Calculate desired direction
+                const dx = targetX - proj.x;
+                const dy = targetY - proj.y;
+                const distToTarget = Math.sqrt(dx * dx + dy * dy);
+
+                if (distToTarget > 10) {
+                    // Current velocity
+                    const currentSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+                    const maxSpeed = proj.maxSpeed || currentSpeed;
+
+                    // Desired direction normalized
+                    const desiredVx = (dx / distToTarget) * maxSpeed;
+                    const desiredVy = (dy / distToTarget) * maxSpeed;
+
+                    // Interpolate towards desired direction
+                    const homing = proj.homingStrength;
+                    proj.vx += (desiredVx - proj.vx) * homing;
+                    proj.vy += (desiredVy - proj.vy) * homing;
+
+                    // Maintain speed
+                    const newSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+                    if (newSpeed > 0) {
+                        // Accelerate over time
+                        const speedMult = Math.min(maxSpeed / newSpeed, 1.05);
+                        proj.vx *= speedMult;
+                        proj.vy *= speedMult;
+                    }
+                }
+            }
+
+            // === PARTICLE TRAIL FOR MISSILES ===
+            if ((proj.type === 'missile' || proj.type === 'rocket' || proj.type === 'battery-missile' || proj.type === 'nuclear') && proj.trail) {
+                proj.trail.push({
+                    x: proj.x + (Math.random() - 0.5) * 6,
+                    y: proj.y + (Math.random() - 0.5) * 6,
+                    life: 1,
+                    size: 4 + Math.random() * 4
+                });
+                if (proj.trail.length > 20) proj.trail.shift();
+            }
+
             // Move projectile
             if (proj.vx !== undefined) {
+                // Handle delay for salvo firing
+                if (proj.delay !== undefined && proj.delay > 0) {
+                    proj.delay -= deltaTime;
+                    continue;
+                }
+
                 proj.x += proj.vx * deltaTime;
                 proj.y += proj.vy * deltaTime;
 
-                // Check bounds
-                if (proj.x < 0 || proj.x > this.canvas.width ||
-                    proj.y < 0 || proj.y > this.canvas.height) {
+                // Check bounds (use map size, not canvas)
+                if (proj.x < -100 || proj.x > this.mapWidth + 100 ||
+                    proj.y < -100 || proj.y > this.mapHeight + 100) {
                     this.projectiles.splice(i, 1);
                     continue;
                 }

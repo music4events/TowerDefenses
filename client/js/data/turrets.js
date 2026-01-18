@@ -344,15 +344,15 @@ export const TURRET_TYPES = {
         fireRate: 0.08,           // Tir ULTRA rapide!
         color: '#2a5caa',
         cost: { iron: 800, copper: 300, gold: 100 },
-        projectileSpeed: 35,
+        projectileSpeed: 40,      // Plus rapide!
         projectileColor: '#00ddff',
 
         isAntiAir: true,
-        flakCount: 12,            // 12 projectiles par salve!
-        flakSpread: 2.5,          // Plus de dispersion
+        flakCount: 16,            // 16 projectiles par salve!
+        flakSpread: 3,            // Plus de dispersion
         barrelCount: 2,
         flakExplosion: true,      // Explosions à l'impact!
-        flakExplosionRadius: 0.5, // Petit rayon AOE
+        flakExplosionRadius: 0.8, // AOE explosions
 
         size: 2.8,
         health: 400,
@@ -472,10 +472,11 @@ export const TURRET_TYPES = {
         fireRate: 4.5,            // Plus rapide!
         color: '#ffff00',
         cost: { iron: 2000, copper: 800, gold: 400 },
-        projectileSpeed: 10,      // Missile plus rapide!
+        projectileSpeed: 6,       // ICBM guidé
         projectileColor: '#ffff00',
 
         isNuclear: true,
+        homingStrength: 0.08,     // MISSILE GUIDÉ!
         aoeRadius: 7,             // ENORME zone de dégâts!
         radiationDamage: 40,      // Radiation augmentée!
         radiationDuration: 4,
