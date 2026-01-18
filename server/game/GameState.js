@@ -149,47 +149,57 @@ class GameState {
     }
 
     update(deltaTime) {
-        // Wave/Endless management based on game mode
-        if (this.gameMode === 'endless') {
-            this.updateEndless(deltaTime);
-        } else {
-            this.updateWaves(deltaTime);
-        }
-
-        // Update extractors
-        for (const extractor of this.extractors) {
-            extractor.timer += deltaTime;
-            const extractionTime = 1 / (extractor.extractionRate || 1);
-            if (extractor.timer >= extractionTime) {
-                extractor.timer = 0;
-                this.resources[extractor.resourceType] =
-                    (this.resources[extractor.resourceType] || 0) + 1;
+        try {
+            // Wave/Endless management based on game mode
+            if (this.gameMode === 'endless') {
+                this.updateEndless(deltaTime);
+            } else {
+                this.updateWaves(deltaTime);
             }
-        }
 
-        // Update enemies
-        for (const enemy of this.enemies) {
-            this.updateEnemy(enemy, deltaTime);
-        }
-
-        // Remove dead enemies
-        this.enemies = this.enemies.filter(e => {
-            if (e.dead && !e.reachedNexus) {
-                const reward = ENEMY_TYPES[e.type].reward;
-                for (const [res, amt] of Object.entries(reward)) {
-                    this.resources[res] = (this.resources[res] || 0) + amt;
+            // Update extractors
+            for (const extractor of this.extractors) {
+                if (!extractor) continue;
+                extractor.timer = (extractor.timer || 0) + deltaTime;
+                const extractionTime = 1 / (extractor.extractionRate || 1);
+                if (extractor.timer >= extractionTime) {
+                    extractor.timer = 0;
+                    if (extractor.resourceType) {
+                        this.resources[extractor.resourceType] =
+                            (this.resources[extractor.resourceType] || 0) + 1;
+                    }
                 }
             }
-            return !e.dead;
-        });
 
-        // Update turrets
-        for (const turret of this.turrets) {
-            this.updateTurret(turret, deltaTime);
+            // Update enemies
+            for (const enemy of this.enemies) {
+                this.updateEnemy(enemy, deltaTime);
+            }
+
+            // Remove dead enemies
+            this.enemies = this.enemies.filter(e => {
+                if (!e) return false;
+                if (e.dead && !e.reachedNexus) {
+                    const enemyType = ENEMY_TYPES[e.type];
+                    if (enemyType && enemyType.reward) {
+                        for (const [res, amt] of Object.entries(enemyType.reward)) {
+                            this.resources[res] = (this.resources[res] || 0) + amt;
+                        }
+                    }
+                }
+                return !e.dead;
+            });
+
+            // Update turrets
+            for (const turret of this.turrets) {
+                this.updateTurret(turret, deltaTime);
+            }
+
+            // Update projectiles
+            this.updateProjectiles(deltaTime);
+        } catch (error) {
+            console.error('Error in GameState.update:', error);
         }
-
-        // Update projectiles
-        this.updateProjectiles(deltaTime);
     }
 
     updateWaves(deltaTime) {
@@ -394,32 +404,34 @@ class GameState {
     }
 
     updateEnemy(enemy, deltaTime) {
-        if (enemy.dead) return;
+        if (!enemy || enemy.dead) return;
 
         // Burning
         if (enemy.burning) {
             enemy.burnTime -= deltaTime;
-            enemy.health -= enemy.burnDamage * deltaTime;
+            enemy.health -= (enemy.burnDamage || 0) * deltaTime;
             if (enemy.burnTime <= 0) enemy.burning = false;
         }
 
         // Movement
-        if (enemy.pathIndex < enemy.path.length) {
+        if (enemy.path && enemy.pathIndex < enemy.path.length) {
             const target = enemy.path[enemy.pathIndex];
-            const targetX = target.x * this.cellSize + this.cellSize / 2;
-            const targetY = target.y * this.cellSize + this.cellSize / 2;
+            if (target) {
+                const targetX = target.x * this.cellSize + this.cellSize / 2;
+                const targetY = target.y * this.cellSize + this.cellSize / 2;
 
-            const dx = targetX - enemy.x;
-            const dy = targetY - enemy.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+                const dx = targetX - enemy.x;
+                const dy = targetY - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist > 2) {
-                const moveSpeed = enemy.speed * this.cellSize * deltaTime;
-                enemy.x += (dx / dist) * moveSpeed;
-                enemy.y += (dy / dist) * moveSpeed;
-                enemy.angle = Math.atan2(dy, dx);
-            } else {
-                enemy.pathIndex++;
+                if (dist > 2) {
+                    const moveSpeed = (enemy.speed || 1) * this.cellSize * deltaTime;
+                    enemy.x += (dx / dist) * moveSpeed;
+                    enemy.y += (dy / dist) * moveSpeed;
+                    enemy.angle = Math.atan2(dy, dx);
+                } else {
+                    enemy.pathIndex++;
+                }
             }
         }
 
@@ -437,7 +449,7 @@ class GameState {
         if (nexusDist < this.cellSize) {
             enemy.reachedNexus = true;
             enemy.dead = true;
-            this.nexusHealth -= enemy.damage;
+            this.nexusHealth -= (enemy.damage || 10);
         }
 
         if (enemy.health <= 0) {
@@ -446,15 +458,17 @@ class GameState {
     }
 
     updateTurret(turret, deltaTime) {
+        if (!turret || !turret.config) return;
+
         turret.cooldown -= deltaTime;
 
         // Find target
         let target = null;
         let closestDist = Infinity;
-        const range = turret.config.range * this.cellSize;
+        const range = (turret.config.range || 4) * this.cellSize;
 
         for (const enemy of this.enemies) {
-            if (enemy.dead) continue;
+            if (!enemy || enemy.dead) continue;
             const dist = Math.sqrt(
                 (turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2
             );
@@ -464,52 +478,60 @@ class GameState {
             }
         }
 
-        if (target) {
+        if (target && !target.dead) {
             turret.angle = Math.atan2(target.y - turret.y, target.x - turret.x);
 
             if (turret.cooldown <= 0) {
                 this.fireTurret(turret, target);
-                turret.cooldown = turret.config.fireRate;
+                turret.cooldown = turret.config.fireRate || 0.5;
             }
         }
     }
 
     fireTurret(turret, target) {
+        if (!turret || !turret.config || !target || target.dead) return;
+
+        const damage = turret.config.damage || 10;
+
         if (turret.config.instantHit) {
-            target.health -= turret.config.damage;
+            target.health -= damage;
         } else if (turret.config.chainTargets) {
             // Tesla chain
             let current = target;
+            const hitTargets = [];
             for (let i = 0; i < turret.config.chainTargets; i++) {
-                if (current) {
-                    current.health -= turret.config.damage;
+                if (current && !current.dead) {
+                    current.health -= damage;
+                    hitTargets.push(current);
                     // Find next target
-                    current = this.findNearestEnemy(current.x, current.y, 2 * this.cellSize, [current]);
+                    current = this.findNearestEnemy(current.x, current.y, 2 * this.cellSize, hitTargets);
                 }
             }
         } else if (turret.config.continuous) {
             // Flamethrower
-            target.health -= turret.config.damage * 0.1;
+            target.health -= damage * 0.1;
             target.burning = true;
-            target.burnDamage = turret.config.dotDamage;
-            target.burnTime = turret.config.dotDuration;
+            target.burnDamage = turret.config.dotDamage || 5;
+            target.burnTime = turret.config.dotDuration || 2;
         } else {
             // Standard projectile
             const dx = target.x - turret.x;
             const dy = target.y - turret.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            this.projectiles.push({
-                id: Date.now() + Math.random(),
-                x: turret.x,
-                y: turret.y,
-                vx: (dx / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
-                vy: (dy / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
-                damage: turret.config.damage,
-                aoeRadius: turret.config.aoeRadius || 0,
-                penetration: turret.config.penetration || false,
-                hitEnemies: []
-            });
+            if (dist > 0) {
+                this.projectiles.push({
+                    id: Date.now() + Math.random(),
+                    x: turret.x,
+                    y: turret.y,
+                    vx: (dx / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
+                    vy: (dy / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
+                    damage: damage,
+                    aoeRadius: turret.config.aoeRadius || 0,
+                    penetration: turret.config.penetration || false,
+                    hitEnemies: []
+                });
+            }
         }
     }
 
@@ -531,9 +553,13 @@ class GameState {
     updateProjectiles(deltaTime) {
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const proj = this.projectiles[i];
+            if (!proj) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
 
-            proj.x += proj.vx * deltaTime;
-            proj.y += proj.vy * deltaTime;
+            proj.x += (proj.vx || 0) * deltaTime;
+            proj.y += (proj.vy || 0) * deltaTime;
 
             // Bounds check
             if (proj.x < 0 || proj.x > this.cols * this.cellSize ||
@@ -544,16 +570,18 @@ class GameState {
 
             // Hit detection
             for (const enemy of this.enemies) {
-                if (enemy.dead || proj.hitEnemies.includes(enemy.id)) continue;
+                if (!enemy || enemy.dead) continue;
+                if (proj.hitEnemies && proj.hitEnemies.includes(enemy.id)) continue;
 
                 const dist = Math.sqrt((proj.x - enemy.x) ** 2 + (proj.y - enemy.y) ** 2);
                 if (dist < this.cellSize * 0.5) {
                     if (proj.aoeRadius > 0) {
-                        this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage);
+                        this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage || 10);
                         this.projectiles.splice(i, 1);
                     } else {
-                        enemy.health -= proj.damage;
+                        enemy.health -= (proj.damage || 10);
                         if (proj.penetration) {
+                            if (!proj.hitEnemies) proj.hitEnemies = [];
                             proj.hitEnemies.push(enemy.id);
                         } else {
                             this.projectiles.splice(i, 1);
@@ -566,12 +594,13 @@ class GameState {
     }
 
     dealAOE(x, y, radius, damage) {
+        if (!radius || radius <= 0) return;
         for (const enemy of this.enemies) {
-            if (enemy.dead) continue;
+            if (!enemy || enemy.dead) continue;
             const dist = Math.sqrt((x - enemy.x) ** 2 + (y - enemy.y) ** 2);
             if (dist <= radius) {
                 const falloff = 1 - (dist / radius) * 0.5;
-                enemy.health -= damage * falloff;
+                enemy.health -= (damage || 10) * falloff;
             }
         }
     }
