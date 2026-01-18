@@ -385,10 +385,34 @@ export class Game {
             }
         }
         // ===== MULTIPLAYER MODE: Server handles all game logic =====
-        // Client only renders what server sends - no local updates
+        // But we still interpolate projectiles locally for smooth rendering
+        if (this.isMultiplayer) {
+            this.interpolateProjectiles(deltaTime);
+        }
 
         // Update UI (always)
         this.ui.update();
+    }
+
+    interpolateProjectiles(deltaTime) {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+
+            // Decrease life locally for smooth fade out
+            if (proj.life !== undefined) {
+                proj.life -= deltaTime;
+                if (proj.life <= 0) {
+                    this.projectiles.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // Move projectile locally based on velocity
+            if (proj.vx !== undefined && proj.vy !== undefined) {
+                proj.x += proj.vx * deltaTime;
+                proj.y += proj.vy * deltaTime;
+            }
+        }
     }
 
     updateProjectiles(deltaTime) {

@@ -215,20 +215,49 @@ export class Network {
     }
 
     syncProjectiles(serverProjectiles) {
-        // Replace projectiles entirely (they move too fast for interpolation)
-        this.game.projectiles = serverProjectiles.map(p => ({
-            id: p.id,
-            type: p.type || 'bullet',
-            x: p.x,
-            y: p.y,
-            startX: p.startX,
-            startY: p.startY,
-            aoeRadius: p.aoeRadius || 0,
-            life: p.life,
-            vx: p.vx,
-            vy: p.vy,
-            damage: p.damage
-        }));
+        // Update existing projectiles with interpolation, add new ones
+        const serverIds = new Set(serverProjectiles.map(p => p.id));
+
+        // Remove projectiles that no longer exist on server
+        this.game.projectiles = this.game.projectiles.filter(p => serverIds.has(p.id));
+
+        for (const sp of serverProjectiles) {
+            let localProj = this.game.projectiles.find(p => p.id === sp.id);
+
+            if (!localProj) {
+                // New projectile
+                this.game.projectiles.push({
+                    id: sp.id,
+                    type: sp.type || 'bullet',
+                    x: sp.x,
+                    y: sp.y,
+                    startX: sp.startX,
+                    startY: sp.startY,
+                    aoeRadius: sp.aoeRadius || 0,
+                    life: sp.life,
+                    vx: sp.vx || 0,
+                    vy: sp.vy || 0,
+                    damage: sp.damage
+                });
+            } else {
+                // Update existing - interpolate position for moving projectiles
+                if (sp.vx || sp.vy) {
+                    // Moving projectile - use velocity for smooth movement
+                    localProj.vx = sp.vx || 0;
+                    localProj.vy = sp.vy || 0;
+                    // Lerp to server position to correct drift
+                    localProj.x += (sp.x - localProj.x) * 0.3;
+                    localProj.y += (sp.y - localProj.y) * 0.3;
+                } else {
+                    // Static beam - just update position
+                    localProj.x = sp.x;
+                    localProj.y = sp.y;
+                }
+                localProj.startX = sp.startX;
+                localProj.startY = sp.startY;
+                localProj.life = sp.life;
+            }
+        }
     }
 
     processEffects(effects) {

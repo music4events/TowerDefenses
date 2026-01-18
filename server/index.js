@@ -290,8 +290,11 @@ io.on('connection', (socket) => {
 
 // Game loop for a room
 function startGameLoop(roomCode) {
-    const TICK_RATE = 20; // 20 updates per second
+    const TICK_RATE = 60; // 60 updates per second for smooth projectiles
+    const SYNC_RATE = 30; // Send state to clients 30 times per second
     let lastTime = Date.now();
+    let lastSyncTime = Date.now();
+    const syncInterval = 1000 / SYNC_RATE;
 
     const gameLoop = setInterval(() => {
         try {
@@ -309,14 +312,17 @@ function startGameLoop(roomCode) {
             // Cap deltaTime to prevent huge jumps
             const cappedDelta = Math.min(deltaTime, 0.1);
 
-            // Update game state
+            // Update game state every tick
             room.gameState.update(cappedDelta);
 
-            // Send state to all players
-            io.to(roomCode).emit('gameState', {
-                state: room.gameState.serializeForSync(),
-                timestamp: now
-            });
+            // Send state to clients at SYNC_RATE
+            if (now - lastSyncTime >= syncInterval) {
+                lastSyncTime = now;
+                io.to(roomCode).emit('gameState', {
+                    state: room.gameState.serializeForSync(),
+                    timestamp: now
+                });
+            }
 
             // Check game over
             if (room.gameState.isGameOver()) {
