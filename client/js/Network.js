@@ -284,8 +284,14 @@ export class Network {
                 if (Extractor) {
                     localExtractor = new Extractor(serverExtractor.gridX, serverExtractor.gridY, serverExtractor.resourceType, this.game.grid);
                     localExtractor.id = serverExtractor.id;
+                    localExtractor.level = serverExtractor.level || 1;
+                    localExtractor.extractionRate = serverExtractor.extractionRate || 1;
                     this.game.extractors.push(localExtractor);
                 }
+            } else {
+                // Update existing extractor
+                localExtractor.level = serverExtractor.level || 1;
+                localExtractor.extractionRate = serverExtractor.extractionRate || 1;
             }
         }
 
