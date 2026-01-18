@@ -339,7 +339,27 @@ export class Network {
 
         // Remove turrets that no longer exist on server
         const serverIds = new Set(serverTurrets.map(t => t.id));
+        const removedTurrets = this.game.turrets.filter(t => !serverIds.has(t.id));
+
+        // Free grid cells for removed turrets
+        for (const turret of removedTurrets) {
+            if (this.game.grid && turret.gridX !== undefined && turret.gridY !== undefined) {
+                this.game.grid.removeBuilding(turret.gridX, turret.gridY);
+            }
+        }
+
         this.game.turrets = this.game.turrets.filter(t => serverIds.has(t.id));
+
+        // Ensure grid cells are marked for all server turrets
+        for (const serverTurret of serverTurrets) {
+            if (this.game.grid && this.game.grid.cells) {
+                const y = serverTurret.gridY;
+                const x = serverTurret.gridX;
+                if (y >= 0 && y < this.game.grid.rows && x >= 0 && x < this.game.grid.cols) {
+                    this.game.grid.cells[y][x] = 1; // Mark as occupied
+                }
+            }
+        }
     }
 
     syncWalls(serverWalls) {
@@ -364,7 +384,27 @@ export class Network {
 
         // Remove walls that no longer exist on server
         const serverIds = new Set(serverWalls.map(w => w.id));
+        const removedWalls = this.game.walls.filter(w => !serverIds.has(w.id));
+
+        // Free grid cells for removed walls
+        for (const wall of removedWalls) {
+            if (this.game.grid && wall.gridX !== undefined && wall.gridY !== undefined) {
+                this.game.grid.removeBuilding(wall.gridX, wall.gridY);
+            }
+        }
+
         this.game.walls = this.game.walls.filter(w => serverIds.has(w.id));
+
+        // Ensure grid cells are marked for all server walls
+        for (const serverWall of serverWalls) {
+            if (this.game.grid && this.game.grid.cells) {
+                const y = serverWall.gridY;
+                const x = serverWall.gridX;
+                if (y >= 0 && y < this.game.grid.rows && x >= 0 && x < this.game.grid.cols) {
+                    this.game.grid.cells[y][x] = 1;
+                }
+            }
+        }
     }
 
     syncExtractors(serverExtractors) {
@@ -391,7 +431,27 @@ export class Network {
 
         // Remove extractors that no longer exist on server
         const serverIds = new Set(serverExtractors.map(e => e.id));
+        const removedExtractors = this.game.extractors.filter(e => !serverIds.has(e.id));
+
+        // Free grid cells for removed extractors
+        for (const extractor of removedExtractors) {
+            if (this.game.grid && extractor.gridX !== undefined && extractor.gridY !== undefined) {
+                this.game.grid.removeBuilding(extractor.gridX, extractor.gridY);
+            }
+        }
+
         this.game.extractors = this.game.extractors.filter(e => serverIds.has(e.id));
+
+        // Ensure grid cells are marked for all server extractors
+        for (const serverExtractor of serverExtractors) {
+            if (this.game.grid && this.game.grid.cells) {
+                const y = serverExtractor.gridY;
+                const x = serverExtractor.gridX;
+                if (y >= 0 && y < this.game.grid.rows && x >= 0 && x < this.game.grid.cols) {
+                    this.game.grid.cells[y][x] = 1;
+                }
+            }
+        }
     }
 
     syncEnemies(serverEnemies) {

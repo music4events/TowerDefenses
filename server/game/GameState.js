@@ -383,6 +383,36 @@ class GameState {
 
         // Game speed multiplier (1, 2, 5, 10)
         this.gameSpeed = 1;
+
+        // Path caching for optimization
+        this.pathCache = new Map();
+        this.pathCacheValid = true;
+    }
+
+    invalidatePathCache() {
+        this.pathCache.clear();
+        this.pathCacheValid = false;
+    }
+
+    getCachedPath(startX, startY) {
+        const key = `${startX},${startY}`;
+        if (this.pathCache.has(key)) {
+            // Return a copy of the cached path
+            return this.pathCache.get(key).map(p => ({ x: p.x, y: p.y }));
+        }
+        return null;
+    }
+
+    setCachedPath(startX, startY, path) {
+        if (path && path.length > 0) {
+            const key = `${startX},${startY}`;
+            this.pathCache.set(key, path);
+            // Limit cache size to prevent memory issues
+            if (this.pathCache.size > 500) {
+                const firstKey = this.pathCache.keys().next().value;
+                this.pathCache.delete(firstKey);
+            }
+        }
     }
 
     setGameSpeed(speed) {
@@ -605,18 +635,19 @@ class GameState {
             // Initialize wave number on first frame
             if (this.waveNumber === 0) {
                 this.waveNumber = 1;
+                this.endlessDifficulty = 1;
                 console.log('Endless mode started');
             }
 
             this.endlessTimer += deltaTime;
             this.difficultyTimer += deltaTime;
 
-            // Increase difficulty every 30 seconds
+            // Increase wave every 30 seconds, difficulty = wave number
             if (this.difficultyTimer >= 30) {
                 this.difficultyTimer = 0;
-                this.endlessDifficulty += 0.1;
-                this.endlessSpawnRate = Math.max(0.5, this.endlessSpawnRate - 0.1);
                 this.waveNumber++;
+                this.endlessDifficulty = this.waveNumber; // Difficulty matches wave number
+                this.endlessSpawnRate = Math.max(0.3, 2 - this.waveNumber * 0.02); // Faster spawn over time
             }
 
             // Spawn enemies continuously
@@ -633,39 +664,40 @@ class GameState {
         try {
             // Progressive boss spawn rate: +1% every 10 waves
             const bossSpawnBonus = Math.floor(this.waveNumber / 10) * 0.01;
+            const wave = this.waveNumber;
 
-            // Choose enemy type based on difficulty
+            // Choose enemy type based on wave number (difficulty = wave)
             const types = ['grunt'];
-            if (this.endlessDifficulty >= 1.2) types.push('runner');
-            if (this.endlessDifficulty >= 1.4) types.push('flying');
-            if (this.endlessDifficulty >= 1.5) types.push('tank');
-            if (this.endlessDifficulty >= 1.6) types.push('flying-swarm');
-            if (this.endlessDifficulty >= 1.8) types.push('kamikaze');
-            if (this.endlessDifficulty >= 2.0) types.push('healer');
-            if (this.endlessDifficulty >= 2.0) types.push('splitter');
-            if (this.endlessDifficulty >= 2.2) types.push('flying-bomber');
-            if (this.endlessDifficulty >= 2.5) types.push('kamikaze-spawner');
-            if (this.endlessDifficulty >= 2.5) types.push('armored-front');
-            if (this.endlessDifficulty >= 2.8) types.push('transport');
-            if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05 + bossSpawnBonus) types.push('boss');
-            if (this.endlessDifficulty >= 3.5) types.push('transport-elite');
-            if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03 + bossSpawnBonus) types.push('flying-boss');
-            if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02 + bossSpawnBonus) types.push('carrier-boss');
-            if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01 + bossSpawnBonus) types.push('mega-boss');
+            if (wave >= 2) types.push('runner');
+            if (wave >= 3) types.push('flying');
+            if (wave >= 4) types.push('tank');
+            if (wave >= 5) types.push('flying-swarm');
+            if (wave >= 6) types.push('kamikaze');
+            if (wave >= 7) types.push('healer');
+            if (wave >= 7) types.push('splitter');
+            if (wave >= 8) types.push('flying-bomber');
+            if (wave >= 10) types.push('kamikaze-spawner');
+            if (wave >= 10) types.push('armored-front');
+            if (wave >= 12) types.push('transport');
+            if (wave >= 15 && Math.random() < 0.05 + bossSpawnBonus) types.push('boss');
+            if (wave >= 18) types.push('transport-elite');
+            if (wave >= 20 && Math.random() < 0.04 + bossSpawnBonus) types.push('flying-boss');
+            if (wave >= 25 && Math.random() < 0.03 + bossSpawnBonus) types.push('carrier-boss');
+            if (wave >= 30 && Math.random() < 0.02 + bossSpawnBonus) types.push('mega-boss');
             // === MEGA BOSS Tier 2 ===
-            if (this.endlessDifficulty >= 7.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('titan');
-            if (this.endlessDifficulty >= 7.5 && Math.random() < 0.008 + bossSpawnBonus) types.push('leviathan');
-            if (this.endlessDifficulty >= 8.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('swarm-mother');
-            if (this.endlessDifficulty >= 8.5 && Math.random() < 0.007 + bossSpawnBonus) types.push('devastator');
+            if (wave >= 40 && Math.random() < 0.015 + bossSpawnBonus) types.push('titan');
+            if (wave >= 45 && Math.random() < 0.015 + bossSpawnBonus) types.push('leviathan');
+            if (wave >= 50 && Math.random() < 0.012 + bossSpawnBonus) types.push('swarm-mother');
+            if (wave >= 55 && Math.random() < 0.012 + bossSpawnBonus) types.push('devastator');
             // === MEGA BOSS Tier 3 ===
-            if (this.endlessDifficulty >= 10.0 && Math.random() < 0.005 + bossSpawnBonus) types.push('overlord');
-            if (this.endlessDifficulty >= 11.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('colossus');
-            if (this.endlessDifficulty >= 12.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('hive-queen');
+            if (wave >= 70 && Math.random() < 0.01 + bossSpawnBonus) types.push('overlord');
+            if (wave >= 80 && Math.random() < 0.008 + bossSpawnBonus) types.push('colossus');
+            if (wave >= 90 && Math.random() < 0.008 + bossSpawnBonus) types.push('hive-queen');
             // === MEGA BOSS Tier 4 ===
-            if (this.endlessDifficulty >= 15.0 && Math.random() < 0.003 + bossSpawnBonus) types.push('juggernaut');
-            if (this.endlessDifficulty >= 18.0 && Math.random() < 0.002 + bossSpawnBonus) types.push('apocalypse');
+            if (wave >= 120 && Math.random() < 0.005 + bossSpawnBonus) types.push('juggernaut');
+            if (wave >= 150 && Math.random() < 0.004 + bossSpawnBonus) types.push('apocalypse');
             // === MEGA BOSS Tier 5 (Ultimate) ===
-            if (this.endlessDifficulty >= 25.0 && Math.random() < 0.001 + bossSpawnBonus) types.push('world-ender');
+            if (wave >= 200 && Math.random() < 0.002 + bossSpawnBonus) types.push('world-ender');
 
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -715,7 +747,15 @@ class GameState {
                 spawnTimer: 0 // For transport/spawner units
             };
 
-            const path = this.findPath(x, y, this.nexusX, this.nexusY);
+            // Try cached path first, then calculate if needed
+            let path = this.getCachedPath(x, y);
+            if (!path) {
+                path = this.findPath(x, y, this.nexusX, this.nexusY);
+                if (path) {
+                    this.setCachedPath(x, y, path);
+                }
+            }
+
             if (path) {
                 enemy.path = path;
             } else {
@@ -914,7 +954,15 @@ class GameState {
                 spawnTimer: 0
             };
 
-            const path = this.findPath(x, y, this.nexusX, this.nexusY);
+            // Try cached path first, then calculate if needed
+            let path = this.getCachedPath(x, y);
+            if (!path) {
+                path = this.findPath(x, y, this.nexusX, this.nexusY);
+                if (path) {
+                    this.setCachedPath(x, y, path);
+                }
+            }
+
             if (path) {
                 enemy.path = path;
             } else {
@@ -956,10 +1004,13 @@ class GameState {
                 turretAttackCooldown: 0
             };
 
-            const path = this.findPath(x, y, this.nexusX, this.nexusY);
-            if (path) {
-                enemy.path = path;
+            // Use cached path
+            let path = this.getCachedPath(x, y);
+            if (!path) {
+                path = this.findPath(x, y, this.nexusX, this.nexusY);
+                if (path) this.setCachedPath(x, y, path);
             }
+            if (path) enemy.path = path;
             this.enemies.push(enemy);
         } catch (error) {
             console.error('Error spawning splitter child:', error);
@@ -999,10 +1050,13 @@ class GameState {
                     turretAttackCooldown: 0
                 };
 
-                const path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
-                if (path) {
-                    enemy.path = path;
+                // Use cached path
+                let path = this.getCachedPath(gridX, gridY);
+                if (!path) {
+                    path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
+                    if (path) this.setCachedPath(gridX, gridY, path);
                 }
+                if (path) enemy.path = path;
                 this.enemies.push(enemy);
             }
 
@@ -1895,6 +1949,8 @@ class GameState {
     }
 
     recalculatePaths() {
+        // Invalidate path cache when grid changes
+        this.invalidatePathCache();
         // Mark all enemies for path recalculation (will be done progressively)
         for (const enemy of this.enemies) {
             enemy.needsPathRecalc = true;
@@ -1902,13 +1958,26 @@ class GameState {
     }
 
     // Progressive path recalculation - call this in update loop
+    // Scale with game speed for better performance at x10
     progressivePathRecalc(maxPerFrame = 5) {
+        // Scale recalculations with game speed
+        const scaledMax = maxPerFrame * this.gameSpeed;
         let recalculated = 0;
+
         for (const enemy of this.enemies) {
-            if (enemy.needsPathRecalc && recalculated < maxPerFrame) {
+            if (enemy.needsPathRecalc && recalculated < scaledMax) {
                 const gridX = Math.floor(enemy.x / this.cellSize);
                 const gridY = Math.floor(enemy.y / this.cellSize);
-                const path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
+
+                // Try to use cached path first
+                let path = this.getCachedPath(gridX, gridY);
+                if (!path) {
+                    path = this.findPath(gridX, gridY, this.nexusX, this.nexusY);
+                    if (path) {
+                        this.setCachedPath(gridX, gridY, path);
+                    }
+                }
+
                 if (path) {
                     enemy.path = path;
                     enemy.pathIndex = 0;
@@ -1920,17 +1989,33 @@ class GameState {
     }
 
     findPath(startX, startY, endX, endY) {
+        // Optimized A* with Set for O(1) lookup
         const openSet = [{ x: startX, y: startY, f: 0, g: 0 }];
+        const openSetKeys = new Set([`${startX},${startY}`]);
         const closedSet = new Set();
         const cameFrom = new Map();
         const gScore = new Map();
 
         gScore.set(`${startX},${startY}`, 0);
 
-        while (openSet.length > 0) {
-            openSet.sort((a, b) => a.f - b.f);
-            const current = openSet.shift();
+        // Max iterations to prevent infinite loops on large maps
+        let iterations = 0;
+        const maxIterations = 5000;
+
+        while (openSet.length > 0 && iterations < maxIterations) {
+            iterations++;
+
+            // Find node with lowest f score (simple but effective for our use case)
+            let lowestIdx = 0;
+            for (let i = 1; i < openSet.length; i++) {
+                if (openSet[i].f < openSet[lowestIdx].f) {
+                    lowestIdx = i;
+                }
+            }
+            const current = openSet[lowestIdx];
+            openSet.splice(lowestIdx, 1);
             const key = `${current.x},${current.y}`;
+            openSetKeys.delete(key);
 
             if (current.x === endX && current.y === endY) {
                 return this.reconstructPath(cameFrom, current);
@@ -1938,29 +2023,26 @@ class GameState {
 
             closedSet.add(key);
 
-            const neighbors = [
-                { x: current.x - 1, y: current.y },
-                { x: current.x + 1, y: current.y },
-                { x: current.x, y: current.y - 1 },
-                { x: current.x, y: current.y + 1 }
-            ];
+            // Check all 4 neighbors
+            const nx = [current.x - 1, current.x + 1, current.x, current.x];
+            const ny = [current.y, current.y, current.y - 1, current.y + 1];
 
-            for (const n of neighbors) {
-                const nKey = `${n.x},${n.y}`;
+            for (let i = 0; i < 4; i++) {
+                const nKey = `${nx[i]},${ny[i]}`;
                 if (closedSet.has(nKey)) continue;
-                if (!this.isWalkable(n.x, n.y)) continue;
+                if (!this.isWalkable(nx[i], ny[i])) continue;
 
                 const tentativeG = gScore.get(key) + 1;
 
                 if (!gScore.has(nKey) || tentativeG < gScore.get(nKey)) {
                     cameFrom.set(nKey, current);
                     gScore.set(nKey, tentativeG);
-                    const h = Math.abs(n.x - endX) + Math.abs(n.y - endY);
-                    n.f = tentativeG + h;
-                    n.g = tentativeG;
+                    const h = Math.abs(nx[i] - endX) + Math.abs(ny[i] - endY);
+                    const f = tentativeG + h;
 
-                    if (!openSet.some(o => o.x === n.x && o.y === n.y)) {
-                        openSet.push(n);
+                    if (!openSetKeys.has(nKey)) {
+                        openSet.push({ x: nx[i], y: ny[i], f, g: tentativeG });
+                        openSetKeys.add(nKey);
                     }
                 }
             }
