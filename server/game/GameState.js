@@ -409,6 +409,11 @@ class GameState {
             } else {
                 this.updateWaves(adjustedDelta);
             }
+            // Debug: log game mode periodically (every 60 seconds real time)
+            if (!this._lastModeLog || Date.now() - this._lastModeLog > 60000) {
+                console.log(`[GameState] Mode: ${this.gameMode}, Difficulty: ${this.endlessDifficulty?.toFixed(2) || 'N/A'}, Wave: ${this.waveNumber}`);
+                this._lastModeLog = Date.now();
+            }
 
             // Update extractors
             for (const extractor of this.extractors) {
@@ -573,6 +578,9 @@ class GameState {
 
     spawnEndlessEnemy() {
         try {
+            // Debug: log current difficulty
+            console.log(`[Endless] Spawning enemy at difficulty ${this.endlessDifficulty.toFixed(2)}, wave ${this.waveNumber}`);
+
             // Choose enemy type based on difficulty
             const types = ['grunt'];
             if (this.endlessDifficulty >= 1.2) types.push('runner');
@@ -648,6 +656,9 @@ class GameState {
                 enemy.ignoreWalls = true;
             }
             this.enemies.push(enemy);
+
+            // Debug: log enemy stats
+            console.log(`[Endless] Created ${type}: HP=${enemy.health.toFixed(0)}/${enemy.maxHealth.toFixed(0)}, Speed=${enemy.speed.toFixed(2)}, Dmg=${enemy.damage.toFixed(1)}`);
         } catch (error) {
             console.error('Error in spawnEndlessEnemy:', error);
         }
