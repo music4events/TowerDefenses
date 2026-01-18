@@ -220,51 +220,57 @@ export class Game {
     }
 
     update(deltaTime) {
-        // Update wave manager
-        this.waveManager.update(deltaTime);
+        // Update wave manager (only in solo mode - server handles waves in multiplayer)
+        if (!this.isMultiplayer) {
+            this.waveManager.update(deltaTime);
+        }
 
-        // Update extractors
+        // Update extractors (only if they have update method - synced extractors might not)
         for (const extractor of this.extractors) {
-            extractor.update(deltaTime);
+            if (extractor.update) {
+                extractor.update(deltaTime);
 
-            // Auto-collect resources
-            if (extractor.stored > 0) {
-                const collected = extractor.collect();
-                this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
-            }
-        }
-
-        // Update enemies
-        for (const enemy of this.enemies) {
-            enemy.update(deltaTime, this.nexus, this.enemies, this);
-        }
-
-        // Remove dead enemies and collect rewards
-        const beforeCount = this.enemies.length;
-        this.enemies = this.enemies.filter(enemy => {
-            // Never remove enemies that are too young (protection against instant death bugs)
-            if (enemy.age === undefined || enemy.age < 1.0) {
-                enemy.dead = false;
-                return true;
-            }
-            if (enemy.dead) {
-                console.log(`Enemy removed: dead=${enemy.dead}, age=${enemy.age}, reachedNexus=${enemy.reachedNexus}`);
-                if (!enemy.reachedNexus) {
-                    const reward = enemy.getReward();
-                    for (const [resource, amount] of Object.entries(reward)) {
-                        this.resources[resource] = (this.resources[resource] || 0) + amount;
-                    }
+                // Auto-collect resources
+                if (extractor.stored > 0 && extractor.collect) {
+                    const collected = extractor.collect();
+                    this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
                 }
             }
-            return !enemy.dead;
-        });
-        if (beforeCount > 0 && this.enemies.length !== beforeCount) {
-            console.log(`Enemies changed: ${beforeCount} -> ${this.enemies.length}`);
         }
 
-        // Update turrets
+        // Update enemies (only in solo mode - server handles enemy logic in multiplayer)
+        if (!this.isMultiplayer) {
+            for (const enemy of this.enemies) {
+                enemy.update(deltaTime, this.nexus, this.enemies, this);
+            }
+        }
+
+        // Remove dead enemies and collect rewards (only in solo mode - server handles in multiplayer)
+        if (!this.isMultiplayer) {
+            const beforeCount = this.enemies.length;
+            this.enemies = this.enemies.filter(enemy => {
+                // Never remove enemies that are too young (protection against instant death bugs)
+                if (enemy.age === undefined || enemy.age < 1.0) {
+                    enemy.dead = false;
+                    return true;
+                }
+                if (enemy.dead) {
+                    if (!enemy.reachedNexus && enemy.getReward) {
+                        const reward = enemy.getReward();
+                        for (const [resource, amount] of Object.entries(reward)) {
+                            this.resources[resource] = (this.resources[resource] || 0) + amount;
+                        }
+                    }
+                }
+                return !enemy.dead;
+            });
+        }
+
+        // Update turrets (only if they have update method - synced turrets might not)
         for (const turret of this.turrets) {
-            turret.update(deltaTime, this.enemies, this.projectiles, this);
+            if (turret.update) {
+                turret.update(deltaTime, this.enemies, this.projectiles, this);
+            }
         }
 
         // Update projectiles
