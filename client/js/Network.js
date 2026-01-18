@@ -144,47 +144,51 @@ export class Network {
     }
 
     handleGameStateUpdate(data) {
-        // Skip if no valid data
-        if (!data || !data.state) {
-            return;
-        }
+        try {
+            // Skip if no valid data
+            if (!data || !data.state) {
+                return;
+            }
 
-        const state = data.state;
+            const state = data.state;
 
-        // Only update if state has valid data
-        if (state.resources) {
-            this.game.resources = state.resources;
-        }
-        if (state.nexusHealth !== undefined) {
-            this.game.nexus.health = state.nexusHealth;
-        }
-        if (state.waveNumber !== undefined) {
-            this.game.waveNumber = state.waveNumber;
-        }
+            // Only update if state has valid data
+            if (state.resources) {
+                this.game.resources = state.resources;
+            }
+            if (state.nexusHealth !== undefined && this.game.nexus) {
+                this.game.nexus.health = state.nexusHealth;
+            }
+            if (state.waveNumber !== undefined) {
+                this.game.waveNumber = state.waveNumber;
+            }
 
-        // Sync grid if provided
-        if (state.grid) {
-            this.game.grid.cells = state.grid;
-        }
+            // Sync grid if provided
+            if (state.grid && this.game.grid) {
+                this.game.grid.cells = state.grid;
+            }
 
-        // Sync enemies only if server provides them
-        if (state.enemies) {
-            this.syncEnemies(state.enemies);
-        }
+            // Sync enemies only if server provides them
+            if (state.enemies) {
+                this.syncEnemies(state.enemies);
+            }
 
-        // Sync turrets
-        if (state.turrets && Array.isArray(state.turrets)) {
-            this.syncTurrets(state.turrets);
-        }
+            // Sync turrets
+            if (state.turrets && Array.isArray(state.turrets)) {
+                this.syncTurrets(state.turrets);
+            }
 
-        // Sync walls
-        if (state.walls && Array.isArray(state.walls)) {
-            this.syncWalls(state.walls);
-        }
+            // Sync walls
+            if (state.walls && Array.isArray(state.walls)) {
+                this.syncWalls(state.walls);
+            }
 
-        // Sync extractors
-        if (state.extractors && Array.isArray(state.extractors)) {
-            this.syncExtractors(state.extractors);
+            // Sync extractors
+            if (state.extractors && Array.isArray(state.extractors)) {
+                this.syncExtractors(state.extractors);
+            }
+        } catch (error) {
+            console.error('Error handling game state update:', error);
         }
     }
 
@@ -261,52 +265,62 @@ export class Network {
     }
 
     syncEnemies(serverEnemies) {
-        // Skip sync if server data is invalid - let local game handle enemies
-        if (!serverEnemies || !Array.isArray(serverEnemies)) {
-            return;
-        }
-
-        // Only sync if server is actually managing enemies (has sent some)
-        // Otherwise, let local game handle everything
-        if (serverEnemies.length === 0 && this.game.enemies.length > 0) {
-            // Server has no enemies but we have local ones - don't delete them
-            return;
-        }
-
-        // Update existing enemies
-        for (const serverEnemy of serverEnemies) {
-            let localEnemy = this.game.enemies.find(e => e.id === serverEnemy.id);
-
-            if (!localEnemy) {
-                // Enemy doesn't exist locally, create it
-                localEnemy = {
-                    id: serverEnemy.id,
-                    type: serverEnemy.type,
-                    x: serverEnemy.x,
-                    y: serverEnemy.y,
-                    health: serverEnemy.health,
-                    maxHealth: serverEnemy.maxHealth,
-                    config: this.game.getEnemyConfig(serverEnemy.type),
-                    angle: serverEnemy.angle || 0,
-                    burning: serverEnemy.burning,
-                    dead: false
-                };
-                this.game.enemies.push(localEnemy);
-            } else {
-                // Interpolate position
-                const lerpFactor = 0.3;
-                localEnemy.x += (serverEnemy.x - localEnemy.x) * lerpFactor;
-                localEnemy.y += (serverEnemy.y - localEnemy.y) * lerpFactor;
-                localEnemy.health = serverEnemy.health;
-                localEnemy.angle = serverEnemy.angle || localEnemy.angle;
-                localEnemy.burning = serverEnemy.burning;
+        try {
+            // Skip sync if server data is invalid - let local game handle enemies
+            if (!serverEnemies || !Array.isArray(serverEnemies)) {
+                return;
             }
-        }
 
-        // Only remove enemies if server is actively managing them
-        if (serverEnemies.length > 0) {
-            const serverIds = new Set(serverEnemies.map(e => e.id));
-            this.game.enemies = this.game.enemies.filter(e => serverIds.has(e.id) || !e.id);
+            // Only sync if server is actually managing enemies (has sent some)
+            // Otherwise, let local game handle everything
+            if (serverEnemies.length === 0 && this.game.enemies.length > 0) {
+                // Server has no enemies but we have local ones - don't delete them
+                return;
+            }
+
+            // Update existing enemies
+            for (const serverEnemy of serverEnemies) {
+                let localEnemy = this.game.enemies.find(e => e.id === serverEnemy.id);
+
+                if (!localEnemy) {
+                    // Enemy doesn't exist locally, create it
+                    const config = this.game.getEnemyConfig(serverEnemy.type);
+                    if (!config) {
+                        console.warn(`Unknown enemy type: ${serverEnemy.type}`);
+                        continue;
+                    }
+                    localEnemy = {
+                        id: serverEnemy.id,
+                        type: serverEnemy.type,
+                        x: serverEnemy.x,
+                        y: serverEnemy.y,
+                        health: serverEnemy.health,
+                        maxHealth: serverEnemy.maxHealth,
+                        config: config,
+                        angle: serverEnemy.angle || 0,
+                        burning: serverEnemy.burning,
+                        dead: false,
+                        age: 1 // Mark as not new to prevent instant removal
+                    };
+                    this.game.enemies.push(localEnemy);
+                } else {
+                    // Interpolate position
+                    const lerpFactor = 0.3;
+                    localEnemy.x += (serverEnemy.x - localEnemy.x) * lerpFactor;
+                    localEnemy.y += (serverEnemy.y - localEnemy.y) * lerpFactor;
+                    localEnemy.health = serverEnemy.health;
+                    localEnemy.angle = serverEnemy.angle || localEnemy.angle;
+                    localEnemy.burning = serverEnemy.burning;
+                }
+            }
+
+            // Only remove enemies if server is actively managing them
+            if (serverEnemies.length > 0) {
+                const serverIds = new Set(serverEnemies.map(e => e.id));
+                this.game.enemies = this.game.enemies.filter(e => serverIds.has(e.id) || !e.id);
+            }
+        } catch (error) {
+            console.error('Error syncing enemies:', error);
         }
     }
 
