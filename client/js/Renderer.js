@@ -130,7 +130,10 @@ export class Renderer {
 
     drawTurret(turret, isSelected = false, mode = null) {
         const { x, y, angle, config, cooldown, level } = turret;
-        const size = this.grid.cellSize * config.size;
+        // Fallback for synced turrets without full config
+        const turretSize = config?.size || 0.8;
+        const turretColor = config?.color || '#0f3460';
+        const size = this.grid.cellSize * turretSize;
 
         // Selection/mode highlight
         if (isSelected) {
@@ -142,7 +145,7 @@ export class Renderer {
         }
 
         // Base circle
-        this.ctx.fillStyle = config.color;
+        this.ctx.fillStyle = turretColor;
         this.ctx.beginPath();
         this.ctx.arc(x, y, size / 2, 0, Math.PI * 2);
         this.ctx.fill();
@@ -216,7 +219,8 @@ export class Renderer {
     }
 
     drawWall(wall) {
-        const { x, y, health, maxHealth } = wall;
+        const { x, y, health } = wall;
+        const maxHealth = wall.maxHealth || 200; // Fallback for synced walls
         const size = this.grid.cellSize * 0.9;
 
         // Wall block - color changes based on health
@@ -285,10 +289,13 @@ export class Renderer {
 
     drawEnemy(enemy) {
         const { x, y, health, maxHealth, config, angle } = enemy;
-        const size = this.grid.cellSize * config.size;
+        // Fallback for synced enemies without full config
+        const enemySize = config?.size || 0.8;
+        const enemyColor = config?.color || '#ff4444';
+        const size = this.grid.cellSize * enemySize;
 
         // Triangle pointing towards movement direction
-        this.ctx.fillStyle = config.color;
+        this.ctx.fillStyle = enemyColor;
         this.ctx.save();
         this.ctx.translate(x, y);
         this.ctx.rotate(angle);
@@ -328,10 +335,11 @@ export class Renderer {
 
     drawProjectile(projectile) {
         const { x, y, config, type } = projectile;
+        const projColor = config?.projectileColor || '#ffff00';
 
         if (type === 'artillery') {
             // Larger projectile for artillery
-            this.ctx.fillStyle = config.projectileColor || '#ff6600';
+            this.ctx.fillStyle = projColor;
             this.ctx.beginPath();
             this.ctx.arc(x, y, 6, 0, Math.PI * 2);
             this.ctx.fill();
@@ -354,7 +362,7 @@ export class Renderer {
             this.ctx.fill();
         } else {
             // Default bullet
-            this.ctx.fillStyle = config.projectileColor || '#ffff00';
+            this.ctx.fillStyle = projColor;
             this.ctx.beginPath();
             this.ctx.arc(x, y, 3, 0, Math.PI * 2);
             this.ctx.fill();

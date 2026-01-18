@@ -123,6 +123,10 @@ export class Game {
     }
 
     sellTurret(turret) {
+        // Not supported in multiplayer yet
+        if (this.isMultiplayer) return;
+
+        if (!turret.getSellValue) return;
         const sellValue = turret.getSellValue();
 
         // Add resources
@@ -146,8 +150,13 @@ export class Game {
     }
 
     upgradeTurret(turret) {
+        // Not supported in multiplayer yet
+        if (this.isMultiplayer) return;
+
+        if (!turret.level || !turret.maxLevel) return;
         if (turret.level >= turret.maxLevel) return;
 
+        if (!turret.getUpgradeCost) return;
         const cost = turret.getUpgradeCost();
         if (!cost || !this.canAfford(cost)) return;
 
@@ -157,12 +166,16 @@ export class Game {
         }
 
         // Upgrade turret
-        turret.upgrade();
+        if (turret.upgrade) {
+            turret.upgrade();
+        }
 
         this.selectedTurret = turret;
     }
 
     damageStructure(structure, damage) {
+        // Server handles damage in multiplayer
+        if (this.isMultiplayer) return;
         if (!structure) return;
 
         // Check if it's a wall
@@ -220,36 +233,31 @@ export class Game {
     }
 
     update(deltaTime) {
-        // Update wave manager (only in solo mode - server handles waves in multiplayer)
+        // ===== SOLO MODE: Full game logic =====
         if (!this.isMultiplayer) {
+            // Update wave manager
             this.waveManager.update(deltaTime);
-        }
 
-        // Update extractors (only if they have update method - synced extractors might not)
-        for (const extractor of this.extractors) {
-            if (extractor.update) {
-                extractor.update(deltaTime);
-
-                // Auto-collect resources
-                if (extractor.stored > 0 && extractor.collect) {
-                    const collected = extractor.collect();
-                    this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
+            // Update extractors
+            for (const extractor of this.extractors) {
+                if (extractor.update) {
+                    extractor.update(deltaTime);
+                    if (extractor.stored > 0 && extractor.collect) {
+                        const collected = extractor.collect();
+                        this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
+                    }
                 }
             }
-        }
 
-        // Update enemies (only in solo mode - server handles enemy logic in multiplayer)
-        if (!this.isMultiplayer) {
+            // Update enemies
             for (const enemy of this.enemies) {
-                enemy.update(deltaTime, this.nexus, this.enemies, this);
+                if (enemy.update) {
+                    enemy.update(deltaTime, this.nexus, this.enemies, this);
+                }
             }
-        }
 
-        // Remove dead enemies and collect rewards (only in solo mode - server handles in multiplayer)
-        if (!this.isMultiplayer) {
-            const beforeCount = this.enemies.length;
+            // Remove dead enemies and collect rewards
             this.enemies = this.enemies.filter(enemy => {
-                // Never remove enemies that are too young (protection against instant death bugs)
                 if (enemy.age === undefined || enemy.age < 1.0) {
                     enemy.dead = false;
                     return true;
@@ -264,23 +272,25 @@ export class Game {
                 }
                 return !enemy.dead;
             });
-        }
 
-        // Update turrets (only if they have update method - synced turrets might not)
-        for (const turret of this.turrets) {
-            if (turret.update) {
-                turret.update(deltaTime, this.enemies, this.projectiles, this);
+            // Update turrets
+            for (const turret of this.turrets) {
+                if (turret.update) {
+                    turret.update(deltaTime, this.enemies, this.projectiles, this);
+                }
+            }
+
+            // Update projectiles
+            this.updateProjectiles(deltaTime);
+
+            // Check game over
+            if (this.nexus.isDestroyed()) {
+                this.gameOver = true;
+                this.ui.showGameOver();
             }
         }
-
-        // Update projectiles
-        this.updateProjectiles(deltaTime);
-
-        // Check game over
-        if (this.nexus.isDestroyed()) {
-            this.gameOver = true;
-            this.ui.showGameOver();
-        }
+        // ===== MULTIPLAYER MODE: Server handles all game logic =====
+        // Client only renders what server sends - no local updates
 
         // Update UI (always)
         this.ui.update();
@@ -412,8 +422,8 @@ export class Game {
             const isSelected = turret === this.selectedTurret || turret === hoveredTurret;
             this.renderer.drawTurret(turret, isSelected, this.actionMode);
 
-            // Draw range when hovering or selected
-            if (turret === hoveredTurret || turret === this.selectedTurret) {
+            // Draw range when hovering or selected (check config exists)
+            if ((turret === hoveredTurret || turret === this.selectedTurret) && turret.config?.range) {
                 this.renderer.drawRangeIndicator(turret.x, turret.y, turret.config.range);
             }
         }
@@ -441,12 +451,13 @@ export class Game {
         const cost = this.getBuildingCost(buildingType);
         if (!this.canAfford(cost)) return false;
 
-        // In multiplayer, also notify server (but still process locally for responsiveness)
+        // In multiplayer, ONLY send to server - server will sync back the result
         if (this.isMultiplayer && this.network) {
             this.network.placeBuilding(gridX, gridY, buildingType);
+            return true; // Assume success, server will correct if needed
         }
 
-        // Process locally (both solo and multiplayer)
+        // Solo mode: Process locally
         // Deduct resources
         for (const [resource, amount] of Object.entries(cost)) {
             this.resources[resource] -= amount;
@@ -529,10 +540,15 @@ export class Game {
     }
 
     recalculateEnemyPaths() {
+        // Server handles pathfinding in multiplayer
+        if (this.isMultiplayer) return;
+
         for (const enemy of this.enemies) {
-            const path = this.grid.findPath(enemy.gridX, enemy.gridY, this.nexus.gridX, this.nexus.gridY);
-            if (path) {
-                enemy.setPath(path);
+            if (enemy.setPath) {
+                const path = this.grid.findPath(enemy.gridX, enemy.gridY, this.nexus.gridX, this.nexus.gridY);
+                if (path) {
+                    enemy.setPath(path);
+                }
             }
         }
     }
