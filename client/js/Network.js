@@ -247,7 +247,10 @@ export class Network {
             let localProj = this.game.projectiles.find(p => p.id === sp.id);
 
             if (!localProj) {
-                // New projectile
+                // New projectile - check if it's a missile type that needs trail
+                const isMissileType = sp.type === 'missile' || sp.type === 'rocket' ||
+                                      sp.type === 'battery-missile' || sp.type === 'nuclear';
+
                 this.game.projectiles.push({
                     id: sp.id,
                     type: sp.type || 'bullet',
@@ -259,7 +262,17 @@ export class Network {
                     life: sp.life,
                     vx: sp.vx || 0,
                     vy: sp.vy || 0,
-                    damage: sp.damage
+                    damage: sp.damage,
+                    // Homing properties
+                    homingStrength: sp.homingStrength,
+                    targetId: sp.targetId,
+                    maxSpeed: sp.maxSpeed,
+                    targetX: sp.targetX,
+                    targetY: sp.targetY,
+                    delay: sp.delay,
+                    // Trail for missile rendering
+                    trail: isMissileType ? [] : undefined,
+                    particles: sp.type === 'nuclear' ? [] : undefined
                 });
             } else {
                 // Update existing - interpolate position for moving projectiles
@@ -278,6 +291,19 @@ export class Network {
                 localProj.startX = sp.startX;
                 localProj.startY = sp.startY;
                 localProj.life = sp.life;
+                localProj.targetX = sp.targetX;
+                localProj.targetY = sp.targetY;
+
+                // Add trail particles for rendering (client-side only)
+                if (localProj.trail && (localProj.vx || localProj.vy)) {
+                    localProj.trail.push({
+                        x: localProj.x + (Math.random() - 0.5) * 6,
+                        y: localProj.y + (Math.random() - 0.5) * 6,
+                        life: 1,
+                        size: 4 + Math.random() * 4
+                    });
+                    if (localProj.trail.length > 20) localProj.trail.shift();
+                }
             }
         }
     }
@@ -292,6 +318,14 @@ export class Network {
                 this.game.renderer.addDeathEffect(effect.x, effect.y, effect.color);
             } else if (effect.type === 'shockwave') {
                 this.game.renderer.addShockwave(effect.x, effect.y, effect.radius, effect.color);
+            } else if (effect.type === 'nuclear-explosion') {
+                this.game.renderer.addNuclearExplosion(effect.x, effect.y, effect.radius);
+            } else if (effect.type === 'missile-explosion') {
+                this.game.renderer.addMissileExplosion(effect.x, effect.y, effect.radius, effect.color);
+            } else if (effect.type === 'flak-explosion') {
+                this.game.renderer.addFlakExplosion(effect.x, effect.y, effect.radius);
+            } else if (effect.type === 'boss-death') {
+                this.game.renderer.addBossDeathEffect(effect.x, effect.y, effect.size, effect.color);
             }
         }
     }

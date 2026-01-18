@@ -784,18 +784,36 @@ class GameState {
 
             // Remove dead enemies and handle splitters
             const enemiesToSpawn = [];
+            // Boss types for special death effect
+            const bossTypes = ['boss', 'flying-boss', 'carrier-boss', 'mega-boss',
+                               'titan', 'leviathan', 'swarm-mother', 'devastator',
+                               'overlord', 'colossus', 'hive-queen', 'juggernaut',
+                               'apocalypse', 'world-ender'];
+
             this.enemies = this.enemies.filter(e => {
                 if (!e) return false;
                 if (e.dead) {
-                    // Add death effect
                     const enemyType = ENEMY_TYPES[e.type];
-                    this.pendingEffects.push({
-                        type: 'death',
-                        x: e.x,
-                        y: e.y,
-                        enemyType: e.type,
-                        color: enemyType?.color || '#ff4444'
-                    });
+
+                    // Check if it's a boss - add epic death effect
+                    if (bossTypes.includes(e.type) && !e.reachedNexus) {
+                        this.pendingEffects.push({
+                            type: 'boss-death',
+                            x: e.x,
+                            y: e.y,
+                            size: enemyType?.size || 1.5,
+                            color: enemyType?.color || '#880088'
+                        });
+                    } else {
+                        // Normal death effect
+                        this.pendingEffects.push({
+                            type: 'death',
+                            x: e.x,
+                            y: e.y,
+                            enemyType: e.type,
+                            color: enemyType?.color || '#ff4444'
+                        });
+                    }
 
                     if (!e.reachedNexus) {
                         if (enemyType && enemyType.reward) {
@@ -1823,6 +1841,95 @@ class GameState {
                     life: 0.3
                 });
             }
+        } else if (turret.config.isMissile || turret.config.isMissileBattery || turret.config.isRocketArray) {
+            // GUIDED MISSILES
+            const missileCount = turret.config.missileCount || turret.config.rocketCount || 2;
+            const speed = (turret.config.projectileSpeed || 12) * this.cellSize;
+            const homingStrength = turret.config.homingStrength || 0.15;
+
+            // Find strongest target for battery
+            let missileTarget = target;
+            if (turret.config.isMissileBattery || turret.config.isNuclear) {
+                let maxHealth = 0;
+                for (const enemy of this.enemies) {
+                    if (!enemy || enemy.dead) continue;
+                    const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
+                    if (dist <= range && enemy.health > maxHealth) {
+                        maxHealth = enemy.health;
+                        missileTarget = enemy;
+                    }
+                }
+            }
+
+            for (let i = 0; i < missileCount; i++) {
+                const offsetAngle = turret.angle + (i - (missileCount - 1) / 2) * 0.2;
+                const startX = turret.x + Math.cos(offsetAngle) * this.cellSize * 0.3;
+                const startY = turret.y + Math.sin(offsetAngle) * this.cellSize * 0.3;
+
+                const dx = missileTarget.x - startX;
+                const dy = missileTarget.y - startY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                let projType = 'missile';
+                if (turret.config.isRocketArray) projType = 'rocket';
+                if (turret.config.isMissileBattery) projType = 'battery-missile';
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: projType,
+                    x: startX,
+                    y: startY,
+                    startX: startX,
+                    startY: startY,
+                    vx: (dx / dist) * speed * 0.6,
+                    vy: (dy / dist) * speed * 0.6,
+                    maxSpeed: speed,
+                    damage: damage,
+                    aoeRadius: turret.config.explosionRadius || 1.5,
+                    penetration: false,
+                    hitEnemies: [],
+                    // Homing properties
+                    targetId: missileTarget.id,
+                    homingStrength: homingStrength,
+                    life: 5.0,
+                    delay: i * (turret.config.salvoDelay || 0.05)
+                });
+            }
+        } else if (turret.config.isNuclear) {
+            // NUCLEAR ICBM - guided
+            let strongestEnemy = target;
+            let maxHealth = 0;
+            for (const enemy of this.enemies) {
+                if (!enemy || enemy.dead) continue;
+                const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
+                if (dist <= range && enemy.health > maxHealth) {
+                    maxHealth = enemy.health;
+                    strongestEnemy = enemy;
+                }
+            }
+
+            const speed = (turret.config.projectileSpeed || 6) * this.cellSize;
+            const launchAngle = turret.angle - Math.PI / 6;
+
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'nuclear',
+                x: turret.x,
+                y: turret.y,
+                startX: turret.x,
+                startY: turret.y,
+                vx: Math.cos(launchAngle) * speed * 0.5,
+                vy: Math.sin(launchAngle) * speed * 0.5 - speed * 0.3,
+                maxSpeed: speed * 1.5,
+                damage: damage,
+                aoeRadius: turret.config.aoeRadius || 5,
+                targetId: strongestEnemy.id,
+                targetX: strongestEnemy.x,
+                targetY: strongestEnemy.y,
+                homingStrength: turret.config.homingStrength || 0.08,
+                life: 8.0,
+                hitEnemies: []
+            });
         } else {
             // Standard projectile
             const dx = target.x - turret.x;
@@ -1896,6 +2003,12 @@ class GameState {
                 continue;
             }
 
+            // Handle delay for salvo firing
+            if (proj.delay !== undefined && proj.delay > 0) {
+                proj.delay -= deltaTime;
+                continue;
+            }
+
             // Handle beam/visual-only projectiles with life
             if (proj.life !== undefined) {
                 proj.life -= deltaTime;
@@ -1905,6 +2018,62 @@ class GameState {
                 }
                 // Beam projectiles don't move or hit - they're just visual
                 if (proj.type === 'railgun' || proj.type === 'laser' || proj.type === 'tesla') {
+                    continue;
+                }
+            }
+
+            // === HOMING LOGIC FOR GUIDED MISSILES ===
+            if (proj.homingStrength && proj.targetId) {
+                // Find the target enemy by ID
+                const targetEnemy = this.enemies.find(e => e && e.id === proj.targetId && !e.dead);
+
+                if (targetEnemy) {
+                    const dx = targetEnemy.x - proj.x;
+                    const dy = targetEnemy.y - proj.y;
+                    const distToTarget = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distToTarget > 10) {
+                        const currentSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+                        const maxSpeed = proj.maxSpeed || currentSpeed;
+
+                        // Desired direction
+                        const desiredVx = (dx / distToTarget) * maxSpeed;
+                        const desiredVy = (dy / distToTarget) * maxSpeed;
+
+                        // Interpolate towards desired direction
+                        proj.vx += (desiredVx - proj.vx) * proj.homingStrength;
+                        proj.vy += (desiredVy - proj.vy) * proj.homingStrength;
+
+                        // Maintain/increase speed
+                        const newSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
+                        if (newSpeed > 0) {
+                            const speedMult = Math.min(maxSpeed / newSpeed, 1.05);
+                            proj.vx *= speedMult;
+                            proj.vy *= speedMult;
+                        }
+                    }
+
+                    // Update target position for nuclear
+                    if (proj.type === 'nuclear') {
+                        proj.targetX = targetEnemy.x;
+                        proj.targetY = targetEnemy.y;
+                    }
+                }
+            }
+
+            // Nuclear reaching target
+            if (proj.type === 'nuclear' && proj.targetX !== undefined) {
+                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
+                if (distToTarget < 30) {
+                    // Explode
+                    this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage);
+                    this.pendingEffects.push({
+                        type: 'nuclear-explosion',
+                        x: proj.x,
+                        y: proj.y,
+                        radius: proj.aoeRadius * this.cellSize
+                    });
+                    this.projectiles.splice(i, 1);
                     continue;
                 }
             }
@@ -1927,7 +2096,10 @@ class GameState {
                 const dist = Math.sqrt((proj.x - enemy.x) ** 2 + (proj.y - enemy.y) ** 2);
                 if (dist < this.cellSize * 0.5) {
                     if (proj.aoeRadius > 0) {
-                        this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage || 10);
+                        // Use appropriate explosion effect based on projectile type
+                        const explosionType = (proj.type === 'missile' || proj.type === 'rocket' || proj.type === 'battery-missile')
+                            ? 'missile-explosion' : 'explosion';
+                        this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage || 10, explosionType);
                         this.projectiles.splice(i, 1);
                     } else {
                         enemy.health -= (proj.damage || 10);
@@ -1944,16 +2116,16 @@ class GameState {
         }
     }
 
-    dealAOE(x, y, radius, damage) {
+    dealAOE(x, y, radius, damage, explosionType = 'explosion') {
         if (!radius || radius <= 0) return;
 
-        // Add explosion effect
+        // Add explosion effect based on type
         this.pendingEffects.push({
-            type: 'explosion',
+            type: explosionType,
             x: x,
             y: y,
             radius: radius,
-            color: '#ff6600'
+            color: explosionType === 'missile-explosion' ? '#ff4400' : '#ff6600'
         });
 
         for (const enemy of this.enemies) {
@@ -2487,7 +2659,14 @@ class GameState {
                 life: p.life,
                 vx: p.vx,
                 vy: p.vy,
-                damage: p.damage
+                damage: p.damage,
+                // Homing properties for client rendering
+                homingStrength: p.homingStrength,
+                targetId: p.targetId,
+                maxSpeed: p.maxSpeed,
+                targetX: p.targetX,
+                targetY: p.targetY,
+                delay: p.delay
             })),
             // Effects to trigger on client (explosions, deaths, etc.)
             effects: effectsToSend,
