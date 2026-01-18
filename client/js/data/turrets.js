@@ -335,12 +335,12 @@ export const TURRET_TYPES = {
         maxHealth: 180
     },
 
-    // === TOURELLES 3x3 ===
+    // === TOURELLES 3x3 (PORTEES AUGMENTEES!) ===
     'turret-flak': {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
         damage: 8,
-        range: 14,
+        range: 18,                // +4 portée!
         fireRate: 0.08,           // Tir ULTRA rapide!
         color: '#2a5caa',
         cost: { iron: 800, copper: 300, gold: 100 },
@@ -362,14 +362,14 @@ export const TURRET_TYPES = {
         name: 'Mega Tesla',
         gridSize: 3,
         damage: 60,
-        range: 10,
+        range: 14,                // +4 portée!
         fireRate: 1.2,
         color: '#00ffff',
         cost: { iron: 1200, copper: 500, gold: 200 },
 
         isMegaTesla: true,
         chainTargets: 8,          // Touche 8 cibles
-        chainRange: 4,
+        chainRange: 5,            // +1 chain range!
         arcCount: 3,              // 3 arcs principaux
         boltWidth: 6,
         glowColor: '#00ffff',
@@ -382,7 +382,7 @@ export const TURRET_TYPES = {
         name: 'Mega Railgun',
         gridSize: 3,
         damage: 200,
-        range: 18,
+        range: 24,                // +6 portée!
         fireRate: 4.0,
         color: '#1e90ff',
         cost: { iron: 1500, copper: 600, gold: 250 },
@@ -403,7 +403,7 @@ export const TURRET_TYPES = {
         name: 'Rocket Artillery',
         gridSize: 3,
         damage: 60,               // Plus de dégâts!
-        range: 16,
+        range: 22,                // +6 portée!
         fireRate: 1.8,            // Plus rapide!
         color: '#b22222',
         cost: { iron: 1100, copper: 450, gold: 180 },
@@ -426,7 +426,7 @@ export const TURRET_TYPES = {
         name: 'Laser Array',
         gridSize: 3,
         damage: 35,
-        range: 12,
+        range: 16,                // +4 portée!
         fireRate: 0.15,
         color: '#32cd32',
         cost: { iron: 1000, copper: 400, gold: 160 },
@@ -446,7 +446,7 @@ export const TURRET_TYPES = {
         name: 'Particle Cannon',
         gridSize: 3,
         damage: 150,
-        range: 15,
+        range: 20,                // +5 portée!
         fireRate: 3.5,
         color: '#ff1493',
         cost: { iron: 1300, copper: 550, gold: 220 },
@@ -467,7 +467,7 @@ export const TURRET_TYPES = {
         name: 'Nuclear Launcher',
         gridSize: 3,
         damage: 600,              // DEVASTATEUR!
-        range: 22,                // Très longue portée!
+        range: 28,                // +6 portée!
         minRange: 5,
         fireRate: 4.5,            // Plus rapide!
         color: '#ffff00',
@@ -490,14 +490,14 @@ export const TURRET_TYPES = {
         name: 'Storm Generator',
         gridSize: 3,
         damage: 25,
-        range: 10,
+        range: 14,                // +4 portée!
         fireRate: 0.2,
         color: '#9932cc',
         cost: { iron: 1100, copper: 500, gold: 200 },
 
         isStorm: true,
-        stormRadius: 5,
-        lightningStrikes: 5,      // Eclairs par seconde
+        stormRadius: 6,           // +1 rayon de tempête!
+        lightningStrikes: 6,      // +1 éclairs!
         strikeChance: 0.3,
         cloudColor: '#4b0082',
         boltColor: '#da70d6',
@@ -510,7 +510,7 @@ export const TURRET_TYPES = {
         name: 'Death Ray',
         gridSize: 3,
         damage: 100,
-        range: 14,
+        range: 18,                // +4 portée!
         fireRate: 0.05,           // Continu
         color: '#8b0000',
         cost: { iron: 1400, copper: 600, gold: 280 },
@@ -531,7 +531,7 @@ export const TURRET_TYPES = {
         name: 'Missile Battery',
         gridSize: 3,
         damage: 55,               // Plus de dégâts!
-        range: 18,
+        range: 24,                // +6 portée!
         fireRate: 1.8,            // Plus rapide!
         color: '#556b2f',
         cost: { iron: 1200, copper: 500, gold: 200 },
@@ -554,7 +554,7 @@ export const TURRET_TYPES = {
         name: 'Orbital Strike',
         gridSize: 3,
         damage: 500,              // DEVASTATEUR!
-        range: 30,                // Portée énorme!
+        range: 40,                // +10 portée MASSIVE!
         minRange: 3,
         fireRate: 4.0,            // Plus rapide!
         color: '#ffd700',
@@ -562,7 +562,7 @@ export const TURRET_TYPES = {
 
         isOrbital: true,
         strikeDelay: 1.0,         // Délai réduit!
-        strikeRadius: 5,          // Rayon augmenté!
+        strikeRadius: 6,          // +1 rayon de frappe!
         beamFromSky: true,
         warningColor: '#ff0000',
         strikeColor: '#ffffff',

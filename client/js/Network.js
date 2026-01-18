@@ -326,6 +326,8 @@ export class Network {
                 this.game.renderer.addFlakExplosion(effect.x, effect.y, effect.radius);
             } else if (effect.type === 'boss-death') {
                 this.game.renderer.addBossDeathEffect(effect.x, effect.y, effect.size, effect.color);
+            } else if (effect.type === 'orbital-beam') {
+                this.game.renderer.addOrbitalBeam(effect.x, effect.y, effect.radius);
             }
         }
     }

@@ -257,7 +257,7 @@ const TURRET_TYPES = {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
         damage: 8,
-        range: 14,
+        range: 18,               // +4 range
         fireRate: 0.08,
         cost: { iron: 800, copper: 300, gold: 100 },
         projectileSpeed: 40,
@@ -274,12 +274,12 @@ const TURRET_TYPES = {
         name: 'Mega Tesla',
         gridSize: 3,
         damage: 60,
-        range: 10,
+        range: 14,               // +4 range
         fireRate: 1.2,
         cost: { iron: 1200, copper: 500, gold: 200 },
         isMegaTesla: true,
         chainTargets: 8,
-        chainRange: 4,
+        chainRange: 5,           // +1 chain range
         health: 500,
         maxHealth: 500
     },
@@ -287,7 +287,7 @@ const TURRET_TYPES = {
         name: 'Mega Railgun',
         gridSize: 3,
         damage: 200,
-        range: 18,
+        range: 24,               // +6 range
         fireRate: 4.0,
         cost: { iron: 1500, copper: 600, gold: 250 },
         isMegaRailgun: true,
@@ -300,7 +300,7 @@ const TURRET_TYPES = {
         name: 'Rocket Artillery',
         gridSize: 3,
         damage: 60,
-        range: 16,
+        range: 22,               // +6 range
         fireRate: 1.8,
         cost: { iron: 1100, copper: 450, gold: 180 },
         projectileSpeed: 14,
@@ -316,7 +316,7 @@ const TURRET_TYPES = {
         name: 'Laser Array',
         gridSize: 3,
         damage: 35,
-        range: 12,
+        range: 16,               // +4 range
         fireRate: 0.15,
         cost: { iron: 1000, copper: 400, gold: 160 },
         isLaserArray: true,
@@ -329,7 +329,7 @@ const TURRET_TYPES = {
         name: 'Particle Cannon',
         gridSize: 3,
         damage: 150,
-        range: 15,
+        range: 20,               // +5 range
         fireRate: 3.5,
         cost: { iron: 1300, copper: 550, gold: 220 },
         isParticle: true,
@@ -341,7 +341,7 @@ const TURRET_TYPES = {
         name: 'Nuclear Launcher',
         gridSize: 3,
         damage: 600,
-        range: 22,
+        range: 28,               // +6 range
         minRange: 5,
         fireRate: 4.5,
         cost: { iron: 2000, copper: 800, gold: 400 },
@@ -356,12 +356,12 @@ const TURRET_TYPES = {
         name: 'Storm Generator',
         gridSize: 3,
         damage: 25,
-        range: 10,
+        range: 14,               // +4 range
         fireRate: 0.2,
         cost: { iron: 1100, copper: 500, gold: 200 },
         isStorm: true,
-        stormRadius: 5,
-        lightningStrikes: 5,
+        stormRadius: 6,          // +1 storm radius
+        lightningStrikes: 6,     // +1 strikes
         health: 450,
         maxHealth: 450
     },
@@ -369,7 +369,7 @@ const TURRET_TYPES = {
         name: 'Death Ray',
         gridSize: 3,
         damage: 100,
-        range: 14,
+        range: 18,               // +4 range
         fireRate: 0.05,
         cost: { iron: 1400, copper: 600, gold: 280 },
         isDeathRay: true,
@@ -381,7 +381,7 @@ const TURRET_TYPES = {
         name: 'Missile Battery',
         gridSize: 3,
         damage: 55,
-        range: 18,
+        range: 24,               // +6 range
         fireRate: 1.8,
         cost: { iron: 1200, copper: 500, gold: 200 },
         projectileSpeed: 18,
@@ -397,13 +397,13 @@ const TURRET_TYPES = {
         name: 'Orbital Strike',
         gridSize: 3,
         damage: 500,
-        range: 30,
+        range: 40,               // +10 range (massive)
         minRange: 3,
         fireRate: 4.0,
         cost: { iron: 2500, copper: 1000, gold: 500 },
         isOrbital: true,
         strikeDelay: 1.0,
-        strikeRadius: 5,
+        strikeRadius: 6,         // +1 strike radius
         health: 400,
         maxHealth: 400
     }
@@ -1930,6 +1930,162 @@ class GameState {
                 life: 8.0,
                 hitEnemies: []
             });
+        } else if (turret.config.flakCount || turret.config.isAntiAir) {
+            // FLAK - multiple fast projectiles with AOE explosions
+            const flakCount = turret.config.flakCount || 16;
+            const spreadRadius = (turret.config.flakSpread || 3) * this.cellSize;
+            const speed = (turret.config.projectileSpeed || 40) * this.cellSize;
+
+            for (let i = 0; i < flakCount; i++) {
+                const spreadAngle = turret.angle + (Math.random() - 0.5) * 0.8;
+                const spreadDist = Math.random() * spreadRadius;
+                const targetX = target.x + Math.cos(spreadAngle) * spreadDist;
+                const targetY = target.y + Math.sin(spreadAngle) * spreadDist;
+
+                const dx = targetX - turret.x;
+                const dy = targetY - turret.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: 'flak',
+                    x: turret.x,
+                    y: turret.y,
+                    startX: turret.x,
+                    startY: turret.y,
+                    vx: (dx / dist) * speed,
+                    vy: (dy / dist) * speed,
+                    damage: damage,
+                    aoeRadius: turret.config.flakExplosionRadius || 0.8,
+                    targetX: targetX,
+                    targetY: targetY,
+                    hitEnemies: [],
+                    delay: (i / flakCount) * 0.08,
+                    life: 1.2
+                });
+            }
+        } else if (turret.config.isOrbital) {
+            // ORBITAL STRIKE - delayed beam from sky
+            const strikeDelay = turret.config.strikeDelay || 1.0;
+            const strikeRadius = (turret.config.strikeRadius || 5) * this.cellSize;
+
+            // Create warning marker first
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'orbital-warning',
+                x: target.x,
+                y: target.y,
+                startX: target.x,
+                startY: target.y,
+                vx: 0,
+                vy: 0,
+                damage: 0,
+                life: strikeDelay,
+                radius: strikeRadius
+            });
+
+            // Create delayed strike
+            this.projectiles.push({
+                id: Date.now() + Math.random() + 1,
+                type: 'orbital-strike',
+                x: target.x,
+                y: target.y,
+                startX: target.x,
+                startY: target.y,
+                vx: 0,
+                vy: 0,
+                damage: damage,
+                aoeRadius: turret.config.strikeRadius || 5,
+                delay: strikeDelay,
+                life: 1.5,
+                radius: strikeRadius
+            });
+        } else if (turret.config.isStorm) {
+            // STORM - area effect with lightning strikes
+            const stormRadius = (turret.config.stormRadius || 5) * this.cellSize;
+            const lightningStrikes = turret.config.lightningStrikes || 5;
+
+            // Storm cloud effect
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'storm-cloud',
+                x: target.x,
+                y: target.y,
+                startX: turret.x,
+                startY: turret.y,
+                vx: 0,
+                vy: 0,
+                damage: 0,
+                life: 0.5,
+                radius: stormRadius
+            });
+
+            // Lightning strikes hitting enemies in area
+            const enemiesInRange = this.enemies.filter(e => {
+                if (!e || e.dead) return false;
+                const dist = Math.sqrt((e.x - target.x) ** 2 + (e.y - target.y) ** 2);
+                return dist <= stormRadius;
+            });
+
+            for (let i = 0; i < Math.min(lightningStrikes, enemiesInRange.length); i++) {
+                const enemy = enemiesInRange[i];
+                enemy.health -= damage;
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: 'lightning',
+                    x: enemy.x,
+                    y: enemy.y,
+                    startX: target.x,
+                    startY: target.y - 200,
+                    vx: 0,
+                    vy: 0,
+                    damage: 0,
+                    life: 0.2
+                });
+            }
+        } else if (turret.config.isDeathRay) {
+            // DEATH RAY - continuous devastating beam
+            target.health -= damage;
+
+            this.projectiles.push({
+                id: Date.now() + Math.random(),
+                type: 'deathray',
+                x: target.x,
+                y: target.y,
+                startX: turret.x,
+                startY: turret.y,
+                vx: 0,
+                vy: 0,
+                damage: 0,
+                life: 0.08
+            });
+        } else if (turret.config.isLaserArray) {
+            // LASER ARRAY - multiple instant beams
+            const laserCount = turret.config.laserCount || 4;
+            const enemiesInRange = this.enemies.filter(e => {
+                if (!e || e.dead) return false;
+                const dist = Math.sqrt((e.x - turret.x) ** 2 + (e.y - turret.y) ** 2);
+                return dist <= turret.config.range * this.cellSize;
+            }).slice(0, laserCount);
+
+            for (let i = 0; i < enemiesInRange.length; i++) {
+                const enemy = enemiesInRange[i];
+                enemy.health -= damage;
+
+                this.projectiles.push({
+                    id: Date.now() + Math.random() + i,
+                    type: 'laser',
+                    x: enemy.x,
+                    y: enemy.y,
+                    startX: turret.x,
+                    startY: turret.y,
+                    vx: 0,
+                    vy: 0,
+                    damage: 0,
+                    life: 0.1
+                });
+            }
         } else {
             // Standard projectile
             const dx = target.x - turret.x;
@@ -2076,6 +2232,39 @@ class GameState {
                     this.projectiles.splice(i, 1);
                     continue;
                 }
+            }
+
+            // FLAK reaching target area
+            if (proj.type === 'flak' && proj.targetX !== undefined) {
+                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
+                if (distToTarget < 20) {
+                    // Explode with flak effect
+                    this.dealAOE(proj.x, proj.y, proj.aoeRadius * this.cellSize, proj.damage, 'flak-explosion');
+                    this.projectiles.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // Orbital strike - deal damage when delay expires
+            if (proj.type === 'orbital-strike' && proj.delay !== undefined && proj.delay <= 0) {
+                if (!proj.triggered) {
+                    proj.triggered = true;
+                    // Deal massive AOE damage
+                    this.dealAOE(proj.x, proj.y, proj.radius, proj.damage, 'explosion');
+                    this.pendingEffects.push({
+                        type: 'orbital-beam',
+                        x: proj.x,
+                        y: proj.y,
+                        radius: proj.radius
+                    });
+                }
+            }
+
+            // Visual-only projectiles that don't move
+            if (proj.type === 'storm-cloud' || proj.type === 'lightning' ||
+                proj.type === 'orbital-warning' || proj.type === 'orbital-strike' ||
+                proj.type === 'deathray' || proj.type === 'flame') {
+                continue; // Don't move, just expire based on life
             }
 
             proj.x += (proj.vx || 0) * deltaTime;
