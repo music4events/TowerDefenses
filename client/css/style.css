@@ -400,12 +400,12 @@ body {
 
 /* Utility */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 /* Override for elements that should keep their space */
 #selection-info.hidden {
-    display: block;
+    display: block !important;
     visibility: hidden;
 }
 
