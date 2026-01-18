@@ -563,7 +563,6 @@ class GameState {
                 this.endlessDifficulty += 0.1;
                 this.endlessSpawnRate = Math.max(0.5, this.endlessSpawnRate - 0.1);
                 this.waveNumber++;
-                console.log(`Endless difficulty increased to ${this.endlessDifficulty.toFixed(1)}`);
             }
 
             // Spawn enemies continuously
@@ -578,9 +577,6 @@ class GameState {
 
     spawnEndlessEnemy() {
         try {
-            // Debug: log current difficulty
-            console.log(`[Endless] Spawning enemy at difficulty ${this.endlessDifficulty.toFixed(2)}, wave ${this.waveNumber}`);
-
             // Choose enemy type based on difficulty
             const types = ['grunt'];
             if (this.endlessDifficulty >= 1.2) types.push('runner');
@@ -656,9 +652,6 @@ class GameState {
                 enemy.ignoreWalls = true;
             }
             this.enemies.push(enemy);
-
-            // Debug: log enemy stats
-            console.log(`[Endless] Created ${type}: HP=${enemy.health.toFixed(0)}/${enemy.maxHealth.toFixed(0)}, Speed=${enemy.speed.toFixed(2)}, Dmg=${enemy.damage.toFixed(1)}`);
         } catch (error) {
             console.error('Error in spawnEndlessEnemy:', error);
         }

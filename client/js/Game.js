@@ -24,9 +24,11 @@ export class Game {
         this.mapWidth = 150 * this.cellSize;  // 4800
         this.mapHeight = 114 * this.cellSize; // 3648
 
-        // Viewport/canvas size (what we actually see)
-        this.canvas.width = Math.min(1600, window.innerWidth - 280);
-        this.canvas.height = Math.min(900, window.innerHeight - 40);
+        // Viewport/canvas size - responsive to window
+        this.updateCanvasSize();
+
+        // Listen for window resize
+        window.addEventListener('resize', () => this.handleResize());
 
         // Camera/viewport position and zoom
         this.camera = {
@@ -187,6 +189,36 @@ export class Game {
         this.camera.x = nexusWorldX - (this.canvas.width / this.camera.zoom / 2);
         this.camera.y = nexusWorldY - (this.canvas.height / this.camera.zoom / 2);
         this.clampCamera();
+    }
+
+    updateCanvasSize() {
+        // Get actual available space from the canvas element's bounding rect
+        const rect = this.canvas.getBoundingClientRect();
+
+        // If rect is valid (element is visible), use it
+        if (rect.width > 0 && rect.height > 0) {
+            this.canvas.width = Math.floor(rect.width);
+            this.canvas.height = Math.floor(rect.height);
+        } else {
+            // Fallback: window minus UI panel width
+            const uiWidth = 260;
+            this.canvas.width = window.innerWidth - uiWidth - 4;
+            this.canvas.height = window.innerHeight - 4;
+        }
+
+        // Schedule another update on next frame if sizes are small (layout not ready yet)
+        if (this.canvas.width < 100 || this.canvas.height < 100) {
+            requestAnimationFrame(() => this.updateCanvasSize());
+        }
+    }
+
+    handleResize() {
+        this.updateCanvasSize();
+        this.clampCamera();
+        // Re-center on nexus if view is significantly changed
+        if (this.nexus) {
+            this.centerCameraOnNexus();
+        }
     }
 
     setGameSpeed(speed) {

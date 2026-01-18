@@ -4,49 +4,57 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 body {
     background: #0a0a1a;
     font-family: 'Segoe UI', Tahoma, sans-serif;
     overflow: hidden;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    min-height: 100vh;
-    padding: 10px;
 }
 
 #game-container {
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-left: 0;
+    flex-direction: row;
 }
 
 #gameCanvas {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
     border: 2px solid #0f3460;
-    border-radius: 4px;
     cursor: crosshair;
+    display: block;
 }
 
 #ui {
-    width: 240px;
+    width: 260px;
+    min-width: 260px;
     background: #1a1a2e;
-    border: 2px solid #0f3460;
-    border-radius: 4px;
-    padding: 15px;
+    border-left: 2px solid #0f3460;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    max-height: calc(100vh - 40px);
+    gap: 10px;
+    height: 100vh;
     overflow-y: auto;
-    align-self: flex-start;
+    box-sizing: border-box;
 }
 
 #resources {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .resource {
@@ -80,6 +88,7 @@ body {
     padding: 10px;
     background: #16213e;
     border-radius: 4px;
+    flex-shrink: 0;
 }
 
 #wave-number {
@@ -96,6 +105,7 @@ body {
 
 #nexus-health {
     text-align: center;
+    flex-shrink: 0;
 }
 
 #nexus-health-bar {
@@ -118,19 +128,29 @@ body {
     font-size: 12px;
 }
 
+#build-menu {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 #build-menu h3 {
     color: #8892b0;
     font-size: 14px;
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    flex-shrink: 0;
 }
 
 #build-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    max-height: 400px;
+    gap: 4px;
+    flex: 1;
+    min-height: 100px;
     overflow-y: auto;
     padding-right: 5px;
 }
@@ -139,13 +159,13 @@ body {
     background: #16213e;
     border: 2px solid #0f3460;
     border-radius: 4px;
-    padding: 8px 4px;
+    padding: 6px 3px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
 }
 
 .build-btn:hover {
@@ -259,6 +279,7 @@ body {
     padding: 8px;
     background: #16213e;
     border-radius: 4px;
+    flex-shrink: 0;
 }
 
 #speed-control span {
@@ -294,6 +315,7 @@ body {
     display: flex;
     gap: 8px;
     margin-top: 15px;
+    flex-shrink: 0;
 }
 
 .mode-btn {
@@ -336,7 +358,10 @@ body {
     background: #16213e;
     padding: 12px;
     border-radius: 4px;
-    min-height: 180px;
+    min-height: 120px;
+    max-height: 180px;
+    flex-shrink: 0;
+    overflow-y: auto;
 }
 
 #selection-info h3 {
@@ -386,11 +411,14 @@ body {
 
 /* Lobby Screen */
 #lobby-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    width: 100%;
 }
 
 .lobby-container {
@@ -659,6 +687,7 @@ body {
     margin-top: 15px;
     border-top: 1px solid #0f3460;
     padding-top: 15px;
+    flex-shrink: 0;
 }
 
 #chat-messages {
