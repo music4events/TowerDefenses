@@ -612,6 +612,34 @@ export class Game {
                 }
             }
 
+            // Special handling for orbital strike
+            if (proj.type === 'orbital-strike' && proj.delay !== undefined) {
+                proj.delay -= deltaTime;
+                if (proj.delay <= 0 && !proj.triggered) {
+                    proj.triggered = true;
+                    // Deal massive AOE damage
+                    if (!this.isMultiplayer) {
+                        this.dealAOEDamage(proj.x, proj.y, proj.radius * 2, proj.damage);
+                    }
+                    // The visual is handled in Renderer via the projectile itself
+                }
+                continue; // Don't move orbital strike projectiles
+            }
+
+            // Special handling for nuclear that reaches target
+            if (proj.type === 'nuclear' && proj.targetX !== undefined) {
+                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
+                if (distToTarget < 20) {
+                    // Explode at target
+                    this.renderer.addNuclearExplosion(proj.x, proj.y, proj.aoeRadius);
+                    if (!this.isMultiplayer) {
+                        this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
+                    }
+                    this.projectiles.splice(i, 1);
+                    continue;
+                }
+            }
+
             // Move projectile
             if (proj.vx !== undefined) {
                 proj.x += proj.vx * deltaTime;
@@ -636,8 +664,20 @@ export class Game {
                     if (dist < hitRadius) {
                         // Hit!
                         if (proj.aoeRadius > 0) {
-                            // AOE explosion visual
-                            this.renderer.addExplosion(proj.x, proj.y, proj.aoeRadius);
+                            // Choose explosion type based on projectile
+                            if (proj.type === 'nuclear') {
+                                // EPIC Nuclear explosion
+                                this.renderer.addNuclearExplosion(proj.x, proj.y, proj.aoeRadius);
+                            } else if (proj.type === 'missile' || proj.type === 'rocket' || proj.type === 'battery-missile') {
+                                // Epic missile explosion
+                                this.renderer.addMissileExplosion(proj.x, proj.y, proj.aoeRadius);
+                            } else if (proj.type === 'plasma') {
+                                // Plasma explosion with purple color
+                                this.renderer.addMissileExplosion(proj.x, proj.y, proj.aoeRadius, '#9400d3');
+                            } else {
+                                // Standard AOE explosion
+                                this.renderer.addExplosion(proj.x, proj.y, proj.aoeRadius);
+                            }
                             // Only deal damage in solo mode
                             if (!this.isMultiplayer) {
                                 this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);

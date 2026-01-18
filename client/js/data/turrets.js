@@ -230,23 +230,23 @@ export const TURRET_TYPES = {
         health: 80,
         maxHealth: 80
     },
-    // === TOURELLES 2x2 ===
+    // === TOURELLES 2x2 (BUFFED!) ===
     'turret-missile': {
         name: 'Missile Launcher',
         gridSize: 2,
-        damage: 45,
-        range: 10,
-        fireRate: 1.8,
+        damage: 60,
+        range: 12,
+        fireRate: 1.2,            // Plus rapide!
         color: '#8b0000',
         cost: { iron: 600, copper: 200, gold: 80 },
-        projectileSpeed: 8,
+        projectileSpeed: 12,      // Plus rapide!
         projectileColor: '#ff4400',
 
         isMissile: true,
-        homingStrength: 0.15,     // Force de guidage
-        missileCount: 2,          // Missiles par salve
+        homingStrength: 0.25,     // Guidage plus fort!
+        missileCount: 3,          // 3 missiles par salve!
         trailColor: '#ff6600',
-        explosionRadius: 1.5,
+        explosionRadius: 2.0,     // Plus gros!
 
         size: 1.8,
         health: 250,
@@ -255,18 +255,18 @@ export const TURRET_TYPES = {
     'turret-plasma': {
         name: 'Plasma Cannon',
         gridSize: 2,
-        damage: 80,
-        range: 8,
-        fireRate: 2.0,
+        damage: 120,              // Plus de dégâts!
+        range: 10,
+        fireRate: 1.5,            // Plus rapide!
         color: '#9400d3',
         cost: { iron: 700, copper: 250, gold: 100 },
-        projectileSpeed: 12,
+        projectileSpeed: 15,
         projectileColor: '#da70d6',
 
         isPlasma: true,
-        plasmaSize: 15,
+        plasmaSize: 20,           // Plus gros!
         plasmaTrail: true,
-        aoeRadius: 1.2,
+        aoeRadius: 1.8,           // Plus gros!
 
         size: 1.8,
         health: 220,
@@ -396,21 +396,21 @@ export const TURRET_TYPES = {
     'turret-rocket-array': {
         name: 'Rocket Artillery',
         gridSize: 3,
-        damage: 40,
-        range: 14,
-        fireRate: 2.5,
+        damage: 60,               // Plus de dégâts!
+        range: 16,
+        fireRate: 1.8,            // Plus rapide!
         color: '#b22222',
         cost: { iron: 1100, copper: 450, gold: 180 },
-        projectileSpeed: 10,
+        projectileSpeed: 14,      // Plus rapide!
         projectileColor: '#ff4500',
 
         isRocketArray: true,
-        rocketCount: 6,           // 6 roquettes par salve
+        rocketCount: 8,           // 8 roquettes par salve!
         isMissile: true,
-        homingStrength: 0.12,
-        salvoDelay: 0.1,          // Delai entre chaque roquette
+        homingStrength: 0.2,      // Meilleur guidage!
+        salvoDelay: 0.08,         // Salve plus rapide!
         trailColor: '#ff6347',
-        explosionRadius: 1.8,
+        explosionRadius: 2.2,     // Plus gros!
 
         size: 2.8,
         health: 480,
@@ -460,19 +460,19 @@ export const TURRET_TYPES = {
     'turret-nuclear': {
         name: 'Nuclear Launcher',
         gridSize: 3,
-        damage: 300,
-        range: 16,
-        minRange: 6,
-        fireRate: 6.0,
+        damage: 600,              // DEVASTATEUR!
+        range: 22,                // Très longue portée!
+        minRange: 5,
+        fireRate: 4.5,            // Plus rapide!
         color: '#ffff00',
         cost: { iron: 2000, copper: 800, gold: 400 },
-        projectileSpeed: 6,
+        projectileSpeed: 10,      // Missile plus rapide!
         projectileColor: '#ffff00',
 
         isNuclear: true,
-        aoeRadius: 5,             // Enorme rayon d'explosion
-        radiationDamage: 20,      // DPS radiation
-        radiationDuration: 3,
+        aoeRadius: 7,             // ENORME zone de dégâts!
+        radiationDamage: 40,      // Radiation augmentée!
+        radiationDuration: 4,
         mushroomCloud: true,
 
         size: 2.8,
@@ -523,21 +523,21 @@ export const TURRET_TYPES = {
     'turret-missile-battery': {
         name: 'Missile Battery',
         gridSize: 3,
-        damage: 35,
-        range: 16,
-        fireRate: 3.0,
+        damage: 50,               // Plus de dégâts!
+        range: 18,
+        fireRate: 2.0,            // Plus rapide!
         color: '#556b2f',
         cost: { iron: 1200, copper: 500, gold: 200 },
-        projectileSpeed: 12,
+        projectileSpeed: 16,      // Missiles rapides!
         projectileColor: '#9acd32',
 
         isMissileBattery: true,
-        missileCount: 12,         // 12 missiles par salve!
+        missileCount: 16,         // 16 missiles par salve!
         isMissile: true,
-        homingStrength: 0.2,
-        salvoDelay: 0.05,
+        homingStrength: 0.3,      // Guidage amélioré!
+        salvoDelay: 0.03,         // Salve ultra rapide!
         trailColor: '#adff2f',
-        explosionRadius: 1.2,
+        explosionRadius: 1.5,     // Explosions plus grosses!
 
         size: 2.8,
         health: 520,
@@ -546,16 +546,16 @@ export const TURRET_TYPES = {
     'turret-orbital': {
         name: 'Orbital Strike',
         gridSize: 3,
-        damage: 250,
-        range: 20,
-        minRange: 4,
-        fireRate: 5.0,
+        damage: 500,              // DEVASTATEUR!
+        range: 30,                // Portée énorme!
+        minRange: 3,
+        fireRate: 4.0,            // Plus rapide!
         color: '#ffd700',
         cost: { iron: 2500, copper: 1000, gold: 500 },
 
         isOrbital: true,
-        strikeDelay: 1.5,         // Delai avant impact
-        strikeRadius: 3,
+        strikeDelay: 1.0,         // Délai réduit!
+        strikeRadius: 5,          // Rayon augmenté!
         beamFromSky: true,
         warningColor: '#ff0000',
         strikeColor: '#ffffff',

@@ -307,7 +307,7 @@ export class Turret {
             return;
         }
         if (this.config.isNuclear) {
-            this.fireNuclear(projectiles);
+            this.fireNuclear(projectiles, game);
             return;
         }
         if (this.config.isStorm) {
@@ -940,10 +940,24 @@ export class Turret {
         });
     }
 
-    fireNuclear(projectiles) {
-        const speed = (this.config.projectileSpeed || 6) * this.grid.cellSize;
-        const dx = this.target.x - this.x;
-        const dy = this.target.y - this.y;
+    fireNuclear(projectiles, game) {
+        // Target the STRONGEST enemy (highest HP) in range
+        let strongestEnemy = null;
+        let maxHealth = 0;
+
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+            if (dist <= this.range && enemy.health > maxHealth) {
+                maxHealth = enemy.health;
+                strongestEnemy = enemy;
+            }
+        }
+
+        const target = strongestEnemy || this.target;
+        const speed = (this.config.projectileSpeed || 8) * this.grid.cellSize;
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         projectiles.push({
@@ -955,13 +969,17 @@ export class Turret {
             damage: this.config.damage,
             config: this.config,
             aoeRadius: (this.config.aoeRadius || 5) * this.grid.cellSize,
-            targetX: this.target.x,
-            targetY: this.target.y,
+            targetX: target.x,
+            targetY: target.y,
             sourceX: this.x,
             sourceY: this.y,
             hitEnemies: [],
             life: 5.0,
-            arcHeight: 3
+            arcHeight: 3,
+            // Particle trail effect
+            particles: [],
+            glowSize: 15,
+            isNuclearMissile: true
         });
     }
 
@@ -1077,32 +1095,52 @@ export class Turret {
     }
 
     fireOrbital(projectiles, game) {
-        const strikeRadius = (this.config.strikeRadius || 3) * this.grid.cellSize;
-        const strikeDelay = this.config.strikeDelay || 1.5;
+        // Target the STRONGEST enemy (highest HP) in range for maximum impact
+        let strongestEnemy = null;
+        let maxHealth = 0;
 
-        // Warning marker
+        for (const enemy of game.enemies) {
+            if (enemy.dead) continue;
+            const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+            if (dist <= this.range && enemy.health > maxHealth) {
+                maxHealth = enemy.health;
+                strongestEnemy = enemy;
+            }
+        }
+
+        const target = strongestEnemy || this.target;
+        const strikeRadius = (this.config.strikeRadius || 4) * this.grid.cellSize;
+        const strikeDelay = this.config.strikeDelay || 1.2;
+
+        // Warning marker with targeting animation
         projectiles.push({
             type: 'orbital-warning',
-            x: this.target.x,
-            y: this.target.y,
-            radius: strikeRadius,
+            x: target.x,
+            y: target.y,
+            radius: strikeRadius * 1.5,
             config: this.config,
             life: strikeDelay,
-            phase: 0
+            phase: 0,
+            targetingLines: true
         });
 
-        // Delayed strike (will be processed in game update)
+        // The orbital beam strike
         projectiles.push({
             type: 'orbital-strike',
-            x: this.target.x,
-            y: this.target.y,
+            x: target.x,
+            y: target.y,
             radius: strikeRadius,
             damage: this.config.damage,
             config: this.config,
-            life: strikeDelay + 0.5,
+            life: strikeDelay + 1.5,
             delay: strikeDelay,
             triggered: false,
-            targetEnemies: [...game.enemies.filter(e => !e.dead)]
+            targetEnemies: [...game.enemies.filter(e => !e.dead)],
+            // Epic beam effect data
+            beamWidth: 0,
+            maxBeamWidth: 50,
+            impactPhase: 0,
+            shockwaveRadius: 0
         });
     }
 

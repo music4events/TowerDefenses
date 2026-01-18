@@ -1505,30 +1505,90 @@ export class Renderer {
                 this.ctx.fill();
             }
         } else if (type === 'nuclear') {
-            // Nuclear missile with arc trajectory
-            const progress = 1 - projectile.life / 5;
+            // EPIC Nuclear missile with particle trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const angle = Math.atan2(dy, dx);
 
-            // Calculate arc position
-            const arcHeight = (projectile.arcHeight || 3) * this.grid.cellSize * 50;
-            const arcY = y - Math.sin(progress * Math.PI) * arcHeight * (1 - progress);
+            // Particle trail
+            if (!projectile.particles) projectile.particles = [];
+            projectile.particles.push({
+                x: x + (Math.random() - 0.5) * 10,
+                y: y + (Math.random() - 0.5) * 10,
+                size: 5 + Math.random() * 8,
+                life: 1,
+                color: Math.random() > 0.5 ? '#ffff00' : '#ff8800'
+            });
+            if (projectile.particles.length > 30) projectile.particles.shift();
 
-            // Trail
-            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+            // Draw particle trail
+            for (const p of projectile.particles) {
+                p.life -= 0.05;
+                p.size *= 0.95;
+                if (p.life > 0) {
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life * 0.7;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+            this.ctx.globalAlpha = 1;
+
+            // Radiation glow (pulsing)
+            const pulse = Math.sin(Date.now() / 50) * 0.3 + 0.7;
+            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, 25 * pulse);
+            glowGradient.addColorStop(0, 'rgba(255, 255, 100, 0.8)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.4)');
+            glowGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            this.ctx.fillStyle = glowGradient;
             this.ctx.beginPath();
-            this.ctx.arc(x, arcY, 8, 0, Math.PI * 2);
+            this.ctx.arc(x, y, 25 * pulse, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Glow
-            this.ctx.fillStyle = 'rgba(255, 200, 0, 0.3)';
-            this.ctx.beginPath();
-            this.ctx.arc(x, arcY, 15, 0, Math.PI * 2);
-            this.ctx.fill();
+            // Missile body
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
 
-            // Warhead
+            // Body
+            this.ctx.fillStyle = '#444444';
+            this.ctx.fillRect(-20, -5, 25, 10);
+
+            // Warhead (yellow/black radiation symbol)
             this.ctx.fillStyle = '#ffff00';
             this.ctx.beginPath();
-            this.ctx.arc(x, arcY, 5, 0, Math.PI * 2);
+            this.ctx.moveTo(5, 0);
+            this.ctx.lineTo(-5, -8);
+            this.ctx.lineTo(-5, 8);
+            this.ctx.closePath();
             this.ctx.fill();
+
+            // Radiation stripes on warhead
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(-3, -6, 2, 12);
+
+            // Exhaust flame
+            this.ctx.fillStyle = '#ff6600';
+            const flameSize = 10 + Math.random() * 8;
+            this.ctx.beginPath();
+            this.ctx.moveTo(-20, 0);
+            this.ctx.lineTo(-20 - flameSize, -5);
+            this.ctx.lineTo(-20 - flameSize * 0.7, 0);
+            this.ctx.lineTo(-20 - flameSize, 5);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Inner flame
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.beginPath();
+            this.ctx.moveTo(-20, 0);
+            this.ctx.lineTo(-20 - flameSize * 0.5, -3);
+            this.ctx.lineTo(-20 - flameSize * 0.5, 3);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            this.ctx.restore();
         } else if (type === 'storm-cloud') {
             // Storm cloud effect
             this.ctx.fillStyle = `rgba(75, 0, 130, ${projectile.life * 0.3})`;
@@ -1571,44 +1631,134 @@ export class Renderer {
             this.ctx.lineWidth = 3;
             this.ctx.stroke();
         } else if (type === 'orbital-warning') {
-            // Warning circle that shrinks
-            const progress = projectile.life / 1.5;
-            this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.5 + Math.sin(Date.now() / 50) * 0.3})`;
-            this.ctx.lineWidth = 3;
-            this.ctx.setLineDash([10, 5]);
+            // EPIC Warning with targeting animation
+            const progress = projectile.life / 1.2;
+            const shrinkRadius = projectile.radius * progress;
+            const pulse = Math.sin(Date.now() / 30) * 0.4 + 0.6;
+
+            // Outer warning circle (shrinking)
+            this.ctx.strokeStyle = `rgba(255, 0, 0, ${pulse})`;
+            this.ctx.lineWidth = 4;
+            this.ctx.setLineDash([15, 10]);
             this.ctx.beginPath();
-            this.ctx.arc(x, y, projectile.radius * progress, 0, Math.PI * 2);
+            this.ctx.arc(x, y, shrinkRadius, 0, Math.PI * 2);
             this.ctx.stroke();
             this.ctx.setLineDash([]);
 
-            // Target crosshairs
+            // Inner targeting circle
+            this.ctx.strokeStyle = `rgba(255, 100, 0, ${pulse * 0.8})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, shrinkRadius * 0.6, 0, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Rotating targeting lines
+            const rotAngle = Date.now() / 200;
             this.ctx.strokeStyle = '#ff0000';
             this.ctx.lineWidth = 2;
-            const r = projectile.radius * 0.3;
-            this.ctx.beginPath();
-            this.ctx.moveTo(x - r, y);
-            this.ctx.lineTo(x + r, y);
-            this.ctx.moveTo(x, y - r);
-            this.ctx.lineTo(x, y + r);
-            this.ctx.stroke();
-        } else if (type === 'orbital-strike') {
-            // The actual strike beam from sky
-            if (projectile.delay <= 0 && !projectile.triggered) {
-                // Massive beam from above
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            for (let i = 0; i < 4; i++) {
+                const lineAngle = rotAngle + (i * Math.PI / 2);
+                const innerR = shrinkRadius * 0.3;
+                const outerR = shrinkRadius * 0.9;
                 this.ctx.beginPath();
-                this.ctx.moveTo(x - 5, -100);
-                this.ctx.lineTo(x + 5, -100);
-                this.ctx.lineTo(x + projectile.radius, y);
-                this.ctx.lineTo(x - projectile.radius, y);
-                this.ctx.closePath();
+                this.ctx.moveTo(x + Math.cos(lineAngle) * innerR, y + Math.sin(lineAngle) * innerR);
+                this.ctx.lineTo(x + Math.cos(lineAngle) * outerR, y + Math.sin(lineAngle) * outerR);
+                this.ctx.stroke();
+            }
+
+            // Center crosshairs
+            const crossSize = 15 + Math.sin(Date.now() / 100) * 5;
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - crossSize, y);
+            this.ctx.lineTo(x + crossSize, y);
+            this.ctx.moveTo(x, y - crossSize);
+            this.ctx.lineTo(x, y + crossSize);
+            this.ctx.stroke();
+
+            // "INCOMING" text effect - flashing
+            if (Math.floor(Date.now() / 200) % 2 === 0) {
+                this.ctx.fillStyle = '#ff0000';
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('⚠ STRIKE', x, y - shrinkRadius - 10);
+            }
+
+        } else if (type === 'orbital-strike') {
+            // EPIC Orbital beam from sky
+            if (projectile.delay <= 0) {
+                const strikeProgress = Math.min(1, (1.2 - projectile.life) / 0.3);
+                const fadeOut = Math.max(0, projectile.life / 0.5);
+
+                // Beam width animation
+                const beamWidth = projectile.maxBeamWidth * strikeProgress * fadeOut;
+
+                if (beamWidth > 0) {
+                    // Outer glow beam
+                    const outerGradient = this.ctx.createLinearGradient(x - beamWidth * 1.5, 0, x + beamWidth * 1.5, 0);
+                    outerGradient.addColorStop(0, 'rgba(255, 200, 100, 0)');
+                    outerGradient.addColorStop(0.3, `rgba(255, 200, 100, ${fadeOut * 0.3})`);
+                    outerGradient.addColorStop(0.5, `rgba(255, 255, 200, ${fadeOut * 0.5})`);
+                    outerGradient.addColorStop(0.7, `rgba(255, 200, 100, ${fadeOut * 0.3})`);
+                    outerGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
+                    this.ctx.fillStyle = outerGradient;
+                    this.ctx.fillRect(x - beamWidth * 1.5, -100, beamWidth * 3, y + 100);
+
+                    // Main beam
+                    const beamGradient = this.ctx.createLinearGradient(x - beamWidth, 0, x + beamWidth, 0);
+                    beamGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                    beamGradient.addColorStop(0.2, `rgba(255, 220, 150, ${fadeOut * 0.8})`);
+                    beamGradient.addColorStop(0.5, `rgba(255, 255, 255, ${fadeOut})`);
+                    beamGradient.addColorStop(0.8, `rgba(255, 220, 150, ${fadeOut * 0.8})`);
+                    beamGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    this.ctx.fillStyle = beamGradient;
+                    this.ctx.fillRect(x - beamWidth, -100, beamWidth * 2, y + 100);
+
+                    // Core beam (white)
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${fadeOut})`;
+                    this.ctx.fillRect(x - beamWidth * 0.2, -100, beamWidth * 0.4, y + 100);
+                }
+
+                // Ground impact explosion
+                const impactRadius = projectile.radius * 2 * strikeProgress;
+                const impactGradient = this.ctx.createRadialGradient(x, y, 0, x, y, impactRadius);
+                impactGradient.addColorStop(0, `rgba(255, 255, 255, ${fadeOut})`);
+                impactGradient.addColorStop(0.2, `rgba(255, 255, 200, ${fadeOut * 0.9})`);
+                impactGradient.addColorStop(0.5, `rgba(255, 180, 50, ${fadeOut * 0.6})`);
+                impactGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                this.ctx.fillStyle = impactGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, impactRadius, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                // Impact circle
-                this.ctx.fillStyle = 'rgba(255, 255, 200, 0.8)';
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, projectile.radius, 0, Math.PI * 2);
-                this.ctx.fill();
+                // Expanding shockwave rings
+                const shockTime = (1.2 - projectile.life) / 1.2;
+                for (let ring = 0; ring < 3; ring++) {
+                    const ringProgress = Math.max(0, shockTime - ring * 0.1);
+                    const ringRadius = projectile.radius * 3 * ringProgress;
+                    const ringAlpha = (1 - ringProgress) * fadeOut * 0.6;
+
+                    if (ringAlpha > 0 && ringRadius > 0) {
+                        this.ctx.strokeStyle = `rgba(255, 200, 100, ${ringAlpha})`;
+                        this.ctx.lineWidth = 5 - ring * 1.5;
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                }
+
+                // Flying debris
+                this.ctx.fillStyle = `rgba(255, 200, 100, ${fadeOut})`;
+                for (let d = 0; d < 25; d++) {
+                    const dAngle = (d / 25) * Math.PI * 2 + strikeProgress * 2;
+                    const dDist = strikeProgress * 180 + Math.sin(d * 5) * 30;
+                    const dx = x + Math.cos(dAngle) * dDist;
+                    const dy = y + Math.sin(dAngle) * dDist * 0.4 - strikeProgress * 80;
+                    this.ctx.beginPath();
+                    this.ctx.arc(dx, dy, 2 + Math.random() * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
             }
         } else if (type === 'shockwave') {
             // Expanding electric ring
@@ -1744,6 +1894,81 @@ export class Renderer {
         });
     }
 
+    addMissileExplosion(x, y, radius, color = '#ff6600') {
+        // Epic missile explosion with fire, debris and shockwave
+        this.explosions.push({
+            x, y,
+            radius: 0,
+            maxRadius: radius,
+            color: color,
+            alpha: 1,
+            time: 0,
+            isMissileExplosion: true,
+            particles: [],
+            debris: []
+        });
+
+        // Create fire particles
+        for (let i = 0; i < 20; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 30 + Math.random() * 80;
+            const exp = this.explosions[this.explosions.length - 1];
+            exp.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 20,
+                size: 5 + Math.random() * 10,
+                color: Math.random() > 0.5 ? '#ff6600' : '#ffaa00'
+            });
+        }
+
+        // Create debris
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 100;
+            const exp = this.explosions[this.explosions.length - 1];
+            exp.debris.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 30,
+                size: 2 + Math.random() * 4,
+                rotation: Math.random() * Math.PI * 2
+            });
+        }
+    }
+
+    addNuclearExplosion(x, y, radius) {
+        // Massive nuclear explosion with mushroom cloud
+        this.explosions.push({
+            x, y,
+            radius: 0,
+            maxRadius: radius,
+            alpha: 1,
+            time: 0,
+            isNuclear: true,
+            cloudHeight: 0,
+            ringRadius: 0,
+            flashAlpha: 1
+        });
+    }
+
+    addOrbitalBeam(x, y, radius) {
+        // Orbital strike beam from sky
+        this.explosions.push({
+            x, y,
+            radius: radius,
+            maxRadius: radius,
+            alpha: 1,
+            time: 0,
+            isOrbitalBeam: true,
+            beamWidth: 5,
+            maxBeamWidth: 40,
+            impactRadius: 0
+        });
+    }
+
     drawExplosions(deltaTime) {
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const exp = this.explosions[i];
@@ -1791,6 +2016,229 @@ export class Renderer {
                     );
                     this.ctx.stroke();
                 }
+            } else if (exp.isMissileExplosion) {
+                // Epic missile explosion
+                const duration = 0.8;
+                exp.alpha = 1 - exp.time / duration;
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Expanding fire ring
+                exp.radius = exp.maxRadius * Math.min(1, exp.time / 0.2);
+                const gradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
+                gradient.addColorStop(0, `rgba(255, 255, 200, ${exp.alpha})`);
+                gradient.addColorStop(0.3, `rgba(255, 150, 0, ${exp.alpha * 0.8})`);
+                gradient.addColorStop(0.6, `rgba(255, 80, 0, ${exp.alpha * 0.5})`);
+                gradient.addColorStop(1, `rgba(100, 20, 0, 0)`);
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Shockwave ring
+                const shockRadius = exp.maxRadius * 1.5 * (exp.time / 0.4);
+                if (shockRadius < exp.maxRadius * 2) {
+                    this.ctx.strokeStyle = `rgba(255, 200, 100, ${exp.alpha * 0.6})`;
+                    this.ctx.lineWidth = 4;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, shockRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+
+                // Fire particles
+                for (const p of exp.particles) {
+                    p.x += p.vx * deltaTime;
+                    p.y += p.vy * deltaTime;
+                    p.vy += 50 * deltaTime; // gravity
+                    p.size *= 0.97;
+
+                    if (p.size > 1) {
+                        this.ctx.fillStyle = p.color;
+                        this.ctx.globalAlpha = exp.alpha;
+                        this.ctx.beginPath();
+                        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+
+                // Debris
+                this.ctx.fillStyle = '#333';
+                for (const d of exp.debris) {
+                    d.x += d.vx * deltaTime;
+                    d.y += d.vy * deltaTime;
+                    d.vy += 150 * deltaTime; // gravity
+                    d.rotation += 10 * deltaTime;
+
+                    this.ctx.globalAlpha = exp.alpha;
+                    this.ctx.save();
+                    this.ctx.translate(d.x, d.y);
+                    this.ctx.rotate(d.rotation);
+                    this.ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size);
+                    this.ctx.restore();
+                }
+
+            } else if (exp.isNuclear) {
+                // NUCLEAR EXPLOSION - Epic mushroom cloud
+                const duration = 2.5;
+                exp.alpha = 1 - exp.time / duration;
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Initial flash (first 0.1s)
+                if (exp.time < 0.15) {
+                    exp.flashAlpha = 1 - exp.time / 0.15;
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.flashAlpha * 0.8})`;
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+
+                // Ground explosion radius
+                exp.radius = exp.maxRadius * Math.min(1.5, exp.time / 0.3);
+
+                // Ground fire
+                const groundGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
+                groundGradient.addColorStop(0, `rgba(255, 255, 200, ${exp.alpha})`);
+                groundGradient.addColorStop(0.2, `rgba(255, 200, 50, ${exp.alpha * 0.9})`);
+                groundGradient.addColorStop(0.5, `rgba(255, 100, 0, ${exp.alpha * 0.7})`);
+                groundGradient.addColorStop(0.8, `rgba(200, 50, 0, ${exp.alpha * 0.4})`);
+                groundGradient.addColorStop(1, `rgba(50, 0, 0, 0)`);
+                this.ctx.fillStyle = groundGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Mushroom cloud stem
+                exp.cloudHeight = Math.min(150, exp.time * 200);
+                const stemWidth = 20 + exp.time * 15;
+                const stemGradient = this.ctx.createLinearGradient(exp.x - stemWidth, exp.y, exp.x + stemWidth, exp.y);
+                stemGradient.addColorStop(0, `rgba(80, 40, 0, ${exp.alpha * 0.8})`);
+                stemGradient.addColorStop(0.5, `rgba(150, 80, 20, ${exp.alpha * 0.9})`);
+                stemGradient.addColorStop(1, `rgba(80, 40, 0, ${exp.alpha * 0.8})`);
+                this.ctx.fillStyle = stemGradient;
+                this.ctx.beginPath();
+                this.ctx.moveTo(exp.x - stemWidth * 0.5, exp.y);
+                this.ctx.lineTo(exp.x + stemWidth * 0.5, exp.y);
+                this.ctx.lineTo(exp.x + stemWidth, exp.y - exp.cloudHeight);
+                this.ctx.lineTo(exp.x - stemWidth, exp.y - exp.cloudHeight);
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Mushroom cap
+                const capRadius = 30 + exp.time * 40;
+                const capY = exp.y - exp.cloudHeight - capRadius * 0.3;
+                const capGradient = this.ctx.createRadialGradient(exp.x, capY, 0, exp.x, capY, capRadius);
+                capGradient.addColorStop(0, `rgba(255, 200, 100, ${exp.alpha})`);
+                capGradient.addColorStop(0.3, `rgba(255, 120, 50, ${exp.alpha * 0.9})`);
+                capGradient.addColorStop(0.6, `rgba(180, 60, 20, ${exp.alpha * 0.8})`);
+                capGradient.addColorStop(1, `rgba(80, 30, 10, ${exp.alpha * 0.5})`);
+                this.ctx.fillStyle = capGradient;
+                this.ctx.beginPath();
+                this.ctx.ellipse(exp.x, capY, capRadius, capRadius * 0.6, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Rolling fire ring on ground
+                exp.ringRadius = exp.maxRadius * 2 * (exp.time / 0.8);
+                if (exp.ringRadius < exp.maxRadius * 3) {
+                    this.ctx.strokeStyle = `rgba(255, 150, 50, ${exp.alpha * 0.7})`;
+                    this.ctx.lineWidth = 8;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, exp.ringRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+
+                    // Secondary ring
+                    this.ctx.strokeStyle = `rgba(255, 100, 0, ${exp.alpha * 0.4})`;
+                    this.ctx.lineWidth = 15;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, exp.ringRadius * 0.8, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+
+                // Radiation particles
+                this.ctx.fillStyle = `rgba(255, 255, 0, ${exp.alpha * 0.6})`;
+                for (let p = 0; p < 15; p++) {
+                    const pAngle = (p / 15) * Math.PI * 2 + exp.time * 2;
+                    const pDist = exp.radius * 0.5 + Math.sin(exp.time * 10 + p) * 20;
+                    const px = exp.x + Math.cos(pAngle) * pDist;
+                    const py = exp.y + Math.sin(pAngle) * pDist;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, 3 + Math.random() * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+            } else if (exp.isOrbitalBeam) {
+                // ORBITAL BEAM - Massive beam from sky
+                const duration = 1.2;
+                exp.alpha = 1 - exp.time / duration;
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Beam width animation
+                if (exp.time < 0.2) {
+                    exp.beamWidth = exp.maxBeamWidth * (exp.time / 0.2);
+                } else if (exp.time > duration - 0.3) {
+                    exp.beamWidth = exp.maxBeamWidth * ((duration - exp.time) / 0.3);
+                } else {
+                    exp.beamWidth = exp.maxBeamWidth;
+                }
+
+                // Main beam from sky
+                const beamGradient = this.ctx.createLinearGradient(exp.x - exp.beamWidth, 0, exp.x + exp.beamWidth, 0);
+                beamGradient.addColorStop(0, `rgba(255, 255, 255, 0)`);
+                beamGradient.addColorStop(0.3, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
+                beamGradient.addColorStop(0.5, `rgba(255, 255, 255, ${exp.alpha})`);
+                beamGradient.addColorStop(0.7, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
+                beamGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                this.ctx.fillStyle = beamGradient;
+                this.ctx.fillRect(exp.x - exp.beamWidth, -50, exp.beamWidth * 2, exp.y + 50);
+
+                // Beam core
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
+                this.ctx.fillRect(exp.x - exp.beamWidth * 0.2, -50, exp.beamWidth * 0.4, exp.y + 50);
+
+                // Impact explosion at ground
+                exp.impactRadius = exp.maxRadius * Math.min(2, exp.time / 0.3);
+                const impactGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.impactRadius);
+                impactGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.alpha})`);
+                impactGradient.addColorStop(0.3, `rgba(255, 220, 100, ${exp.alpha * 0.9})`);
+                impactGradient.addColorStop(0.6, `rgba(255, 150, 50, ${exp.alpha * 0.6})`);
+                impactGradient.addColorStop(1, `rgba(255, 100, 0, 0)`);
+                this.ctx.fillStyle = impactGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(exp.x, exp.y, exp.impactRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Expanding shockwave ring
+                const shockRadius = exp.maxRadius * 3 * (exp.time / 0.6);
+                if (shockRadius < exp.maxRadius * 4) {
+                    this.ctx.strokeStyle = `rgba(255, 200, 100, ${exp.alpha * 0.5})`;
+                    this.ctx.lineWidth = 6;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, shockRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+
+                // Debris flying outward
+                this.ctx.fillStyle = `rgba(255, 200, 100, ${exp.alpha})`;
+                for (let d = 0; d < 20; d++) {
+                    const dAngle = (d / 20) * Math.PI * 2;
+                    const dDist = exp.time * 150 + Math.sin(d * 3) * 20;
+                    const dx = exp.x + Math.cos(dAngle) * dDist;
+                    const dy = exp.y + Math.sin(dAngle) * dDist * 0.5 - exp.time * 50;
+                    if (dy < exp.y + 50) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(dx, dy, 3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+
             } else {
                 // Normal explosion
                 exp.alpha = 1 - exp.time / 0.5;
