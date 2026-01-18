@@ -241,6 +241,13 @@ export class Network {
                 localTurret.angle = serverTurret.angle;
                 localTurret.level = serverTurret.level || localTurret.level;
             }
+
+            // Sync upgraded stats if turret exists and has config
+            if (localTurret && localTurret.config) {
+                if (serverTurret.damage !== undefined) localTurret.config.damage = serverTurret.damage;
+                if (serverTurret.range !== undefined) localTurret.config.range = serverTurret.range;
+                if (serverTurret.fireRate !== undefined) localTurret.config.fireRate = serverTurret.fireRate;
+            }
         }
 
         // Remove turrets that no longer exist on server

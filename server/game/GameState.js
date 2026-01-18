@@ -948,7 +948,10 @@ class GameState {
                 x: t.x,
                 y: t.y,
                 angle: t.angle,
-                level: t.level || 1
+                level: t.level || 1,
+                damage: t.config?.damage,
+                range: t.config?.range,
+                fireRate: t.config?.fireRate
             })),
             walls: this.walls.map(w => ({
                 id: w.id,
