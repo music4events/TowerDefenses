@@ -502,6 +502,12 @@ export class Game {
 
             // Remove dead enemies and collect rewards
             const enemiesToSpawn = [];
+            // Boss types for death effect
+            const bossTypes = ['boss', 'flying-boss', 'carrier-boss', 'mega-boss',
+                               'titan', 'leviathan', 'swarm-mother', 'devastator',
+                               'overlord', 'colossus', 'hive-queen', 'juggernaut',
+                               'apocalypse', 'world-ender'];
+
             this.enemies = this.enemies.filter(enemy => {
                 if (enemy.age === undefined || enemy.age < 1.0) {
                     enemy.dead = false;
@@ -515,6 +521,16 @@ export class Game {
                             for (const [resource, amount] of Object.entries(reward)) {
                                 this.resources[resource] = (this.resources[resource] || 0) + amount;
                             }
+                        }
+
+                        // Check if it's a boss - trigger epic death effect
+                        if (bossTypes.includes(enemy.type)) {
+                            const bossSize = enemy.config?.size || 1.5;
+                            const bossColor = enemy.config?.color || '#880088';
+                            this.renderer.addBossDeathEffect(enemy.x, enemy.y, bossSize, bossColor);
+                        } else {
+                            // Normal death effect for regular enemies
+                            this.renderer.addDeathEffect(enemy.x, enemy.y, enemy.config?.color || '#ff4444');
                         }
 
                         // Splitter enemies spawn children on death

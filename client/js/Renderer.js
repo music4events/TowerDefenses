@@ -2014,6 +2014,78 @@ export class Renderer {
         });
     }
 
+    addBossDeathEffect(x, y, bossSize = 1.5, color = '#880088') {
+        // Epic boss death explosion with screen shake, multiple rings, and particles
+        const baseRadius = this.grid.cellSize * bossSize * 2;
+
+        this.explosions.push({
+            x, y,
+            radius: 0,
+            maxRadius: baseRadius,
+            color: color,
+            alpha: 1,
+            time: 0,
+            isBossDeath: true,
+            bossSize: bossSize,
+            rings: [],
+            particles: [],
+            lightningBolts: [],
+            flashAlpha: 1,
+            shakeIntensity: 15 * bossSize
+        });
+
+        const exp = this.explosions[this.explosions.length - 1];
+
+        // Create expanding rings
+        for (let r = 0; r < 5; r++) {
+            exp.rings.push({
+                delay: r * 0.1,
+                radius: 0,
+                maxRadius: baseRadius * (1 + r * 0.3),
+                color: r % 2 === 0 ? color : '#ffffff',
+                alpha: 1
+            });
+        }
+
+        // Create explosion particles
+        const particleCount = Math.floor(40 * bossSize);
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 100 + Math.random() * 200 * bossSize;
+            exp.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 50,
+                size: 5 + Math.random() * 10 * bossSize,
+                color: Math.random() > 0.5 ? color : '#ffaa00',
+                alpha: 1
+            });
+        }
+
+        // Create lightning bolts
+        for (let l = 0; l < 8; l++) {
+            const angle = (l / 8) * Math.PI * 2;
+            exp.lightningBolts.push({
+                angle: angle,
+                length: baseRadius * 1.5,
+                segments: [],
+                alpha: 1
+            });
+            // Generate lightning segments
+            let lx = x, ly = y;
+            const bolt = exp.lightningBolts[l];
+            for (let s = 0; s < 10; s++) {
+                const segLen = bolt.length / 10;
+                const nx = lx + Math.cos(bolt.angle + (Math.random() - 0.5) * 0.5) * segLen;
+                const ny = ly + Math.sin(bolt.angle + (Math.random() - 0.5) * 0.5) * segLen;
+                bolt.segments.push({ x1: lx, y1: ly, x2: nx, y2: ny });
+                lx = nx;
+                ly = ny;
+            }
+        }
+    }
+
     drawExplosions(deltaTime) {
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const exp = this.explosions[i];
@@ -2315,6 +2387,149 @@ export class Renderer {
                         this.ctx.beginPath();
                         this.ctx.arc(dx, dy, 3, 0, Math.PI * 2);
                         this.ctx.fill();
+                    }
+                }
+
+            } else if (exp.isBossDeath) {
+                // EPIC Boss death explosion
+                const duration = 2.0;
+                exp.alpha = 1 - exp.time / duration;
+
+                if (exp.alpha <= 0) {
+                    this.explosions.splice(i, 1);
+                    continue;
+                }
+
+                // Screen shake effect (store for camera)
+                if (exp.time < 0.5 && exp.shakeIntensity > 0) {
+                    this.screenShake = {
+                        x: (Math.random() - 0.5) * exp.shakeIntensity * (1 - exp.time * 2),
+                        y: (Math.random() - 0.5) * exp.shakeIntensity * (1 - exp.time * 2)
+                    };
+                }
+
+                // Initial flash
+                if (exp.flashAlpha > 0) {
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.flashAlpha * 0.8})`;
+                    this.ctx.fillRect(
+                        exp.x - this.grid.cellSize * 10,
+                        exp.y - this.grid.cellSize * 10,
+                        this.grid.cellSize * 20,
+                        this.grid.cellSize * 20
+                    );
+                    exp.flashAlpha -= deltaTime * 3;
+                }
+
+                // Draw expanding rings
+                for (const ring of exp.rings) {
+                    if (exp.time >= ring.delay) {
+                        const ringTime = exp.time - ring.delay;
+                        ring.radius = ring.maxRadius * Math.min(1, ringTime / 0.4);
+                        ring.alpha = 1 - ringTime / 0.8;
+
+                        if (ring.alpha > 0 && ring.radius > 0) {
+                            this.ctx.strokeStyle = ring.color;
+                            this.ctx.lineWidth = 5 * ring.alpha;
+                            this.ctx.globalAlpha = ring.alpha;
+                            this.ctx.beginPath();
+                            this.ctx.arc(exp.x, exp.y, ring.radius, 0, Math.PI * 2);
+                            this.ctx.stroke();
+
+                            // Inner glow
+                            const gradient = this.ctx.createRadialGradient(
+                                exp.x, exp.y, ring.radius * 0.5,
+                                exp.x, exp.y, ring.radius
+                            );
+                            gradient.addColorStop(0, `rgba(255, 255, 255, ${ring.alpha * 0.3})`);
+                            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                            this.ctx.fillStyle = gradient;
+                            this.ctx.beginPath();
+                            this.ctx.arc(exp.x, exp.y, ring.radius, 0, Math.PI * 2);
+                            this.ctx.fill();
+                        }
+                    }
+                }
+
+                // Draw lightning bolts
+                for (const bolt of exp.lightningBolts) {
+                    bolt.alpha = Math.max(0, 1 - exp.time / 0.6);
+                    if (bolt.alpha > 0) {
+                        this.ctx.strokeStyle = '#ffffff';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.globalAlpha = bolt.alpha;
+                        this.ctx.shadowColor = exp.color;
+                        this.ctx.shadowBlur = 10;
+
+                        for (const seg of bolt.segments) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(seg.x1, seg.y1);
+                            this.ctx.lineTo(seg.x2, seg.y2);
+                            this.ctx.stroke();
+                        }
+                        this.ctx.shadowBlur = 0;
+                    }
+                }
+
+                // Draw particles
+                for (const p of exp.particles) {
+                    p.x += p.vx * deltaTime;
+                    p.y += p.vy * deltaTime;
+                    p.vy += 200 * deltaTime; // Gravity
+                    p.alpha = Math.max(0, 1 - exp.time / duration);
+                    p.size *= 0.98;
+
+                    if (p.alpha > 0 && p.size > 1) {
+                        this.ctx.fillStyle = p.color;
+                        this.ctx.globalAlpha = p.alpha;
+
+                        // Draw with glow
+                        this.ctx.shadowColor = p.color;
+                        this.ctx.shadowBlur = 8;
+                        this.ctx.beginPath();
+                        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+                    }
+                }
+
+                // Central explosion core
+                const coreRadius = exp.maxRadius * Math.min(1, exp.time / 0.3) * (1 - exp.time / duration * 0.5);
+                if (coreRadius > 0) {
+                    const coreGradient = this.ctx.createRadialGradient(
+                        exp.x, exp.y, 0,
+                        exp.x, exp.y, coreRadius
+                    );
+                    coreGradient.addColorStop(0, `rgba(255, 255, 200, ${exp.alpha})`);
+                    coreGradient.addColorStop(0.3, `rgba(255, 150, 0, ${exp.alpha * 0.8})`);
+                    // Parse hex color to rgba
+                    let r = 136, g = 0, b = 136; // Default purple
+                    if (exp.color.startsWith('#')) {
+                        r = parseInt(exp.color.slice(1, 3), 16);
+                        g = parseInt(exp.color.slice(3, 5), 16);
+                        b = parseInt(exp.color.slice(5, 7), 16);
+                    }
+                    coreGradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${exp.alpha * 0.5})`);
+                    coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    this.ctx.fillStyle = coreGradient;
+                    this.ctx.globalAlpha = exp.alpha;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, coreRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                // Skull icon for mega bosses (size >= 2)
+                if (exp.bossSize >= 2 && exp.time > 0.3 && exp.time < 1.2) {
+                    const skullAlpha = Math.min(1, (exp.time - 0.3) / 0.3) * (1 - (exp.time - 0.3) / 0.9);
+                    if (skullAlpha > 0) {
+                        this.ctx.globalAlpha = skullAlpha;
+                        this.ctx.font = `${40 * exp.bossSize}px Arial`;
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.shadowColor = exp.color;
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.fillText('💀', exp.x, exp.y);
+                        this.ctx.shadowBlur = 0;
                     }
                 }
 
