@@ -290,6 +290,60 @@ const ENEMY_TYPES = {
         health: 5000, speed: 0.2, damage: 200, reward: { iron: 300, copper: 150, gold: 100 },
         turretAttackRange: 2, turretAttackDamage: 50, turretAttackRate: 1.5,
         isSpawner: true, spawnType: 'tank', spawnInterval: 5, spawnCount: 1
+    },
+    // === MEGA BOSS - Tier 2 ===
+    'titan': {
+        health: 15000, speed: 0.15, damage: 300, reward: { iron: 500, copper: 250, gold: 150 },
+        turretAttackRange: 2.5, turretAttackDamage: 80, turretAttackRate: 1.5,
+        isSpawner: true, spawnType: 'tank', spawnInterval: 3, spawnCount: 2, armor: 0.3
+    },
+    'leviathan': {
+        health: 12000, speed: 0.25, damage: 250, reward: { iron: 450, copper: 200, gold: 120 },
+        isFlying: true, isSpawner: true, spawnType: 'flying-bomber', spawnInterval: 2, spawnCount: 4,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'swarm-mother': {
+        health: 8000, speed: 0.3, damage: 150, reward: { iron: 400, copper: 180, gold: 100 },
+        turretAttackRange: 1.5, turretAttackDamage: 40, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'runner', spawnInterval: 1, spawnCount: 5
+    },
+    'devastator': {
+        health: 10000, speed: 0.2, damage: 400, reward: { iron: 450, copper: 220, gold: 130 },
+        turretAttackRange: 2, turretAttackDamage: 100, turretAttackRate: 2,
+        isSpawner: true, spawnType: 'kamikaze', spawnInterval: 2, spawnCount: 4, armor: 0.4
+    },
+    // === MEGA BOSS - Tier 3 ===
+    'overlord': {
+        health: 25000, speed: 0.12, damage: 500, reward: { iron: 800, copper: 400, gold: 250 },
+        turretAttackRange: 3, turretAttackDamage: 120, turretAttackRate: 2,
+        isSpawner: true, spawnType: 'boss', spawnInterval: 8, spawnCount: 1
+    },
+    'colossus': {
+        health: 30000, speed: 0.1, damage: 600, reward: { iron: 900, copper: 450, gold: 300 },
+        turretAttackRange: 3.5, turretAttackDamage: 150, turretAttackRate: 2.5,
+        isSpawner: true, spawnType: 'splitter', spawnInterval: 3, spawnCount: 3, armor: 0.5
+    },
+    'hive-queen': {
+        health: 20000, speed: 0.18, damage: 350, reward: { iron: 700, copper: 350, gold: 200 },
+        isFlying: true, isSpawner: true, spawnType: 'flying-swarm', spawnInterval: 1, spawnCount: 8,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    // === MEGA BOSS - Tier 4 ===
+    'juggernaut': {
+        health: 40000, speed: 0.08, damage: 800, reward: { iron: 1200, copper: 600, gold: 400 },
+        turretAttackRange: 4, turretAttackDamage: 200, turretAttackRate: 2,
+        isSpawner: true, spawnType: 'armored-front', spawnInterval: 2, spawnCount: 3, armor: 0.6, frontArmor: 0.8
+    },
+    'apocalypse': {
+        health: 50000, speed: 0.1, damage: 1000, reward: { iron: 1500, copper: 800, gold: 500 },
+        turretAttackRange: 4, turretAttackDamage: 250, turretAttackRate: 1.5,
+        isSpawner: true, spawnType: 'devastator', spawnInterval: 10, spawnCount: 1, armor: 0.5
+    },
+    // === MEGA BOSS - Tier 5 (Ultimate) ===
+    'world-ender': {
+        health: 100000, speed: 0.05, damage: 2000, reward: { iron: 3000, copper: 1500, gold: 1000 },
+        turretAttackRange: 5, turretAttackDamage: 500, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'overlord', spawnInterval: 15, spawnCount: 1, armor: 0.7
     }
 };
 
@@ -577,6 +631,9 @@ class GameState {
 
     spawnEndlessEnemy() {
         try {
+            // Progressive boss spawn rate: +1% every 10 waves
+            const bossSpawnBonus = Math.floor(this.waveNumber / 10) * 0.01;
+
             // Choose enemy type based on difficulty
             const types = ['grunt'];
             if (this.endlessDifficulty >= 1.2) types.push('runner');
@@ -590,11 +647,25 @@ class GameState {
             if (this.endlessDifficulty >= 2.5) types.push('kamikaze-spawner');
             if (this.endlessDifficulty >= 2.5) types.push('armored-front');
             if (this.endlessDifficulty >= 2.8) types.push('transport');
-            if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05) types.push('boss');
+            if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05 + bossSpawnBonus) types.push('boss');
             if (this.endlessDifficulty >= 3.5) types.push('transport-elite');
-            if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03) types.push('flying-boss');
-            if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02) types.push('carrier-boss');
-            if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01) types.push('mega-boss');
+            if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03 + bossSpawnBonus) types.push('flying-boss');
+            if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02 + bossSpawnBonus) types.push('carrier-boss');
+            if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01 + bossSpawnBonus) types.push('mega-boss');
+            // === MEGA BOSS Tier 2 ===
+            if (this.endlessDifficulty >= 7.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('titan');
+            if (this.endlessDifficulty >= 7.5 && Math.random() < 0.008 + bossSpawnBonus) types.push('leviathan');
+            if (this.endlessDifficulty >= 8.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('swarm-mother');
+            if (this.endlessDifficulty >= 8.5 && Math.random() < 0.007 + bossSpawnBonus) types.push('devastator');
+            // === MEGA BOSS Tier 3 ===
+            if (this.endlessDifficulty >= 10.0 && Math.random() < 0.005 + bossSpawnBonus) types.push('overlord');
+            if (this.endlessDifficulty >= 11.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('colossus');
+            if (this.endlessDifficulty >= 12.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('hive-queen');
+            // === MEGA BOSS Tier 4 ===
+            if (this.endlessDifficulty >= 15.0 && Math.random() < 0.003 + bossSpawnBonus) types.push('juggernaut');
+            if (this.endlessDifficulty >= 18.0 && Math.random() < 0.002 + bossSpawnBonus) types.push('apocalypse');
+            // === MEGA BOSS Tier 5 (Ultimate) ===
+            if (this.endlessDifficulty >= 25.0 && Math.random() < 0.001 + bossSpawnBonus) types.push('world-ender');
 
             const type = types[Math.floor(Math.random() * types.length)];
 

@@ -325,6 +325,9 @@ export class WaveManager {
             return;
         }
 
+        // Progressive boss spawn rate: +1% every 10 waves
+        const bossSpawnBonus = Math.floor(this.waveNumber / 10) * 0.01;
+
         // Choose enemy type based on difficulty (same as server)
         const types = ['grunt'];
         if (this.endlessDifficulty >= 1.2) types.push('runner');
@@ -338,11 +341,25 @@ export class WaveManager {
         if (this.endlessDifficulty >= 2.5) types.push('kamikaze-spawner');
         if (this.endlessDifficulty >= 2.5) types.push('armored-front');
         if (this.endlessDifficulty >= 2.8) types.push('transport');
-        if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05) types.push('boss');
+        if (this.endlessDifficulty >= 3.0 && Math.random() < 0.05 + bossSpawnBonus) types.push('boss');
         if (this.endlessDifficulty >= 3.5) types.push('transport-elite');
-        if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03) types.push('flying-boss');
-        if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02) types.push('carrier-boss');
-        if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01) types.push('mega-boss');
+        if (this.endlessDifficulty >= 4.0 && Math.random() < 0.03 + bossSpawnBonus) types.push('flying-boss');
+        if (this.endlessDifficulty >= 5.0 && Math.random() < 0.02 + bossSpawnBonus) types.push('carrier-boss');
+        if (this.endlessDifficulty >= 6.0 && Math.random() < 0.01 + bossSpawnBonus) types.push('mega-boss');
+        // === MEGA BOSS Tier 2 ===
+        if (this.endlessDifficulty >= 7.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('titan');
+        if (this.endlessDifficulty >= 7.5 && Math.random() < 0.008 + bossSpawnBonus) types.push('leviathan');
+        if (this.endlessDifficulty >= 8.0 && Math.random() < 0.008 + bossSpawnBonus) types.push('swarm-mother');
+        if (this.endlessDifficulty >= 8.5 && Math.random() < 0.007 + bossSpawnBonus) types.push('devastator');
+        // === MEGA BOSS Tier 3 ===
+        if (this.endlessDifficulty >= 10.0 && Math.random() < 0.005 + bossSpawnBonus) types.push('overlord');
+        if (this.endlessDifficulty >= 11.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('colossus');
+        if (this.endlessDifficulty >= 12.0 && Math.random() < 0.004 + bossSpawnBonus) types.push('hive-queen');
+        // === MEGA BOSS Tier 4 ===
+        if (this.endlessDifficulty >= 15.0 && Math.random() < 0.003 + bossSpawnBonus) types.push('juggernaut');
+        if (this.endlessDifficulty >= 18.0 && Math.random() < 0.002 + bossSpawnBonus) types.push('apocalypse');
+        // === MEGA BOSS Tier 5 (Ultimate) ===
+        if (this.endlessDifficulty >= 25.0 && Math.random() < 0.001 + bossSpawnBonus) types.push('world-ender');
 
         const type = types[Math.floor(Math.random() * types.length)];
         const spawn = this.spawnPoints[Math.floor(Math.random() * this.spawnPoints.length)];
