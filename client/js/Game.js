@@ -275,7 +275,24 @@ export class Game {
     }
 
     getTurretAt(gridX, gridY) {
-        return this.turrets.find(t => t.gridX === gridX && t.gridY === gridY);
+        for (const turret of this.turrets) {
+            const size = turret.config?.gridSize || 1;
+            if (size > 1) {
+                // Multi-cell turret - check if click is within footprint
+                const offset = Math.floor(size / 2);
+                const minX = turret.gridX - offset;
+                const maxX = turret.gridX + offset;
+                const minY = turret.gridY - offset;
+                const maxY = turret.gridY + offset;
+
+                if (gridX >= minX && gridX <= maxX && gridY >= minY && gridY <= maxY) {
+                    return turret;
+                }
+            } else if (turret.gridX === gridX && turret.gridY === gridY) {
+                return turret;
+            }
+        }
+        return null;
     }
 
     getHoveredTurret() {
@@ -337,8 +354,13 @@ export class Game {
             this.turrets.splice(index, 1);
         }
 
-        // Free grid cell
-        this.grid.removeBuilding(turret.gridX, turret.gridY);
+        // Free grid cell(s) - handle multi-cell turrets
+        const size = turret.config?.gridSize || 1;
+        if (size > 1) {
+            this.grid.removeMultiBuilding(turret.gridX, turret.gridY, size);
+        } else {
+            this.grid.removeBuilding(turret.gridX, turret.gridY);
+        }
 
         // Recalculate enemy paths
         this.recalculateEnemyPaths();
@@ -676,7 +698,15 @@ export class Game {
         if (selectedBuilding) {
             const gridPos = this.inputHandler.getMouseGridPosition();
             const canPlace = this.canPlaceBuilding(gridPos.x, gridPos.y, selectedBuilding);
-            this.renderer.drawPlacementPreview(gridPos.x, gridPos.y, canPlace, selectedBuilding);
+
+            // Get gridSize for multi-cell turrets
+            let gridSize = 1;
+            if (selectedBuilding.startsWith('turret-')) {
+                const config = TURRET_TYPES[selectedBuilding];
+                gridSize = config?.gridSize || 1;
+            }
+
+            this.renderer.drawPlacementPreview(gridPos.x, gridPos.y, canPlace, selectedBuilding, gridSize);
 
             // Show range for turrets
             if (selectedBuilding.startsWith('turret-')) {
@@ -760,7 +790,14 @@ export class Game {
             const turret = new Turret(gridX, gridY, buildingType, this.grid);
             turret.id = Date.now();
             this.turrets.push(turret);
-            this.grid.placeBuilding(gridX, gridY);
+
+            // Handle multi-cell turrets
+            const size = turret.config?.gridSize || 1;
+            if (size > 1) {
+                this.grid.placeMultiBuilding(gridX, gridY, size);
+            } else {
+                this.grid.placeBuilding(gridX, gridY);
+            }
         } else if (buildingType === 'wall' || buildingType === 'wall-reinforced') {
             const wall = new Wall(gridX, gridY, buildingType, this.grid);
             this.walls.push(wall);
@@ -784,6 +821,16 @@ export class Game {
         if (buildingType === 'extractor') {
             return this.grid.isCellResource(gridX, gridY);
         }
+
+        // Check for multi-cell turrets
+        if (buildingType.startsWith('turret-')) {
+            const config = TURRET_TYPES[buildingType];
+            const size = config?.gridSize || 1;
+            if (size > 1) {
+                return this.grid.canPlaceMulti(gridX, gridY, size);
+            }
+        }
+
         return this.grid.canPlace(gridX, gridY);
     }
 

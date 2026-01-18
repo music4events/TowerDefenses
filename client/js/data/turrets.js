@@ -229,5 +229,27 @@ export const TURRET_TYPES = {
         size: 0.8,
         health: 80,
         maxHealth: 80
+    },
+    // === TOURELLES 3x3 ===
+    'turret-flak': {
+        name: 'FLAK Anti-Aerien',
+        gridSize: 3,              // Occupe 3x3 cases
+        damage: 8,                // Par projectile
+        range: 12,                // Longue portee
+        fireRate: 1.5,
+        color: '#2a5caa',
+        cost: { iron: 800, copper: 300, gold: 100 },
+        projectileSpeed: 25,
+        projectileColor: '#00ddff',
+
+        // Proprietes specifiques FLAK
+        isAntiAir: true,          // Cible uniquement les volants
+        flakCount: 12,            // Nombre de projectiles par salve
+        flakSpread: 1.5,          // Rayon d'impact aleatoire (cases)
+        barrelCount: 2,           // Double canon
+
+        size: 2.8,                // Taille visuelle (couvre 3 cases)
+        health: 400,
+        maxHealth: 400
     }
 };

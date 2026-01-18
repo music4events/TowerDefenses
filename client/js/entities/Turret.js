@@ -235,6 +235,11 @@ export class Turret {
         for (const enemy of enemies) {
             if (enemy.dead) continue;
 
+            // Anti-air turrets only target flying enemies
+            if (this.config.isAntiAir) {
+                if (!enemy.config?.isFlying) continue;
+            }
+
             const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
 
             // Check minimum range (for mortar)
@@ -253,6 +258,12 @@ export class Turret {
         if (!this.target) return;
 
         const projectileType = this.getProjectileType();
+
+        // FLAK Anti-Air - rain of projectiles
+        if (this.config.flakCount) {
+            this.fireFlak(projectiles);
+            return;
+        }
 
         // Shotgun - multiple pellets
         if (this.config.pelletCount) {
@@ -486,6 +497,56 @@ export class Turret {
                 life: 0.3,
                 dotDamage: this.config.dotDamage,
                 dotDuration: this.config.dotDuration
+            });
+        }
+    }
+
+    fireFlak(projectiles) {
+        const flakCount = this.config.flakCount || 12;
+        const spreadRadius = (this.config.flakSpread || 1.5) * this.grid.cellSize;
+        const barrels = this.config.barrelCount || 2;
+        const speed = (this.config.projectileSpeed || 25) * this.grid.cellSize;
+
+        // Offset for double barrel (left and right of center)
+        const barrelOffset = this.grid.cellSize * 0.3;
+
+        for (let i = 0; i < flakCount; i++) {
+            // Alternate between barrels
+            const barrelSide = (i % barrels === 0) ? -1 : 1;
+            const perpAngle = this.angle + Math.PI / 2;
+
+            // Starting position from one of the barrels
+            const startX = this.x + Math.cos(perpAngle) * barrelOffset * barrelSide;
+            const startY = this.y + Math.sin(perpAngle) * barrelOffset * barrelSide;
+
+            // Target position with random spread
+            const spreadAngle = Math.random() * Math.PI * 2;
+            const spreadDist = Math.random() * spreadRadius;
+            const targetX = this.target.x + Math.cos(spreadAngle) * spreadDist;
+            const targetY = this.target.y + Math.sin(spreadAngle) * spreadDist;
+
+            const dx = targetX - startX;
+            const dy = targetY - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Small delay between projectiles for rain effect
+            const delay = (i / flakCount) * 0.2;
+
+            projectiles.push({
+                type: 'flak',
+                x: startX,
+                y: startY,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                damage: this.config.damage,
+                config: this.config,
+                sourceX: startX,
+                sourceY: startY,
+                targetX: targetX,
+                targetY: targetY,
+                hitEnemies: [],
+                delay: delay,
+                life: 1.0
             });
         }
     }

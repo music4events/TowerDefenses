@@ -151,8 +151,25 @@ body {
     gap: 4px;
     flex: 1;
     min-height: 100px;
+    max-height: 400px;
     overflow-y: auto;
     padding-right: 5px;
+}
+
+/* Scrollbar styling for build buttons */
+#build-buttons::-webkit-scrollbar {
+    width: 8px;
+}
+#build-buttons::-webkit-scrollbar-track {
+    background: #16213e;
+    border-radius: 4px;
+}
+#build-buttons::-webkit-scrollbar-thumb {
+    background: #0f3460;
+    border-radius: 4px;
+}
+#build-buttons::-webkit-scrollbar-thumb:hover {
+    background: #e94560;
 }
 
 .build-btn {
@@ -207,8 +224,15 @@ body {
 .btn-icon.turret-shock { background: #00bfff; }
 .btn-icon.turret-speed { background: #ffaa00; }
 .btn-icon.turret-damage { background: #ff4444; }
+.btn-icon.turret-flak { background: #2a5caa; border: 2px solid #00ddff; }
 .btn-icon.wall { background: #533535; border-radius: 4px; }
 .btn-icon.extractor { background: #8b9dc3; }
+
+/* Big turrets (3x3) */
+.build-btn.big-turret {
+    border: 2px solid #00ddff;
+    box-shadow: 0 0 8px rgba(0, 221, 255, 0.3);
+}
 
 .btn-name {
     color: #fff;

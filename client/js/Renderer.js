@@ -235,6 +235,12 @@ export class Renderer {
         const turretColor = config?.color || '#0f3460';
         const size = this.grid.cellSize * turretSize;
 
+        // Special rendering for 3x3 turrets (FLAK)
+        if (config?.gridSize === 3) {
+            this.drawTurret3x3(turret, isSelected, mode);
+            return;
+        }
+
         // Draw drone connection line to home
         if (config?.isDrone && turret.homeX !== undefined) {
             this.ctx.strokeStyle = 'rgba(147, 112, 219, 0.3)';
@@ -436,6 +442,118 @@ export class Renderer {
             const barWidth = size;
             const barHeight = 4;
             const barY = y - size / 2 - 6;
+
+            this.ctx.fillStyle = '#333';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
+
+            const healthPercent = health / maxHealth;
+            this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+        }
+    }
+
+    drawTurret3x3(turret, isSelected = false, mode = null) {
+        const { x, y, angle, config, level } = turret;
+        const cellSize = this.grid.cellSize;
+        const totalSize = cellSize * 3;
+        const turretColor = config?.color || '#2a5caa';
+
+        // Selection highlight for 3x3
+        if (isSelected) {
+            this.ctx.strokeStyle = mode === 'sell' ? '#e74c3c' : mode === 'upgrade' ? '#f39c12' : '#ffffff';
+            this.ctx.lineWidth = 4;
+            this.ctx.strokeRect(
+                x - totalSize / 2 - 3,
+                y - totalSize / 2 - 3,
+                totalSize + 6,
+                totalSize + 6
+            );
+        }
+
+        // Base platform (darker rectangle)
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
+
+        // Main body (octagonal or circular)
+        this.ctx.fillStyle = turretColor;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, totalSize / 2 - 5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Darker ring
+        this.ctx.strokeStyle = '#0a0a1a';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        // Inner detail ring
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, totalSize / 3, 0, Math.PI * 2);
+        this.ctx.stroke();
+
+        // Double barrels (for FLAK)
+        if (config?.barrelCount === 2) {
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.rotate(angle);
+
+            const barrelLength = totalSize / 2 + 15;
+            const barrelWidth = 8;
+            const barrelSpacing = 12;
+
+            // Left barrel
+            this.ctx.fillStyle = '#444444';
+            this.ctx.fillRect(0, -barrelSpacing - barrelWidth / 2, barrelLength, barrelWidth);
+            this.ctx.strokeStyle = '#222222';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(0, -barrelSpacing - barrelWidth / 2, barrelLength, barrelWidth);
+
+            // Right barrel
+            this.ctx.fillStyle = '#444444';
+            this.ctx.fillRect(0, barrelSpacing - barrelWidth / 2, barrelLength, barrelWidth);
+            this.ctx.strokeStyle = '#222222';
+            this.ctx.strokeRect(0, barrelSpacing - barrelWidth / 2, barrelLength, barrelWidth);
+
+            // Barrel tips (muzzle)
+            this.ctx.fillStyle = '#666666';
+            this.ctx.beginPath();
+            this.ctx.arc(barrelLength, -barrelSpacing, barrelWidth / 2 + 2, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.arc(barrelLength, barrelSpacing, barrelWidth / 2 + 2, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+
+        // Anti-air symbol (radar dish icon)
+        if (config?.isAntiAir) {
+            this.ctx.strokeStyle = '#00ddff';
+            this.ctx.lineWidth = 2;
+            // Radar waves
+            for (let i = 1; i <= 3; i++) {
+                this.ctx.globalAlpha = 0.3 + (i * 0.2);
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 10 + i * 8, -Math.PI / 3, Math.PI / 3);
+                this.ctx.stroke();
+            }
+            this.ctx.globalAlpha = 1;
+        }
+
+        // Level stars (bigger for 3x3)
+        if (level > 1) {
+            const starY = y + totalSize / 2 + 12;
+            this.drawStars(x, starY, level - 1);
+        }
+
+        // Health bar (wider for 3x3)
+        const health = turret.health;
+        const maxHealth = turret.maxHealth || config?.maxHealth || 400;
+        if (health < maxHealth) {
+            const barWidth = totalSize - 10;
+            const barHeight = 6;
+            const barY = y + totalSize / 2 + 5;
 
             this.ctx.fillStyle = '#333';
             this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
@@ -742,6 +860,34 @@ export class Renderer {
             this.ctx.strokeStyle = '#ffffff';
             this.ctx.lineWidth = 1;
             this.ctx.stroke();
+        } else if (type === 'flak') {
+            // FLAK tracer - small fast projectile with trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            // Calculate trail direction (opposite of movement)
+            const trailLength = 12;
+            let trailX = x;
+            let trailY = y;
+            if (speed > 0) {
+                trailX = x - (dx / speed) * trailLength;
+                trailY = y - (dy / speed) * trailLength;
+            }
+
+            // Draw tracer line
+            this.ctx.strokeStyle = projColor;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(trailX, trailY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Bright tip
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'sniper') {
             // Sniper bullet (faster, longer trail)
             this.ctx.fillStyle = projColor;
@@ -922,18 +1068,57 @@ export class Renderer {
         this.ctx.globalAlpha = 1;
     }
 
-    drawPlacementPreview(gridX, gridY, canPlace, buildingType) {
-        const worldPos = this.grid.gridToWorld(gridX, gridY);
-        const size = this.grid.cellSize * 0.9;
+    drawPlacementPreview(gridX, gridY, canPlace, buildingType, gridSize = 1) {
+        const cellSize = this.grid.cellSize;
 
-        this.ctx.globalAlpha = 0.5;
-        this.ctx.fillStyle = canPlace ? '#44ff44' : '#ff4444';
-        this.ctx.fillRect(
-            worldPos.x - size / 2,
-            worldPos.y - size / 2,
-            size, size
-        );
-        this.ctx.globalAlpha = 1;
+        if (gridSize > 1) {
+            // Multi-cell preview (3x3)
+            const offset = Math.floor(gridSize / 2);
+            this.ctx.globalAlpha = 0.5;
+
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    const x = gridX + dx;
+                    const y = gridY + dy;
+                    const cellCanPlace = this.grid.canPlace(x, y);
+                    const worldPos = this.grid.gridToWorld(x, y);
+                    const size = cellSize * 0.9;
+
+                    this.ctx.fillStyle = cellCanPlace ? '#44ff44' : '#ff4444';
+                    this.ctx.fillRect(
+                        worldPos.x - size / 2,
+                        worldPos.y - size / 2,
+                        size, size
+                    );
+                }
+            }
+
+            // Draw outline around the whole footprint
+            const centerWorldPos = this.grid.gridToWorld(gridX, gridY);
+            const totalSize = cellSize * gridSize;
+            this.ctx.strokeStyle = canPlace ? '#00ff00' : '#ff0000';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeRect(
+                centerWorldPos.x - totalSize / 2,
+                centerWorldPos.y - totalSize / 2,
+                totalSize, totalSize
+            );
+
+            this.ctx.globalAlpha = 1;
+        } else {
+            // Single cell preview
+            const worldPos = this.grid.gridToWorld(gridX, gridY);
+            const size = cellSize * 0.9;
+
+            this.ctx.globalAlpha = 0.5;
+            this.ctx.fillStyle = canPlace ? '#44ff44' : '#ff4444';
+            this.ctx.fillRect(
+                worldPos.x - size / 2,
+                worldPos.y - size / 2,
+                size, size
+            );
+            this.ctx.globalAlpha = 1;
+        }
     }
 
     drawRangeIndicator(x, y, range) {

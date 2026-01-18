@@ -137,6 +137,45 @@ export class Grid {
         return false;
     }
 
+    // Multi-cell building support (3x3 turrets)
+    canPlaceMulti(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                const x = centerX + dx;
+                const y = centerY + dy;
+                if (!this.canPlace(x, y)) return false;
+            }
+        }
+        return true;
+    }
+
+    placeMultiBuilding(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                this.placeBuilding(centerX + dx, centerY + dy);
+            }
+        }
+    }
+
+    removeMultiBuilding(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                this.removeBuilding(centerX + dx, centerY + dy);
+            }
+        }
+    }
+
+    // Get world position for center of multi-cell building
+    gridToWorldMulti(centerX, centerY, size) {
+        return {
+            x: centerX * this.cellSize + this.cellSize / 2,
+            y: centerY * this.cellSize + this.cellSize / 2
+        };
+    }
+
     setNexus(x, y) {
         if (this.isValidCell(x, y)) {
             this.cells[y][x] = 3;

@@ -181,6 +181,22 @@ const TURRET_TYPES = {
         damageBoost: 0.3, // 30% more damage for nearby turrets
         health: 80,
         maxHealth: 80
+    },
+    // === TOURELLES 3x3 ===
+    'turret-flak': {
+        name: 'FLAK Anti-Aerien',
+        gridSize: 3,              // Occupe 3x3 cases
+        damage: 8,                // Par projectile
+        range: 12,                // Longue portee
+        fireRate: 1.5,
+        cost: { iron: 800, copper: 300, gold: 100 },
+        projectileSpeed: 25,
+        isAntiAir: true,          // Cible uniquement les volants
+        flakCount: 12,            // Nombre de projectiles par salve
+        flakSpread: 1.5,          // Rayon d'impact aleatoire (cases)
+        barrelCount: 2,           // Double canon
+        health: 400,
+        maxHealth: 400
     }
 };
 
@@ -1786,7 +1802,14 @@ class GameState {
             }
 
             this.turrets.push(turret);
-            this.grid[gridY][gridX] = 1;
+
+            // Multi-cell turrets (3x3)
+            const size = config.gridSize || 1;
+            if (size > 1) {
+                this.placeMultiBuilding(gridX, gridY, size);
+            } else {
+                this.grid[gridY][gridX] = 1;
+            }
         } else if (buildingType === 'wall') {
             this.walls.push({
                 id: Date.now(),
@@ -1823,8 +1846,16 @@ class GameState {
     }
 
     sellBuilding(gridX, gridY, playerId) {
-        // Find turret at position
-        const turretIndex = this.turrets.findIndex(t => t.gridX === gridX && t.gridY === gridY);
+        // Find turret at position (check footprint for multi-cell turrets)
+        const turretIndex = this.turrets.findIndex(t => {
+            const size = t.config?.gridSize || 1;
+            if (size > 1) {
+                const offset = Math.floor(size / 2);
+                return gridX >= t.gridX - offset && gridX <= t.gridX + offset &&
+                       gridY >= t.gridY - offset && gridY <= t.gridY + offset;
+            }
+            return t.gridX === gridX && t.gridY === gridY;
+        });
         if (turretIndex > -1) {
             const turret = this.turrets[turretIndex];
             const baseCost = TURRET_TYPES[turret.type]?.cost || {};
@@ -1836,7 +1867,14 @@ class GameState {
             }
 
             this.turrets.splice(turretIndex, 1);
-            this.grid[gridY][gridX] = 0;
+
+            // Multi-cell turrets (3x3)
+            const size = turret.config?.gridSize || 1;
+            if (size > 1) {
+                this.removeMultiBuilding(turret.gridX, turret.gridY, size);
+            } else {
+                this.grid[gridY][gridX] = 0;
+            }
             return { success: true, type: 'turret' };
         }
 
@@ -1877,8 +1915,16 @@ class GameState {
     }
 
     upgradeBuilding(gridX, gridY, playerId) {
-        // Find turret at position
-        const turret = this.turrets.find(t => t.gridX === gridX && t.gridY === gridY);
+        // Find turret at position (check footprint for multi-cell turrets)
+        const turret = this.turrets.find(t => {
+            const size = t.config?.gridSize || 1;
+            if (size > 1) {
+                const offset = Math.floor(size / 2);
+                return gridX >= t.gridX - offset && gridX <= t.gridX + offset &&
+                       gridY >= t.gridY - offset && gridY <= t.gridY + offset;
+            }
+            return t.gridX === gridX && t.gridY === gridY;
+        });
         if (turret) {
             if (turret.level >= turret.maxLevel) {
                 return { success: false, message: 'Already max level' };
@@ -1945,6 +1991,16 @@ class GameState {
     }
 
     canPlace(gridX, gridY, buildingType) {
+        // Check multi-cell turrets (3x3)
+        if (buildingType.startsWith('turret-')) {
+            const config = TURRET_TYPES[buildingType];
+            const size = config?.gridSize || 1;
+
+            if (size > 1) {
+                return this.canPlaceMulti(gridX, gridY, size);
+            }
+        }
+
         if (gridX < 0 || gridX >= this.cols || gridY < 0 || gridY >= this.rows) {
             return false;
         }
@@ -1954,6 +2010,50 @@ class GameState {
         }
 
         return this.grid[gridY][gridX] === 0 || this.grid[gridY][gridX] === 2;
+    }
+
+    canPlaceMulti(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                const x = centerX + dx;
+                const y = centerY + dy;
+                if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
+                    return false;
+                }
+                const cell = this.grid[y][x];
+                // Can only place on empty (0) or resource (2) cells
+                if (cell !== 0 && cell !== 2) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    placeMultiBuilding(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                this.grid[centerY + dy][centerX + dx] = 1;
+            }
+        }
+    }
+
+    removeMultiBuilding(centerX, centerY, size) {
+        const offset = Math.floor(size / 2);
+        for (let dy = -offset; dy <= offset; dy++) {
+            for (let dx = -offset; dx <= offset; dx++) {
+                const x = centerX + dx;
+                const y = centerY + dy;
+                // Check if there was a resource here originally
+                if (this.resourceMap[y][x]) {
+                    this.grid[y][x] = 2;
+                } else {
+                    this.grid[y][x] = 0;
+                }
+            }
+        }
     }
 
     getBuildingCost(buildingType) {
