@@ -370,7 +370,7 @@ export class WaveManager {
         if (enemy) {
             // Scale all stats based on difficulty
             // Use logarithmic scaling for speed/damage to prevent extreme values
-            const healthMult = this.endlessDifficulty; // HP scales linearly
+            const healthMult = 1 + this.endlessDifficulty * 0.05; // +5% HP per wave (wave 132 = 7.6x)
             const speedMult = Math.min(5, 1 + Math.log10(this.endlessDifficulty) * 1.5); // Max 5x speed
             const damageMult = Math.min(10, 1 + Math.log10(this.endlessDifficulty) * 3); // Max 10x damage
 

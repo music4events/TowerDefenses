@@ -719,12 +719,11 @@ class GameState {
                 return;
             }
 
-            // Scaling: HP, speed, damage, and attack range increase with difficulty
-            // Use logarithmic scaling for speed/damage to prevent extreme values
+            // Scaling: +5% HP per wave, logarithmic for speed/damage
+            const healthMult = 1 + this.endlessDifficulty * 0.05; // +5% per wave (wave 132 = 7.6x)
             const speedMult = Math.min(5, 1 + Math.log10(this.endlessDifficulty) * 1.5); // Max 5x speed
             const damageMult = Math.min(10, 1 + Math.log10(this.endlessDifficulty) * 3); // Max 10x damage
             const attackRangeMult = Math.min(3, 1 + Math.log10(this.endlessDifficulty) * 0.8); // Max 3x range
-            // HP scales linearly with wave number (wave 132 = 132x HP)
 
             const enemy = {
                 id: Date.now() + Math.random(),
@@ -733,8 +732,8 @@ class GameState {
                 y: y * this.cellSize + this.cellSize / 2,
                 gridX: x,
                 gridY: y,
-                health: config.health * this.endlessDifficulty,
-                maxHealth: config.health * this.endlessDifficulty,
+                health: config.health * healthMult,
+                maxHealth: config.health * healthMult,
                 speed: config.speed * speedMult,
                 damage: config.damage * damageMult,
                 turretAttackRange: (config.turretAttackRange || 0) * attackRangeMult,
