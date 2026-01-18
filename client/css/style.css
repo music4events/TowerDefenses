@@ -9,9 +9,10 @@ body {
     font-family: 'Segoe UI', Tahoma, sans-serif;
     overflow: hidden;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: flex-start;
     min-height: 100vh;
+    padding: 10px;
 }
 
 #game-container {
@@ -19,6 +20,7 @@ body {
     display: flex;
     gap: 10px;
     align-items: flex-start;
+    margin-left: 0;
 }
 
 #gameCanvas {
@@ -28,7 +30,7 @@ body {
 }
 
 #ui {
-    width: 220px;
+    width: 240px;
     background: #1a1a2e;
     border: 2px solid #0f3460;
     border-radius: 4px;
@@ -36,7 +38,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    height: fit-content;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     align-self: flex-start;
 }
 
@@ -126,20 +129,23 @@ body {
 #build-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
 }
 
 .build-btn {
     background: #16213e;
     border: 2px solid #0f3460;
     border-radius: 4px;
-    padding: 10px 5px;
+    padding: 8px 4px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px;
+    gap: 3px;
 }
 
 .build-btn:hover {
@@ -159,8 +165,8 @@ body {
 }
 
 .btn-icon {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     position: relative;
 }
@@ -171,6 +177,13 @@ body {
 .btn-icon.turret-flame { background: #e74c3c; }
 .btn-icon.turret-tesla { background: #00d4ff; }
 .btn-icon.turret-laser { background: #2ecc71; }
+.btn-icon.turret-shotgun { background: #8b4513; }
+.btn-icon.turret-multi { background: #cc6600; }
+.btn-icon.turret-healer { background: #44ff44; }
+.btn-icon.turret-slow { background: #88ddff; }
+.btn-icon.turret-mortar { background: #556b2f; }
+.btn-icon.turret-railgun { background: #4169e1; }
+.btn-icon.turret-drone { background: #9370db; }
 .btn-icon.wall { background: #533535; border-radius: 4px; }
 .btn-icon.extractor { background: #8b9dc3; }
 
