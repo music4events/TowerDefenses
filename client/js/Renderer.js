@@ -1200,6 +1200,11 @@ export class Renderer {
     }
 
     drawProjectile(projectile) {
+        // Safety check - skip invalid projectiles
+        if (!projectile || !isFinite(projectile.x) || !isFinite(projectile.y)) {
+            return;
+        }
+
         const { x, y, config, type } = projectile;
         const projColor = projectile.color || config?.projectileColor || '#ffff00';
 
@@ -1270,8 +1275,11 @@ export class Renderer {
             this.drawLightning(projectile.startX, projectile.startY, x, y, '#00d4ff');
         } else if (type === 'flame') {
             // Epic flame particle with gradient and glow
-            const lifeRatio = projectile.life / 1.0;  // Assuming max life ~1
+            const lifeRatio = Math.max(0, Math.min(1, projectile.life || 0));
             const size = (projectile.size || 10) * (0.3 + lifeRatio * 0.7);
+
+            // Skip if size is invalid
+            if (!isFinite(size) || size <= 0) return;
 
             // Color transitions from white/yellow -> orange -> red as it fades
             const r = 255;
@@ -1464,6 +1472,9 @@ export class Renderer {
             // Plasma ball with pulsing glow
             const pulse = Math.sin(Date.now() / 50 + (projectile.pulsePhase || 0)) * 0.3 + 0.7;
             const size = (projectile.plasmaSize || 15) * pulse;
+
+            // Skip if size is invalid
+            if (!isFinite(size) || size <= 0) return;
 
             // Outer glow
             const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
@@ -1883,16 +1894,18 @@ export class Renderer {
                 }
 
                 // Ground impact explosion
-                const impactRadius = projectile.radius * 2 * strikeProgress;
-                const impactGradient = this.ctx.createRadialGradient(x, y, 0, x, y, impactRadius);
-                impactGradient.addColorStop(0, `rgba(255, 255, 255, ${fadeOut})`);
-                impactGradient.addColorStop(0.2, `rgba(255, 255, 200, ${fadeOut * 0.9})`);
-                impactGradient.addColorStop(0.5, `rgba(255, 180, 50, ${fadeOut * 0.6})`);
-                impactGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-                this.ctx.fillStyle = impactGradient;
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, impactRadius, 0, Math.PI * 2);
-                this.ctx.fill();
+                const impactRadius = (projectile.radius || 50) * 2 * strikeProgress;
+                if (impactRadius > 0 && isFinite(impactRadius)) {
+                    const impactGradient = this.ctx.createRadialGradient(x, y, 0, x, y, impactRadius);
+                    impactGradient.addColorStop(0, `rgba(255, 255, 255, ${fadeOut})`);
+                    impactGradient.addColorStop(0.2, `rgba(255, 255, 200, ${fadeOut * 0.9})`);
+                    impactGradient.addColorStop(0.5, `rgba(255, 180, 50, ${fadeOut * 0.6})`);
+                    impactGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    this.ctx.fillStyle = impactGradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, impactRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
 
                 // Expanding shockwave rings
                 const shockTime = (1.2 - projectile.life) / 1.2;
@@ -2419,16 +2432,18 @@ export class Renderer {
                 }
 
                 // Expanding fire ring
-                exp.radius = exp.maxRadius * Math.min(1, exp.time / 0.2);
-                const gradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
-                gradient.addColorStop(0, `rgba(255, 255, 200, ${exp.alpha})`);
-                gradient.addColorStop(0.3, `rgba(255, 150, 0, ${exp.alpha * 0.8})`);
-                gradient.addColorStop(0.6, `rgba(255, 80, 0, ${exp.alpha * 0.5})`);
-                gradient.addColorStop(1, `rgba(100, 20, 0, 0)`);
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
-                this.ctx.fill();
+                exp.radius = (exp.maxRadius || 50) * Math.min(1, exp.time / 0.2);
+                if (exp.radius > 0 && isFinite(exp.radius)) {
+                    const gradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.radius);
+                    gradient.addColorStop(0, `rgba(255, 255, 200, ${exp.alpha})`);
+                    gradient.addColorStop(0.3, `rgba(255, 150, 0, ${exp.alpha * 0.8})`);
+                    gradient.addColorStop(0.6, `rgba(255, 80, 0, ${exp.alpha * 0.5})`);
+                    gradient.addColorStop(1, `rgba(100, 20, 0, 0)`);
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
 
                 // Shockwave ring
                 const shockRadius = exp.maxRadius * 1.5 * (exp.time / 0.4);
