@@ -1573,34 +1573,158 @@ export class Renderer {
                 this.ctx.stroke();
             }
         } else if (type === 'mega-tesla') {
-            // Giant lightning bolt with branches
-            this.drawMegaLightning(projectile.startX, projectile.startY, x, y, projectile.boltWidth || 6, projectile.branches || 2);
-        } else if (type === 'mega-railgun') {
-            // Massive beam with charge effect
-            const beamWidth = projectile.coreWidth || 12;
+            // EPIC Mega Tesla - Multiple chain lightning with electric field
+            const time = Date.now() / 50;
 
-            // Outer glow
-            this.ctx.strokeStyle = 'rgba(0, 191, 255, 0.3)';
-            this.ctx.lineWidth = beamWidth * 3;
+            // Electric field at source
+            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            this.ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2 + time * 0.1;
+                const r = 25 + Math.sin(time + i) * 10;
+                this.ctx.beginPath();
+                this.ctx.arc(projectile.startX, projectile.startY, r, angle, angle + 0.5);
+                this.ctx.stroke();
+            }
+
+            // Multiple main bolts (3 parallel)
+            for (let bolt = 0; bolt < 3; bolt++) {
+                const offsetScale = (bolt - 1) * 15;
+                const perpX = -(y - projectile.startY);
+                const perpY = (x - projectile.startX);
+                const perpLen = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+                const offX = (perpX / perpLen) * offsetScale;
+                const offY = (perpY / perpLen) * offsetScale;
+
+                this.drawEpicLightning(
+                    projectile.startX + offX, projectile.startY + offY,
+                    x + offX * 0.5, y + offY * 0.5,
+                    (projectile.boltWidth || 6) - bolt,
+                    4 - bolt
+                );
+            }
+
+            // Electric orbs at impact
+            for (let orb = 0; orb < 5; orb++) {
+                const orbAngle = time * 2 + (orb / 5) * Math.PI * 2;
+                const orbDist = 20 + Math.sin(time * 3 + orb) * 10;
+                const orbX = x + Math.cos(orbAngle) * orbDist;
+                const orbY = y + Math.sin(orbAngle) * orbDist;
+                const orbSize = 4 + Math.sin(time * 5 + orb) * 2;
+
+                this.ctx.fillStyle = `rgba(0, 255, 255, ${0.6 + Math.sin(time + orb) * 0.3})`;
+                this.ctx.beginPath();
+                this.ctx.arc(orbX, orbY, orbSize, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Mini arc to orb
+                if (Math.random() > 0.5) {
+                    this.ctx.strokeStyle = 'rgba(150, 255, 255, 0.7)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, y);
+                    this.ctx.lineTo(orbX, orbY);
+                    this.ctx.stroke();
+                }
+            }
+
+            // Central impact glow
+            const pulseSize = 30 + Math.sin(time * 3) * 10;
+            this.ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+
+        } else if (type === 'mega-railgun') {
+            // EPIC Mega Railgun - Massive penetrating beam with shockwave
+            const beamWidth = projectile.coreWidth || 12;
+            const time = Date.now() / 30;
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const angle = Math.atan2(dy, dx);
+
+            // Charge particles along beam path
+            for (let i = 0; i < 30; i++) {
+                const t = (i / 30 + time * 0.02) % 1;
+                const px = projectile.startX + dx * t;
+                const py = projectile.startY + dy * t;
+                const offset = Math.sin(t * 20 + time) * 15;
+                const pSize = 2 + Math.random() * 3;
+
+                this.ctx.fillStyle = `rgba(0, 200, 255, ${0.8 - t * 0.5})`;
+                this.ctx.beginPath();
+                this.ctx.arc(px + (-dy/dist) * offset, py + (dx/dist) * offset, pSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            // Multiple outer glows
+            for (let g = 3; g >= 1; g--) {
+                this.ctx.strokeStyle = `rgba(0, 150, 255, ${0.15 / g})`;
+                this.ctx.lineWidth = beamWidth * g * 1.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(projectile.startX, projectile.startY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Main beam with gradient
+            const gradient = this.ctx.createLinearGradient(projectile.startX, projectile.startY, x, y);
+            gradient.addColorStop(0, '#00ffff');
+            gradient.addColorStop(0.5, '#00bfff');
+            gradient.addColorStop(1, '#ffffff');
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = beamWidth;
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Main beam
-            this.ctx.strokeStyle = config?.beamColor || '#00bfff';
-            this.ctx.lineWidth = beamWidth;
-            this.ctx.stroke();
-
-            // Core
+            // Electric core
             this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = beamWidth / 3;
+            this.ctx.lineWidth = beamWidth / 2;
             this.ctx.stroke();
 
-            // Impact flash
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            // Impact shockwave rings
+            for (let ring = 0; ring < 3; ring++) {
+                const ringPhase = (time * 0.1 + ring * 0.3) % 1;
+                const ringRadius = ringPhase * 60;
+                const ringAlpha = (1 - ringPhase) * 0.5;
+
+                this.ctx.strokeStyle = `rgba(0, 200, 255, ${ringAlpha})`;
+                this.ctx.lineWidth = 3 - ring;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            // Electric discharge at impact
+            for (let d = 0; d < 6; d++) {
+                const dAngle = (d / 6) * Math.PI * 2 + time * 0.2;
+                const dLen = 25 + Math.random() * 20;
+                const dEndX = x + Math.cos(dAngle) * dLen;
+                const dEndY = y + Math.sin(dAngle) * dLen;
+
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                // Jagged path
+                const midX = x + Math.cos(dAngle) * dLen * 0.5 + (Math.random() - 0.5) * 15;
+                const midY = y + Math.sin(dAngle) * dLen * 0.5 + (Math.random() - 0.5) * 15;
+                this.ctx.lineTo(midX, midY);
+                this.ctx.lineTo(dEndX, dEndY);
+                this.ctx.stroke();
+            }
+
+            // Bright impact core
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             this.ctx.beginPath();
-            this.ctx.arc(x, y, beamWidth, 0, Math.PI * 2);
+            this.ctx.arc(x, y, beamWidth * 1.2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'laser-array') {
             // Multiple colored laser beams
@@ -1619,37 +1743,97 @@ export class Renderer {
             this.ctx.lineWidth = 8;
             this.ctx.stroke();
         } else if (type === 'particle-beam') {
-            // Particle beam with floating particles
+            // EPIC Particle Beam - Swirling antimatter with disintegration effect
             const beamColor = config?.beamColor || '#ff69b4';
+            const time = Date.now() / 40;
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const beamWidth = config?.beamWidth || 8;
 
-            // Main beam
+            // Outer energy field glow
+            for (let g = 3; g >= 1; g--) {
+                this.ctx.strokeStyle = `rgba(255, 105, 180, ${0.1 / g})`;
+                this.ctx.lineWidth = beamWidth * g * 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(projectile.startX, projectile.startY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Main beam with pulsing
+            const pulse = 0.7 + Math.sin(time * 2) * 0.3;
             this.ctx.strokeStyle = beamColor;
-            this.ctx.lineWidth = config?.beamWidth || 8;
+            this.ctx.lineWidth = beamWidth * pulse;
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Core
+            // White hot core
             this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 3;
             this.ctx.stroke();
 
-            // Particles
-            const dx = x - projectile.startX;
-            const dy = y - projectile.startY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            for (let i = 0; i < (projectile.particleCount || 50); i++) {
-                const t = Math.random();
-                const offset = (Math.random() - 0.5) * 20;
-                const px = projectile.startX + dx * t + (-dy / dist) * offset;
-                const py = projectile.startY + dy * t + (dx / dist) * offset;
+            // Spiral particles along beam (double helix)
+            for (let helix = 0; helix < 2; helix++) {
+                for (let i = 0; i < 25; i++) {
+                    const t = i / 25;
+                    const spiralAngle = t * Math.PI * 8 + time * 3 + helix * Math.PI;
+                    const spiralRadius = 15 + Math.sin(t * Math.PI) * 10;
+                    const perpX = (-dy / dist) * Math.cos(spiralAngle) * spiralRadius;
+                    const perpY = (dx / dist) * Math.cos(spiralAngle) * spiralRadius;
 
-                this.ctx.fillStyle = `rgba(255, 105, 180, ${Math.random() * 0.8})`;
-                this.ctx.beginPath();
-                this.ctx.arc(px, py, 1 + Math.random() * 2, 0, Math.PI * 2);
-                this.ctx.fill();
+                    const px = projectile.startX + dx * t + perpX;
+                    const py = projectile.startY + dy * t + perpY;
+                    const pSize = 2 + Math.sin(time * 4 + i) * 1.5;
+                    const pAlpha = 0.8 - t * 0.3;
+
+                    // Particle glow
+                    this.ctx.fillStyle = `rgba(255, 150, 220, ${pAlpha * 0.5})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, pSize * 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+
+                    // Particle core
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${pAlpha})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
             }
+
+            // Disintegration effect at impact - expanding particle ring
+            for (let ring = 0; ring < 12; ring++) {
+                const ringAngle = (ring / 12) * Math.PI * 2 + time * 0.5;
+                const ringDist = 15 + Math.sin(time * 3 + ring) * 8;
+                const px = x + Math.cos(ringAngle) * ringDist;
+                const py = y + Math.sin(ringAngle) * ringDist;
+
+                this.ctx.fillStyle = `rgba(255, 105, 180, ${0.7 + Math.sin(time + ring) * 0.3})`;
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, 3 + Math.random() * 2, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Energy threads back to center
+                this.ctx.strokeStyle = `rgba(255, 200, 230, 0.4)`;
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(px, py);
+                this.ctx.stroke();
+            }
+
+            // Central antimatter core
+            const coreSize = 12 + Math.sin(time * 5) * 4;
+            this.ctx.fillStyle = 'rgba(255, 105, 180, 0.6)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, coreSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'nuclear') {
             // OPTIMIZED Nuclear ICBM - impressive but performant
             const dx = projectile.vx || 0;
@@ -1768,46 +1952,206 @@ export class Renderer {
 
             this.ctx.restore();
         } else if (type === 'storm-cloud') {
-            // Storm cloud effect
-            this.ctx.fillStyle = `rgba(75, 0, 130, ${projectile.life * 0.3})`;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, projectile.radius, 0, Math.PI * 2);
-            this.ctx.fill();
+            // EPIC Storm Cloud - Massive swirling vortex with lightning
+            const time = Date.now() / 100;
+            const radius = projectile.radius || 80;
+            const alpha = projectile.life || 1;
 
-            // Swirling effect
-            this.ctx.strokeStyle = `rgba(138, 43, 226, ${projectile.life * 0.5})`;
-            this.ctx.lineWidth = 3;
-            const swirl = Date.now() / 200;
+            // Multi-layer cloud
+            for (let layer = 3; layer >= 0; layer--) {
+                const layerRadius = radius * (1 - layer * 0.15);
+                const layerAlpha = alpha * (0.15 + layer * 0.08);
+                const rotation = time * (0.5 + layer * 0.2) * (layer % 2 ? 1 : -1);
+
+                // Cloud base
+                this.ctx.fillStyle = `rgba(50, 0, 100, ${layerAlpha})`;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, layerRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Swirling arms
+                this.ctx.strokeStyle = `rgba(138, 43, 226, ${layerAlpha * 1.5})`;
+                this.ctx.lineWidth = 4 - layer;
+                for (let arm = 0; arm < 4; arm++) {
+                    const armAngle = rotation + (arm / 4) * Math.PI * 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, layerRadius * 0.8, armAngle, armAngle + Math.PI * 0.6);
+                    this.ctx.stroke();
+                }
+            }
+
+            // Electric charges in cloud
+            for (let spark = 0; spark < 8; spark++) {
+                const sparkAngle = time * 2 + (spark / 8) * Math.PI * 2;
+                const sparkDist = radius * (0.3 + Math.sin(time * 3 + spark) * 0.3);
+                const sx = x + Math.cos(sparkAngle) * sparkDist;
+                const sy = y + Math.sin(sparkAngle) * sparkDist;
+
+                if (Math.random() > 0.7) {
+                    this.ctx.fillStyle = `rgba(200, 150, 255, ${alpha * 0.8})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(sx, sy, 3 + Math.random() * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            // Central vortex eye
+            this.ctx.fillStyle = `rgba(100, 0, 150, ${alpha * 0.8})`;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, projectile.radius * 0.7, swirl, swirl + Math.PI);
+            this.ctx.arc(x, y, radius * 0.2, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.strokeStyle = `rgba(200, 100, 255, ${alpha})`;
+            this.ctx.lineWidth = 2;
             this.ctx.stroke();
+
         } else if (type === 'storm-bolt') {
-            // Lightning from sky
+            // EPIC Lightning from sky with ground impact
             if (projectile.delay <= 0) {
-                this.drawMegaLightning(projectile.startX, projectile.startY, x, y, 4, 3);
+                const time = Date.now() / 30;
+
+                // Pre-flash warning line
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(projectile.startX, projectile.startY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Multiple lightning bolts
+                for (let bolt = 0; bolt < 2; bolt++) {
+                    const offsetX = (bolt - 0.5) * 10;
+                    this.drawEpicLightning(
+                        projectile.startX + offsetX, projectile.startY,
+                        x + offsetX * 0.3, y,
+                        5 - bolt * 2, 4 - bolt
+                    );
+                }
+
+                // Ground impact flash
+                const flashSize = 25 + Math.sin(time * 5) * 10;
+                this.ctx.fillStyle = 'rgba(200, 150, 255, 0.6)';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, flashSize, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Ground scorch ring
+                this.ctx.strokeStyle = 'rgba(100, 50, 150, 0.5)';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 20, 0, Math.PI * 2);
+                this.ctx.stroke();
+
+                // Electric discharge on ground
+                for (let d = 0; d < 6; d++) {
+                    const dAngle = (d / 6) * Math.PI * 2 + time * 0.3;
+                    const dLen = 15 + Math.random() * 15;
+                    this.ctx.strokeStyle = 'rgba(180, 130, 255, 0.7)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, y);
+                    this.ctx.lineTo(x + Math.cos(dAngle) * dLen, y + Math.sin(dAngle) * dLen);
+                    this.ctx.stroke();
+                }
             }
         } else if (type === 'death-ray') {
-            // Continuous death beam with heat effect
+            // EPIC Death Ray - Searing beam with heat distortion and particles along full length
             const heat = projectile.heatLevel || 0;
-            const heatColor = `rgb(${155 + heat}, ${50 - heat * 0.5}, ${50 - heat * 0.5})`;
+            const time = Date.now() / 25;
+            const beamWidth = (config?.beamWidth || 10) + heat / 8;
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-            // Outer heat glow
-            this.ctx.strokeStyle = `rgba(255, 0, 0, ${0.2 + heat / 200})`;
-            this.ctx.lineWidth = (config?.beamWidth || 10) + heat / 10;
+            // Heat distortion waves along beam
+            for (let wave = 0; wave < 5; wave++) {
+                const waveT = ((time * 0.05 + wave * 0.2) % 1);
+                const waveX = projectile.startX + dx * waveT;
+                const waveY = projectile.startY + dy * waveT;
+                const waveSize = 20 + heat / 5;
+
+                this.ctx.strokeStyle = `rgba(255, 100, 0, ${0.15 * (1 - waveT)})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(waveX, waveY, waveSize * (1 + waveT), 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            // Multiple outer glow layers
+            for (let g = 4; g >= 1; g--) {
+                const glowAlpha = (0.1 + heat / 500) / g;
+                this.ctx.strokeStyle = `rgba(255, ${50 - g * 10}, 0, ${glowAlpha})`;
+                this.ctx.lineWidth = beamWidth * g;
+                this.ctx.beginPath();
+                this.ctx.moveTo(projectile.startX, projectile.startY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Main beam with gradient
+            const gradient = this.ctx.createLinearGradient(projectile.startX, projectile.startY, x, y);
+            gradient.addColorStop(0, `rgb(${200 + heat * 0.5}, ${80 - heat * 0.3}, 0)`);
+            gradient.addColorStop(0.5, `rgb(${255}, ${150 - heat * 0.5}, ${50 - heat * 0.3})`);
+            gradient.addColorStop(1, `rgb(255, ${200 - heat * 0.8}, ${100 - heat * 0.5})`);
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = beamWidth;
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Main beam
-            this.ctx.strokeStyle = heatColor;
-            this.ctx.lineWidth = config?.beamWidth || 10;
+            // White-hot core
+            this.ctx.strokeStyle = `rgb(255, ${255 - heat * 0.5}, ${200 - heat})`;
+            this.ctx.lineWidth = beamWidth / 3;
             this.ctx.stroke();
 
-            // Core
-            this.ctx.strokeStyle = config?.coreColor || '#ffff00';
-            this.ctx.lineWidth = 3;
-            this.ctx.stroke();
+            // PARTICLES ALONG FULL BEAM LENGTH
+            for (let i = 0; i < 40; i++) {
+                const t = i / 40;
+                const px = projectile.startX + dx * t;
+                const py = projectile.startY + dy * t;
+
+                // Perpendicular offset for particle spread
+                const perpOffset = Math.sin(t * 30 + time * 2) * (beamWidth * 0.8);
+                const perpX = (-dy / dist) * perpOffset;
+                const perpY = (dx / dist) * perpOffset;
+
+                const particleX = px + perpX + (Math.random() - 0.5) * 10;
+                const particleY = py + perpY + (Math.random() - 0.5) * 10;
+                const pSize = 2 + Math.random() * 3 + heat / 30;
+
+                // Ember particle
+                const emberAlpha = 0.6 + Math.random() * 0.4;
+                this.ctx.fillStyle = `rgba(255, ${150 + Math.random() * 100}, 0, ${emberAlpha})`;
+                this.ctx.beginPath();
+                this.ctx.arc(particleX, particleY, pSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            // Rising heat particles (embers floating up)
+            for (let ember = 0; ember < 15; ember++) {
+                const emberT = ((time * 0.03 + ember * 0.07) % 1);
+                const emberX = projectile.startX + dx * (ember / 15) + (Math.random() - 0.5) * 20;
+                const emberY = projectile.startY + dy * (ember / 15) - emberT * 40;
+                const emberSize = (1 - emberT) * 4;
+
+                if (emberSize > 0.5) {
+                    this.ctx.fillStyle = `rgba(255, ${100 + ember * 10}, 0, ${(1 - emberT) * 0.8})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(emberX, emberY, emberSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            // Impact point scorching
+            const impactSize = 15 + heat / 5 + Math.sin(time * 3) * 5;
+            this.ctx.fillStyle = `rgba(255, 100, 0, 0.5)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, impactSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = `rgba(255, 255, 200, 0.8)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, impactSize * 0.3, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'orbital-warning') {
             // EPIC Warning with targeting animation
             const progress = projectile.life / 1.2;
@@ -2085,6 +2429,122 @@ export class Renderer {
                 this.ctx.stroke();
             }
         }
+    }
+
+    // EPIC lightning with more segments, branches, and electric orbs
+    drawEpicLightning(x1, y1, x2, y2, width, branches) {
+        const segments = 12;
+        const dx = (x2 - x1) / segments;
+        const dy = (y2 - y1) / segments;
+        const points = [{ x: x1, y: y1 }];
+
+        // Build jagged path
+        for (let i = 1; i < segments; i++) {
+            const offsetX = (Math.random() - 0.5) * 50;
+            const offsetY = (Math.random() - 0.5) * 50;
+            points.push({
+                x: x1 + dx * i + offsetX,
+                y: y1 + dy * i + offsetY
+            });
+        }
+        points.push({ x: x2, y: y2 });
+
+        // Outer glow (widest)
+        this.ctx.strokeStyle = 'rgba(0, 200, 255, 0.15)';
+        this.ctx.lineWidth = width * 5;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.beginPath();
+        this.ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            this.ctx.lineTo(points[i].x, points[i].y);
+        }
+        this.ctx.stroke();
+
+        // Mid glow
+        this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        this.ctx.lineWidth = width * 3;
+        this.ctx.stroke();
+
+        // Main bolt
+        this.ctx.strokeStyle = '#00ffff';
+        this.ctx.lineWidth = width;
+        this.ctx.stroke();
+
+        // White hot core
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = width / 2;
+        this.ctx.stroke();
+
+        // Branches with sub-branches
+        for (let b = 0; b < branches; b++) {
+            const branchIdx = Math.floor(Math.random() * (points.length - 2)) + 1;
+            const branchPoint = points[branchIdx];
+
+            const branchAngle = Math.atan2(y2 - y1, x2 - x1) + (Math.random() - 0.5) * Math.PI;
+            const branchLen = 30 + Math.random() * 50;
+            const midX = branchPoint.x + Math.cos(branchAngle) * branchLen * 0.5 + (Math.random() - 0.5) * 20;
+            const midY = branchPoint.y + Math.sin(branchAngle) * branchLen * 0.5 + (Math.random() - 0.5) * 20;
+            const endX = branchPoint.x + Math.cos(branchAngle) * branchLen;
+            const endY = branchPoint.y + Math.sin(branchAngle) * branchLen;
+
+            // Branch glow
+            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            this.ctx.lineWidth = width * 1.5;
+            this.ctx.beginPath();
+            this.ctx.moveTo(branchPoint.x, branchPoint.y);
+            this.ctx.lineTo(midX, midY);
+            this.ctx.lineTo(endX, endY);
+            this.ctx.stroke();
+
+            // Branch core
+            this.ctx.strokeStyle = '#00ffff';
+            this.ctx.lineWidth = width * 0.6;
+            this.ctx.stroke();
+
+            // Sub-branch
+            if (Math.random() > 0.4) {
+                const subAngle = branchAngle + (Math.random() - 0.5) * Math.PI * 0.8;
+                const subLen = branchLen * 0.5;
+                const subX = midX + Math.cos(subAngle) * subLen;
+                const subY = midY + Math.sin(subAngle) * subLen;
+
+                this.ctx.strokeStyle = 'rgba(100, 220, 255, 0.6)';
+                this.ctx.lineWidth = width * 0.4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(midX, midY);
+                this.ctx.lineTo(subX, subY);
+                this.ctx.stroke();
+            }
+
+            // Electric orb at branch end
+            this.ctx.fillStyle = 'rgba(150, 255, 255, 0.7)';
+            this.ctx.beginPath();
+            this.ctx.arc(endX, endY, 4 + Math.random() * 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // Electric orbs along main path
+        for (let i = 1; i < points.length - 1; i++) {
+            if (Math.random() > 0.6) {
+                const orbSize = 3 + Math.random() * 4;
+                this.ctx.fillStyle = 'rgba(200, 255, 255, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.arc(points[i].x, points[i].y, orbSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Start and end flashes
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        this.ctx.beginPath();
+        this.ctx.arc(x1, y1, width * 1.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = 'rgba(200, 255, 255, 0.8)';
+        this.ctx.beginPath();
+        this.ctx.arc(x2, y2, width * 2, 0, Math.PI * 2);
+        this.ctx.fill();
     }
 
     drawLightning(x1, y1, x2, y2, color) {
