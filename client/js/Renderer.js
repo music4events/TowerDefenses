@@ -22,6 +22,11 @@ export class Renderer {
         this.particles = [];
         this.explosions = [];
         this.deathEffects = [];
+
+        // Performance limits
+        this.maxParticles = 200;
+        this.maxExplosions = 50;
+        this.maxDeathEffects = 100;
     }
 
     // Apply camera transform
@@ -2095,6 +2100,10 @@ export class Renderer {
     }
 
     addExplosion(x, y, radius, color = '#ff6600') {
+        // Limit explosions to prevent memory issues
+        if (this.explosions.length >= this.maxExplosions) {
+            this.explosions.shift();
+        }
         this.explosions.push({
             x, y,
             radius,
@@ -2206,7 +2215,9 @@ export class Renderer {
     }
 
     addMuzzleFlash(x, y, angle, color = '#ffff00', size = 10) {
-        // Quick muzzle flash when firing
+        // Limit particles to prevent memory issues
+        if (this.particles.length >= this.maxParticles) return;
+
         this.particles.push({
             x, y,
             vx: Math.cos(angle) * 50,
@@ -2220,6 +2231,9 @@ export class Renderer {
     }
 
     addShotgunBlast(x, y, angle, spread = 0.5, color = '#ffcc00') {
+        // Limit particles
+        if (this.particles.length >= this.maxParticles - 8) return;
+
         // Shotgun blast with multiple particles
         for (let i = 0; i < 8; i++) {
             const particleAngle = angle + (Math.random() - 0.5) * spread;
@@ -2236,6 +2250,9 @@ export class Renderer {
     }
 
     addCannonFire(x, y, angle, color = '#ff6600') {
+        // Limit particles
+        if (this.particles.length >= this.maxParticles - 2) return;
+
         // Artillery cannon smoke ring
         this.particles.push({
             x, y,
@@ -2261,6 +2278,9 @@ export class Renderer {
     }
 
     addLaserPulse(x, y, color = '#2ecc71') {
+        // Limit particles
+        if (this.particles.length >= this.maxParticles) return;
+
         // Laser charging pulse
         this.particles.push({
             x, y,
@@ -2274,6 +2294,9 @@ export class Renderer {
     }
 
     addElectricSpark(x, y, color = '#00d4ff') {
+        // Limit particles
+        if (this.particles.length >= this.maxParticles - 6) return;
+
         // Electric sparks around tesla turret
         for (let i = 0; i < 6; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -2869,6 +2892,9 @@ export class Renderer {
     }
 
     addDeathEffect(x, y, color = '#ff4444') {
+        // Limit death effects
+        if (this.deathEffects.length >= this.maxDeathEffects) return;
+
         // Create particles for death
         for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;
