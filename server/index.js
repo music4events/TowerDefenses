@@ -50,10 +50,52 @@ function generateRoomCode() {
 }
 
 io.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    console.log(`[${new Date().toISOString()}] Player connected: ${socket.id}`);
 
     let currentRoom = null;
     let playerName = 'Player';
+
+    // Rejoin an existing room (for reconnection)
+    socket.on('rejoinRoom', (data) => {
+        const roomCode = data.code?.toUpperCase();
+        playerName = data.name || 'Player';
+
+        console.log(`[${new Date().toISOString()}] Rejoin attempt: code="${roomCode}" by ${playerName}`);
+
+        const room = rooms.get(roomCode);
+        if (!room) {
+            socket.emit('rejoinError', { message: 'Room no longer exists' });
+            return;
+        }
+
+        // Add player back to the room
+        room.players.set(socket.id, {
+            id: socket.id,
+            name: playerName,
+            color: getPlayerColor(room.players.size)
+        });
+
+        socket.join(roomCode);
+        currentRoom = roomCode;
+
+        // Send current game state
+        socket.emit('rejoinSuccess', {
+            code: roomCode,
+            playerId: socket.id,
+            players: Array.from(room.players.values()),
+            gameState: room.gameState.serialize(),
+            started: room.started,
+            gameMode: room.gameMode
+        });
+
+        // Notify other players
+        socket.to(roomCode).emit('playerJoined', {
+            player: room.players.get(socket.id),
+            players: Array.from(room.players.values())
+        });
+
+        console.log(`[${new Date().toISOString()}] ${playerName} rejoined room ${roomCode}`);
+    });
 
     // Create new room
     socket.on('createRoom', (data) => {
@@ -281,12 +323,12 @@ io.on('connection', (socket) => {
 
     // Handle socket errors
     socket.on('error', (error) => {
-        console.error(`Socket error for ${socket.id}:`, error.message);
+        console.error(`[${new Date().toISOString()}] Socket error for ${socket.id}:`, error.message);
     });
 
     // Disconnect
     socket.on('disconnect', (reason) => {
-        console.log(`Player disconnected: ${socket.id} (reason: ${reason})`);
+        console.log(`[${new Date().toISOString()}] Player disconnected: ${socket.id} (reason: ${reason}, room: ${currentRoom || 'none'})`);
 
         if (currentRoom) {
             const room = rooms.get(currentRoom);

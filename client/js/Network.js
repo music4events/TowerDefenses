@@ -56,10 +56,14 @@ export class Network {
             console.log('Connected to server');
 
             // If we were in a room before disconnect, try to rejoin
-            if (this.roomCode && this._wasDisconnected) {
-                console.log('Attempting to rejoin room after reconnection...');
-                this._wasDisconnected = false;
+            if (this.roomCode && this._wasDisconnected && this._playerName) {
+                console.log('Attempting to rejoin room', this.roomCode, 'after reconnection...');
+                this.socket.emit('rejoinRoom', {
+                    code: this.roomCode,
+                    name: this._playerName
+                });
             }
+            this._wasDisconnected = false;
         });
 
         this.socket.on('disconnect', (reason) => {
@@ -69,9 +73,11 @@ export class Network {
 
             // Show user-friendly message
             if (reason === 'io server disconnect') {
-                console.warn('Server disconnected the client');
+                console.warn('Server forcibly disconnected the client');
             } else if (reason === 'transport close') {
-                console.warn('Connection lost - attempting to reconnect...');
+                console.warn('Connection lost - will attempt to reconnect...');
+            } else if (reason === 'ping timeout') {
+                console.warn('Ping timeout - server not responding');
             }
         });
 
@@ -85,6 +91,25 @@ export class Network {
 
         this.socket.on('reconnect_attempt', (attemptNumber) => {
             console.log('Reconnection attempt', attemptNumber);
+        });
+
+        // Handle rejoin success
+        this.socket.on('rejoinSuccess', (data) => {
+            console.log('Successfully rejoined room', data.code);
+            this.roomCode = data.code;
+            this.playerId = data.playerId;
+            this.players = data.players;
+
+            // If game was started, restore state by calling the game state handler
+            if (data.started && data.gameState) {
+                this.handleGameStateUpdate({ state: data.gameState });
+            }
+        });
+
+        this.socket.on('rejoinError', (data) => {
+            console.warn('Failed to rejoin room:', data.message);
+            this.roomCode = null;
+            this._wasDisconnected = false;
         });
 
         this.socket.on('roomCreated', (data) => {
@@ -167,12 +192,14 @@ export class Network {
 
     createRoom(playerName) {
         if (this.socket) {
+            this._playerName = playerName; // Store for reconnection
             this.socket.emit('createRoom', { name: playerName });
         }
     }
 
     joinRoom(roomCode, playerName) {
         if (this.socket) {
+            this._playerName = playerName; // Store for reconnection
             this.socket.emit('joinRoom', { code: roomCode, name: playerName });
         }
     }
