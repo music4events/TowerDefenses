@@ -846,6 +846,7 @@ class GameState {
 
             // Reset boosts for all turrets
             for (const turret of this.turrets) {
+                if (!turret) continue;
                 turret.speedBoosted = false;
                 turret.damageBoosted = false;
                 turret.speedBoostAmount = 0;
@@ -854,15 +855,25 @@ class GameState {
 
             // Update booster turrets FIRST so they can set boost flags
             for (const turret of this.turrets) {
-                if (turret.config?.isSpeedBooster || turret.config?.isDamageBooster) {
-                    this.updateTurret(turret, adjustedDelta);
+                if (!turret || !turret.config) continue;
+                if (turret.config.isSpeedBooster || turret.config.isDamageBooster) {
+                    try {
+                        this.updateTurret(turret, adjustedDelta);
+                    } catch (err) {
+                        console.error('Error updating booster turret:', err);
+                    }
                 }
             }
 
             // Update all other turrets
             for (const turret of this.turrets) {
-                if (!turret.config?.isSpeedBooster && !turret.config?.isDamageBooster) {
-                    this.updateTurret(turret, adjustedDelta);
+                if (!turret || !turret.config) continue;
+                if (!turret.config.isSpeedBooster && !turret.config.isDamageBooster) {
+                    try {
+                        this.updateTurret(turret, adjustedDelta);
+                    } catch (err) {
+                        console.error('Error updating turret:', err);
+                    }
                 }
             }
 
@@ -2863,13 +2874,20 @@ class GameState {
         const effectsToSend = this.pendingEffects.slice();
         this.pendingEffects = []; // Clear after capturing
 
+        // Filter out null/undefined items before mapping
+        const validEnemies = this.enemies.filter(e => e && !e.dead);
+        const validTurrets = this.turrets.filter(t => t && t.config);
+        const validWalls = this.walls.filter(w => w);
+        const validExtractors = this.extractors.filter(e => e);
+        const validProjectiles = this.projectiles.filter(p => p);
+
         return {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
             waveNumber: this.waveNumber,
             waveTimer: this.waveTimer,
             waveActive: this.waveActive,
-            enemies: this.enemies.map(e => ({
+            enemies: validEnemies.map(e => ({
                 id: e.id,
                 type: e.type,
                 x: e.x,
@@ -2883,7 +2901,7 @@ class GameState {
                 isAttackingTurret: e.isAttackingTurret,
                 ignoreWalls: e.ignoreWalls || false
             })),
-            turrets: this.turrets.map(t => ({
+            turrets: validTurrets.map(t => ({
                 id: t.id,
                 type: t.type,
                 gridX: t.gridX,
@@ -2895,7 +2913,7 @@ class GameState {
                 damage: t.config?.damage,
                 range: t.config?.range,
                 fireRate: t.config?.fireRate,
-                aoeRange: t.config?.aoeRange, // For slowdown/shockwave zones
+                aoeRange: t.config?.aoeRange,
                 health: t.health,
                 maxHealth: t.maxHealth || t.config?.maxHealth || 100,
                 homeX: t.homeX,
@@ -2903,7 +2921,7 @@ class GameState {
                 speedBoosted: t.speedBoosted || false,
                 damageBoosted: t.damageBoosted || false
             })),
-            walls: this.walls.map(w => ({
+            walls: validWalls.map(w => ({
                 id: w.id,
                 gridX: w.gridX,
                 gridY: w.gridY,
@@ -2911,7 +2929,7 @@ class GameState {
                 y: w.y,
                 health: w.health
             })),
-            extractors: this.extractors.map(e => ({
+            extractors: validExtractors.map(e => ({
                 id: e.id,
                 gridX: e.gridX,
                 gridY: e.gridY,
@@ -2921,7 +2939,7 @@ class GameState {
                 level: e.level || 1,
                 extractionRate: e.extractionRate || 1
             })),
-            projectiles: this.projectiles.map(p => ({
+            projectiles: validProjectiles.map(p => ({
                 id: p.id,
                 type: p.type || 'bullet',
                 x: p.x,
@@ -2933,7 +2951,8 @@ class GameState {
                 vx: p.vx,
                 vy: p.vy,
                 damage: p.damage,
-                // Homing properties for client rendering
+                color: p.color,
+                size: p.size,
                 homingStrength: p.homingStrength,
                 targetId: p.targetId,
                 maxSpeed: p.maxSpeed,
