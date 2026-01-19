@@ -1906,6 +1906,9 @@ class GameState {
                 }
             }
 
+            // Safety check - if no valid target, abort
+            if (!missileTarget || missileTarget.dead) return;
+
             for (let i = 0; i < missileCount; i++) {
                 // Launch from different positions on the turret
                 const launchAngle = turret.config.isMissileBattery
@@ -1971,6 +1974,9 @@ class GameState {
                     strongestEnemy = enemy;
                 }
             }
+
+            // Safety check - if no valid target, abort
+            if (!strongestEnemy || strongestEnemy.dead) return;
 
             const speed = (turret.config.projectileSpeed || 6) * this.cellSize;
             const launchAngle = turret.angle - Math.PI / 6;
