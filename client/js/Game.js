@@ -888,6 +888,9 @@ export class Game {
         // Draw death effects
         this.renderer.drawDeathEffects(deltaTime);
 
+        // Draw muzzle flashes and other particles
+        this.renderer.drawParticles(deltaTime);
+
         this.renderer.restoreCamera();
     }
 

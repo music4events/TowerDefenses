@@ -1201,7 +1201,7 @@ export class Renderer {
 
     drawProjectile(projectile) {
         const { x, y, config, type } = projectile;
-        const projColor = config?.projectileColor || '#ffff00';
+        const projColor = projectile.color || config?.projectileColor || '#ffff00';
 
         if (type === 'bullet') {
             // Enhanced bullet with trail
@@ -2205,6 +2205,91 @@ export class Renderer {
         });
     }
 
+    addMuzzleFlash(x, y, angle, color = '#ffff00', size = 10) {
+        // Quick muzzle flash when firing
+        this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * 50,
+            vy: Math.sin(angle) * 50,
+            size: size,
+            color: color,
+            life: 0.15,
+            isMuzzleFlash: true,
+            angle: angle
+        });
+    }
+
+    addShotgunBlast(x, y, angle, spread = 0.5, color = '#ffcc00') {
+        // Shotgun blast with multiple particles
+        for (let i = 0; i < 8; i++) {
+            const particleAngle = angle + (Math.random() - 0.5) * spread;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(particleAngle) * (80 + Math.random() * 40),
+                vy: Math.sin(particleAngle) * (80 + Math.random() * 40),
+                size: 4 + Math.random() * 4,
+                color: color,
+                life: 0.2,
+                isShotgunBlast: true
+            });
+        }
+    }
+
+    addCannonFire(x, y, angle, color = '#ff6600') {
+        // Artillery cannon smoke ring
+        this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * 30,
+            vy: Math.sin(angle) * 30,
+            size: 20,
+            color: '#888888',
+            life: 0.4,
+            isCannonSmoke: true,
+            angle: angle
+        });
+        // Fire flash
+        this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * 60,
+            vy: Math.sin(angle) * 60,
+            size: 15,
+            color: color,
+            life: 0.15,
+            isMuzzleFlash: true,
+            angle: angle
+        });
+    }
+
+    addLaserPulse(x, y, color = '#2ecc71') {
+        // Laser charging pulse
+        this.particles.push({
+            x, y,
+            vx: 0,
+            vy: 0,
+            size: 20,
+            color: color,
+            life: 0.2,
+            isLaserPulse: true
+        });
+    }
+
+    addElectricSpark(x, y, color = '#00d4ff') {
+        // Electric sparks around tesla turret
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            this.particles.push({
+                x: x + Math.cos(angle) * 10,
+                y: y + Math.sin(angle) * 10,
+                vx: Math.cos(angle) * (40 + Math.random() * 30),
+                vy: Math.sin(angle) * (40 + Math.random() * 30),
+                size: 3 + Math.random() * 3,
+                color: color,
+                life: 0.25,
+                isElectricSpark: true
+            });
+        }
+    }
+
     addBossDeathEffect(x, y, bossSize = 1.5, color = '#880088') {
         // Epic boss death explosion with screen shake, multiple rings, and particles
         const baseRadius = this.grid.cellSize * bossSize * 2;
@@ -2820,6 +2905,100 @@ export class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
             this.ctx.fill();
+        }
+        this.ctx.globalAlpha = 1;
+    }
+
+    drawParticles(deltaTime) {
+        // Update and draw muzzle flash particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.life -= deltaTime;
+
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+                continue;
+            }
+
+            // Update position
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+
+            const alpha = Math.min(1, p.life * 4); // Quick fade
+
+            if (p.isMuzzleFlash) {
+                // Muzzle flash - bright expanding star
+                this.ctx.save();
+                this.ctx.translate(p.x, p.y);
+                this.ctx.rotate(p.angle);
+
+                // Glow
+                this.ctx.fillStyle = p.color;
+                this.ctx.globalAlpha = alpha * 0.6;
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, p.size * 1.5, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Core flash
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.restore();
+            } else if (p.isShotgunBlast) {
+                // Shotgun sparks
+                this.ctx.fillStyle = p.color;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (p.isCannonSmoke) {
+                // Artillery smoke ring
+                this.ctx.fillStyle = p.color;
+                this.ctx.globalAlpha = alpha * 0.4;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size * (1.5 - alpha), 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (p.isLaserPulse) {
+                // Laser charge pulse
+                const pulseSize = p.size * (1 - p.life * 3);
+                this.ctx.strokeStyle = p.color;
+                this.ctx.lineWidth = 2;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, pulseSize, 0, Math.PI * 2);
+                this.ctx.stroke();
+
+                // Center glow
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.globalAlpha = alpha * 0.8;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (p.isElectricSpark) {
+                // Electric sparks
+                this.ctx.fillStyle = p.color;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Add glow
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.globalAlpha = alpha * 0.6;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size * alpha * 0.5, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else {
+                // Generic particle
+                this.ctx.fillStyle = p.color;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
         }
         this.ctx.globalAlpha = 1;
     }

@@ -263,6 +263,9 @@ export class Network {
                     vx: sp.vx || 0,
                     vy: sp.vy || 0,
                     damage: sp.damage,
+                    // Color for rendering
+                    color: sp.color,
+                    size: sp.size,
                     // Homing properties
                     homingStrength: sp.homingStrength,
                     targetId: sp.targetId,
@@ -280,9 +283,9 @@ export class Network {
                     // Moving projectile - use velocity for smooth movement
                     localProj.vx = sp.vx || 0;
                     localProj.vy = sp.vy || 0;
-                    // Lerp to server position to correct drift
-                    localProj.x += (sp.x - localProj.x) * 0.3;
-                    localProj.y += (sp.y - localProj.y) * 0.3;
+                    // Faster lerp to server position to correct drift (0.5 instead of 0.3)
+                    localProj.x += (sp.x - localProj.x) * 0.5;
+                    localProj.y += (sp.y - localProj.y) * 0.5;
                 } else {
                     // Static beam - just update position
                     localProj.x = sp.x;
@@ -293,6 +296,7 @@ export class Network {
                 localProj.life = sp.life;
                 localProj.targetX = sp.targetX;
                 localProj.targetY = sp.targetY;
+                localProj.size = sp.size || localProj.size;
 
                 // Add trail particles for rendering (client-side only)
                 if (localProj.trail && (localProj.vx || localProj.vy)) {
@@ -302,7 +306,7 @@ export class Network {
                         life: 1,
                         size: 4 + Math.random() * 4
                     });
-                    if (localProj.trail.length > 20) localProj.trail.shift();
+                    if (localProj.trail.length > 15) localProj.trail.shift();
                 }
             }
         }
@@ -328,6 +332,16 @@ export class Network {
                 this.game.renderer.addBossDeathEffect(effect.x, effect.y, effect.size, effect.color);
             } else if (effect.type === 'orbital-beam') {
                 this.game.renderer.addOrbitalBeam(effect.x, effect.y, effect.radius);
+            } else if (effect.type === 'muzzle-flash') {
+                this.game.renderer.addMuzzleFlash(effect.x, effect.y, effect.angle, effect.color, effect.size);
+            } else if (effect.type === 'shotgun-blast') {
+                this.game.renderer.addShotgunBlast(effect.x, effect.y, effect.angle, effect.spread, effect.color);
+            } else if (effect.type === 'cannon-fire') {
+                this.game.renderer.addCannonFire(effect.x, effect.y, effect.angle, effect.color);
+            } else if (effect.type === 'laser-pulse') {
+                this.game.renderer.addLaserPulse(effect.x, effect.y, effect.color);
+            } else if (effect.type === 'electric-spark') {
+                this.game.renderer.addElectricSpark(effect.x, effect.y, effect.color);
             }
         }
     }

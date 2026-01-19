@@ -1668,15 +1668,25 @@ class GameState {
         const damageMult = 1 + (turret.damageBoostAmount || 0);
         const damage = (turret.config.damage || 10) * damageMult;
 
-        // Shotgun - multiple pellets
+        // Shotgun - multiple pellets with blast effect
         if (turret.config.pelletCount) {
             const pellets = turret.config.pelletCount || 6;
             const spread = turret.config.spreadAngle || 0.5;
             const baseAngle = turret.angle;
+            const speed = (turret.config.projectileSpeed || 12) * this.cellSize;
+
+            // Shotgun blast muzzle flash
+            this.pendingEffects.push({
+                type: 'shotgun-blast',
+                x: turret.x + Math.cos(baseAngle) * this.cellSize * 0.3,
+                y: turret.y + Math.sin(baseAngle) * this.cellSize * 0.3,
+                angle: baseAngle,
+                spread: spread,
+                color: turret.config.projectileColor || '#ffcc00'
+            });
 
             for (let i = 0; i < pellets; i++) {
                 const pelletAngle = baseAngle + (i - (pellets - 1) / 2) * (spread / (pellets - 1));
-                const speed = (turret.config.projectileSpeed || 12) * this.cellSize;
 
                 this.projectiles.push({
                     id: Date.now() + Math.random() + i,
@@ -1690,16 +1700,27 @@ class GameState {
                     damage: damage,
                     aoeRadius: 0,
                     penetration: false,
-                    hitEnemies: []
+                    hitEnemies: [],
+                    color: turret.config.projectileColor
                 });
             }
             return;
         }
 
-        // Multi-Artillery - multiple shells
+        // Multi-Artillery - multiple shells with smoke effect
         if (turret.config.shellCount) {
             const shells = turret.config.shellCount || 3;
             const spread = (turret.config.shellSpread || 1.5) * this.cellSize;
+            const speed = (turret.config.projectileSpeed || 7) * this.cellSize;
+
+            // Artillery cannon fire effect
+            this.pendingEffects.push({
+                type: 'cannon-fire',
+                x: turret.x + Math.cos(turret.angle) * this.cellSize * 0.4,
+                y: turret.y + Math.sin(turret.angle) * this.cellSize * 0.4,
+                angle: turret.angle,
+                color: '#ff6600'
+            });
 
             for (let i = 0; i < shells; i++) {
                 const offsetX = (Math.random() - 0.5) * spread;
@@ -1719,12 +1740,13 @@ class GameState {
                         y: turret.y,
                         startX: turret.x,
                         startY: turret.y,
-                        vx: (dx / dist) * (turret.config.projectileSpeed || 7) * this.cellSize,
-                        vy: (dy / dist) * (turret.config.projectileSpeed || 7) * this.cellSize,
+                        vx: (dx / dist) * speed,
+                        vy: (dy / dist) * speed,
                         damage: damage,
                         aoeRadius: turret.config.aoeRadius || 1.5,
                         penetration: false,
-                        hitEnemies: []
+                        hitEnemies: [],
+                        color: turret.config.projectileColor
                     });
                 }
             }
@@ -1770,6 +1792,15 @@ class GameState {
         if (turret.config.instantHit && !turret.config.piercingBeam) {
             // Laser - instant hit with visual
             target.health -= damage;
+
+            // Laser pulse effect at turret
+            this.pendingEffects.push({
+                type: 'laser-pulse',
+                x: turret.x,
+                y: turret.y,
+                color: '#2ecc71'
+            });
+
             this.projectiles.push({
                 id: Date.now() + Math.random(),
                 type: 'laser',
@@ -1783,12 +1814,20 @@ class GameState {
                 life: 0.1
             });
         } else if (turret.config.chainTargets) {
-            // Tesla chain
+            // Tesla chain with electric spark effect
             let current = target;
             const hitTargets = [];
             const chainRange = (turret.config.chainRange || 2) * this.cellSize;
             let prevX = turret.x;
             let prevY = turret.y;
+
+            // Electric spark at turret
+            this.pendingEffects.push({
+                type: 'electric-spark',
+                x: turret.x,
+                y: turret.y,
+                color: '#00d4ff'
+            });
 
             for (let i = 0; i < turret.config.chainTargets; i++) {
                 if (current && !current.dead) {
@@ -1817,29 +1856,32 @@ class GameState {
                 }
             }
         } else if (turret.config.continuous) {
-            // Flamethrower
+            // Flamethrower with enhanced flames
             target.health -= damage * 0.1;
             target.burning = true;
             target.burnDamage = turret.config.dotDamage || 5;
             target.burnTime = turret.config.dotDuration || 2;
 
-            // Create flame particles
-            for (let i = 0; i < 3; i++) {
-                const spread = 0.3;
+            const spread = turret.config.flameSpread || 0.35;
+            const speed = (turret.config.projectileSpeed || 6) * this.cellSize;
+
+            // Create more flame particles for better visual
+            for (let i = 0; i < 5; i++) {
                 const angle = turret.angle + (Math.random() - 0.5) * spread;
-                const speed = (turret.config.projectileSpeed || 5) * this.cellSize;
+                const particleSpeed = speed * (0.8 + Math.random() * 0.4);
 
                 this.projectiles.push({
                     id: Date.now() + Math.random() + i,
                     type: 'flame',
-                    x: turret.x,
-                    y: turret.y,
+                    x: turret.x + Math.cos(turret.angle) * this.cellSize * 0.3,
+                    y: turret.y + Math.sin(turret.angle) * this.cellSize * 0.3,
                     startX: turret.x,
                     startY: turret.y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
+                    vx: Math.cos(angle) * particleSpeed,
+                    vy: Math.sin(angle) * particleSpeed,
                     damage: 0,
-                    life: 0.3
+                    life: 0.4 + Math.random() * 0.2,
+                    size: 8 + Math.random() * 8
                 });
             }
         } else if (turret.config.isMissile || turret.config.isMissileBattery || turret.config.isRocketArray) {
@@ -2108,7 +2150,7 @@ class GameState {
                 });
             }
         } else {
-            // Standard projectile
+            // Standard projectile with enhanced visuals
             const dx = target.x - turret.x;
             const dy = target.y - turret.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2119,6 +2161,18 @@ class GameState {
                 if (turret.type === 'turret-artillery' || turret.type === 'turret-mortar') projType = 'artillery';
                 else if (turret.type === 'turret-sniper') projType = 'sniper';
 
+                const speed = (turret.config.projectileSpeed || 10) * this.cellSize;
+
+                // Muzzle flash effect
+                this.pendingEffects.push({
+                    type: 'muzzle-flash',
+                    x: turret.x + Math.cos(turret.angle) * this.cellSize * 0.3,
+                    y: turret.y + Math.sin(turret.angle) * this.cellSize * 0.3,
+                    angle: turret.angle,
+                    color: turret.config.projectileColor || '#ffff00',
+                    size: projType === 'sniper' ? 12 : (projType === 'artillery' ? 15 : 8)
+                });
+
                 this.projectiles.push({
                     id: Date.now() + Math.random(),
                     type: projType,
@@ -2126,12 +2180,14 @@ class GameState {
                     y: turret.y,
                     startX: turret.x,
                     startY: turret.y,
-                    vx: (dx / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
-                    vy: (dy / dist) * (turret.config.projectileSpeed || 10) * this.cellSize,
+                    vx: (dx / dist) * speed,
+                    vy: (dy / dist) * speed,
                     damage: damage,
                     aoeRadius: turret.config.aoeRadius || 0,
                     penetration: turret.config.penetration || false,
-                    hitEnemies: []
+                    hitEnemies: [],
+                    // Pass color for rendering
+                    color: turret.config.projectileColor
                 });
             }
         }
