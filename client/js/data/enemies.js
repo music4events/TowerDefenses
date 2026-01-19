@@ -438,5 +438,218 @@ export const ENEMY_TYPES = {
         turretAttackRange: 5,
         turretAttackDamage: 500,
         turretAttackRate: 1
+    },
+    // === MEGA BOSS - Waves 100-200 ===
+    'titan-prime': {
+        name: 'Titan Prime',
+        health: 60000, speed: 0.1, damage: 800, color: '#aa0000', size: 2,
+        turretAttackRange: 3.5, turretAttackDamage: 200, turretAttackRate: 1.5,
+        isSpawner: true, spawnType: 'titan', spawnInterval: 8, spawnCount: 1, armor: 0.5,
+        splitOnDeath: true, splitCount: 2, splitType: 'mega-boss', isMegaBoss: true,
+        reward: { iron: 2000, copper: 1000, gold: 600 }
+    },
+    'void-herald': {
+        name: 'Void Herald',
+        health: 75000, speed: 0.08, damage: 1000, color: '#4400aa', size: 2,
+        turretAttackRange: 4, turretAttackDamage: 250, turretAttackRate: 1.5,
+        isFlying: true, isSpawner: true, spawnType: 'flying-boss', spawnInterval: 6, spawnCount: 1,
+        splitOnDeath: true, splitCount: 2, splitType: 'carrier-boss', isMegaBoss: true,
+        reward: { iron: 2200, copper: 1100, gold: 700 }
+    },
+    'siege-breaker': {
+        name: 'Siege Breaker',
+        health: 90000, speed: 0.12, damage: 1200, color: '#666600', size: 2.5,
+        turretAttackRange: 5, turretAttackDamage: 300, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'devastator', spawnInterval: 5, spawnCount: 1, armor: 0.6, frontArmor: 0.85,
+        splitOnDeath: true, splitCount: 3, splitType: 'boss', isMegaBoss: true,
+        reward: { iron: 2500, copper: 1200, gold: 800 }
+    },
+    'swarm-emperor': {
+        name: 'Swarm Emperor',
+        health: 70000, speed: 0.15, damage: 700, color: '#00aa00', size: 2,
+        turretAttackRange: 3, turretAttackDamage: 150, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'swarm-mother', spawnInterval: 10, spawnCount: 1,
+        splitOnDeath: true, splitCount: 3, splitType: 'splitter', isMegaBoss: true,
+        reward: { iron: 2000, copper: 1000, gold: 650 }
+    },
+    'inferno-lord': {
+        name: 'Inferno Lord',
+        health: 100000, speed: 0.1, damage: 1500, color: '#ff4400', size: 2.5,
+        turretAttackRange: 4.5, turretAttackDamage: 350, turretAttackRate: 1.2,
+        isSpawner: true, spawnType: 'kamikaze', spawnInterval: 1.5, spawnCount: 5, armor: 0.55,
+        splitOnDeath: true, splitCount: 2, splitType: 'devastator', isMegaBoss: true,
+        reward: { iron: 2800, copper: 1400, gold: 900 }
+    },
+    'fortress-titan': {
+        name: 'Fortress Titan',
+        health: 150000, speed: 0.06, damage: 2000, color: '#555555', size: 3,
+        turretAttackRange: 5, turretAttackDamage: 400, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'armored-front', spawnInterval: 3, spawnCount: 4, armor: 0.7, frontArmor: 0.9,
+        splitOnDeath: true, splitCount: 2, splitType: 'juggernaut', isMegaBoss: true,
+        reward: { iron: 3500, copper: 1800, gold: 1200 }
+    },
+    'sky-sovereign': {
+        name: 'Sky Sovereign',
+        health: 120000, speed: 0.08, damage: 1200, color: '#00aaff', size: 3,
+        isFlying: true, isSpawner: true, spawnType: 'leviathan', spawnInterval: 12, spawnCount: 1,
+        splitOnDeath: true, splitCount: 3, splitType: 'flying-boss', isMegaBoss: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999,
+        reward: { iron: 3000, copper: 1500, gold: 1000 }
+    },
+    'harbinger-of-doom': {
+        name: 'Harbinger of Doom',
+        health: 180000, speed: 0.05, damage: 2500, color: '#440044', size: 3.5,
+        turretAttackRange: 5.5, turretAttackDamage: 500, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'overlord', spawnInterval: 15, spawnCount: 1, armor: 0.65,
+        splitOnDeath: true, splitCount: 2, splitType: 'colossus', isMegaBoss: true,
+        reward: { iron: 4000, copper: 2000, gold: 1500 }
+    },
+    'oblivion-bringer': {
+        name: 'Oblivion Bringer',
+        health: 200000, speed: 0.04, damage: 3000, color: '#220022', size: 4,
+        turretAttackRange: 6, turretAttackDamage: 600, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'apocalypse', spawnInterval: 20, spawnCount: 1, armor: 0.75,
+        splitOnDeath: true, splitCount: 1, splitType: 'world-ender', isMegaBoss: true,
+        reward: { iron: 4500, copper: 2200, gold: 1800 }
+    },
+    'eternal-nightmare': {
+        name: 'Eternal Nightmare',
+        health: 300000, speed: 0.03, damage: 5000, color: '#110011', size: 5,
+        turretAttackRange: 7, turretAttackDamage: 800, turretAttackRate: 0.6,
+        isSpawner: true, spawnType: 'world-ender', spawnInterval: 25, spawnCount: 1, armor: 0.8,
+        splitOnDeath: true, splitCount: 2, splitType: 'harbinger-of-doom', isMegaBoss: true,
+        reward: { iron: 6000, copper: 3000, gold: 2500 }
+    },
+    // === MEGA BOSS - Waves 210-300 (Tier 6) ===
+    'dimensional-rift': {
+        name: 'Dimensional Rift',
+        health: 400000, speed: 0.04, damage: 6000, color: '#8800ff', size: 5.5,
+        turretAttackRange: 7, turretAttackDamage: 900, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'eternal-nightmare', spawnInterval: 30, spawnCount: 1, armor: 0.82,
+        splitOnDeath: true, splitCount: 2, splitType: 'oblivion-bringer', isMegaBoss: true,
+        reward: { iron: 8000, copper: 4000, gold: 3000 }
+    },
+    'chaos-incarnate': {
+        name: 'Chaos Incarnate',
+        health: 500000, speed: 0.035, damage: 7000, color: '#ff00ff', size: 6,
+        turretAttackRange: 8, turretAttackDamage: 1000, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'harbinger-of-doom', spawnInterval: 12, spawnCount: 2, armor: 0.83,
+        splitOnDeath: true, splitCount: 3, splitType: 'fortress-titan', isMegaBoss: true,
+        reward: { iron: 9000, copper: 4500, gold: 3500 }
+    },
+    'storm-bringer': {
+        name: 'Storm Bringer',
+        health: 450000, speed: 0.05, damage: 6500, color: '#00ffff', size: 5.5,
+        isFlying: true, isSpawner: true, spawnType: 'sky-sovereign', spawnInterval: 15, spawnCount: 2,
+        splitOnDeath: true, splitCount: 3, splitType: 'leviathan', isMegaBoss: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999,
+        reward: { iron: 8500, copper: 4200, gold: 3200 }
+    },
+    'plague-father': {
+        name: 'Plague Father',
+        health: 550000, speed: 0.03, damage: 5500, color: '#88ff00', size: 6,
+        turretAttackRange: 6, turretAttackDamage: 700, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'swarm-emperor', spawnInterval: 8, spawnCount: 2, armor: 0.75,
+        splitOnDeath: true, splitCount: 4, splitType: 'swarm-mother', isMegaBoss: true,
+        reward: { iron: 9500, copper: 4800, gold: 3800 }
+    },
+    'void-tyrant': {
+        name: 'Void Tyrant',
+        health: 600000, speed: 0.028, damage: 8000, color: '#2200aa', size: 6.5,
+        turretAttackRange: 8, turretAttackDamage: 1100, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'oblivion-bringer', spawnInterval: 20, spawnCount: 1, armor: 0.85,
+        splitOnDeath: true, splitCount: 2, splitType: 'eternal-nightmare', isMegaBoss: true,
+        reward: { iron: 10000, copper: 5000, gold: 4000 }
+    },
+    // === MEGA BOSS - Waves 300-400 (Tier 7) ===
+    'primordial-terror': {
+        name: 'Primordial Terror',
+        health: 800000, speed: 0.025, damage: 10000, color: '#880000', size: 7,
+        turretAttackRange: 9, turretAttackDamage: 1300, turretAttackRate: 0.4,
+        isSpawner: true, spawnType: 'void-tyrant', spawnInterval: 25, spawnCount: 1, armor: 0.87,
+        splitOnDeath: true, splitCount: 2, splitType: 'chaos-incarnate', isMegaBoss: true,
+        reward: { iron: 12000, copper: 6000, gold: 5000 }
+    },
+    'elder-god': {
+        name: 'Elder God',
+        health: 1000000, speed: 0.022, damage: 12000, color: '#ffcc00', size: 7.5,
+        turretAttackRange: 10, turretAttackDamage: 1500, turretAttackRate: 0.4,
+        isSpawner: true, spawnType: 'eternal-nightmare', spawnInterval: 15, spawnCount: 2, armor: 0.88,
+        splitOnDeath: true, splitCount: 3, splitType: 'void-tyrant', isMegaBoss: true,
+        reward: { iron: 15000, copper: 7500, gold: 6000 }
+    },
+    'cosmic-horror': {
+        name: 'Cosmic Horror',
+        health: 900000, speed: 0.03, damage: 11000, color: '#aa00aa', size: 7,
+        isFlying: true, isSpawner: true, spawnType: 'storm-bringer', spawnInterval: 12, spawnCount: 2,
+        splitOnDeath: true, splitCount: 2, splitType: 'sky-sovereign', isMegaBoss: true,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999,
+        reward: { iron: 13000, copper: 6500, gold: 5500 }
+    },
+    'death-incarnate': {
+        name: 'Death Incarnate',
+        health: 1200000, speed: 0.02, damage: 15000, color: '#333333', size: 8,
+        turretAttackRange: 10, turretAttackDamage: 2000, turretAttackRate: 0.3,
+        isSpawner: true, spawnType: 'inferno-lord', spawnInterval: 5, spawnCount: 3, armor: 0.89,
+        splitOnDeath: true, splitCount: 2, splitType: 'primordial-terror', isMegaBoss: true,
+        reward: { iron: 18000, copper: 9000, gold: 7500 }
+    },
+    'the-consumer': {
+        name: 'The Consumer',
+        health: 1500000, speed: 0.018, damage: 18000, color: '#000044', size: 8.5,
+        turretAttackRange: 11, turretAttackDamage: 2500, turretAttackRate: 0.3,
+        isSpawner: true, spawnType: 'elder-god', spawnInterval: 30, spawnCount: 1, armor: 0.9,
+        splitOnDeath: true, splitCount: 2, splitType: 'death-incarnate', isMegaBoss: true,
+        reward: { iron: 20000, copper: 10000, gold: 8000 }
+    },
+    // === MEGA BOSS - Waves 400-500 (Tier 8) ===
+    'reality-shatterer': {
+        name: 'Reality Shatterer',
+        health: 2000000, speed: 0.015, damage: 22000, color: '#ff0088', size: 9,
+        turretAttackRange: 12, turretAttackDamage: 3000, turretAttackRate: 0.25,
+        isSpawner: true, spawnType: 'the-consumer', spawnInterval: 35, spawnCount: 1, armor: 0.91,
+        splitOnDeath: true, splitCount: 2, splitType: 'elder-god', isMegaBoss: true,
+        reward: { iron: 25000, copper: 12500, gold: 10000 }
+    },
+    'universe-devourer': {
+        name: 'Universe Devourer',
+        health: 2500000, speed: 0.012, damage: 25000, color: '#0000aa', size: 9.5,
+        turretAttackRange: 12, turretAttackDamage: 3500, turretAttackRate: 0.25,
+        isSpawner: true, spawnType: 'primordial-terror', spawnInterval: 15, spawnCount: 2, armor: 0.92,
+        splitOnDeath: true, splitCount: 3, splitType: 'the-consumer', isMegaBoss: true,
+        reward: { iron: 30000, copper: 15000, gold: 12000 }
+    },
+    'void-emperor': {
+        name: 'Void Emperor',
+        health: 3000000, speed: 0.01, damage: 30000, color: '#220044', size: 10,
+        turretAttackRange: 13, turretAttackDamage: 4000, turretAttackRate: 0.2,
+        isSpawner: true, spawnType: 'death-incarnate', spawnInterval: 12, spawnCount: 2, armor: 0.93,
+        splitOnDeath: true, splitCount: 2, splitType: 'universe-devourer', isMegaBoss: true,
+        reward: { iron: 35000, copper: 17500, gold: 15000 }
+    },
+    'omega-beast': {
+        name: 'Omega Beast',
+        health: 4000000, speed: 0.008, damage: 40000, color: '#880044', size: 11,
+        turretAttackRange: 14, turretAttackDamage: 5000, turretAttackRate: 0.2,
+        isSpawner: true, spawnType: 'reality-shatterer', spawnInterval: 20, spawnCount: 2, armor: 0.94,
+        splitOnDeath: true, splitCount: 3, splitType: 'void-emperor', isMegaBoss: true,
+        reward: { iron: 45000, copper: 22500, gold: 20000 }
+    },
+    'genesis-destroyer': {
+        name: 'Genesis Destroyer',
+        health: 5000000, speed: 0.006, damage: 50000, color: '#440000', size: 12,
+        turretAttackRange: 15, turretAttackDamage: 6000, turretAttackRate: 0.15,
+        isSpawner: true, spawnType: 'universe-devourer', spawnInterval: 15, spawnCount: 2, armor: 0.95,
+        splitOnDeath: true, splitCount: 2, splitType: 'omega-beast', isMegaBoss: true,
+        reward: { iron: 60000, copper: 30000, gold: 25000 }
+    },
+    // === FINAL BOSS - Wave 500 ===
+    'the-absolute': {
+        name: 'The Absolute',
+        health: 10000000, speed: 0.005, damage: 100000, color: '#000000', size: 15,
+        turretAttackRange: 20, turretAttackDamage: 10000, turretAttackRate: 0.1,
+        isSpawner: true, spawnType: 'genesis-destroyer', spawnInterval: 20, spawnCount: 2, armor: 0.96,
+        splitOnDeath: true, splitCount: 3, splitType: 'omega-beast', isMegaBoss: true,
+        reward: { iron: 100000, copper: 50000, gold: 50000 }
     }
 };
