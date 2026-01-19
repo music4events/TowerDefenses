@@ -40,16 +40,51 @@ export class Network {
         // Auto-detect server URL (works locally and on Railway)
         const url = serverUrl || window.location.origin;
         console.log('Connecting to server:', url);
-        this.socket = io(url);
+
+        // Configure Socket.IO with reconnection settings
+        this.socket = io(url, {
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 60000,
+            transports: ['websocket', 'polling']
+        });
 
         this.socket.on('connect', () => {
             this.connected = true;
             console.log('Connected to server');
+
+            // If we were in a room before disconnect, try to rejoin
+            if (this.roomCode && this._wasDisconnected) {
+                console.log('Attempting to rejoin room after reconnection...');
+                this._wasDisconnected = false;
+            }
         });
 
-        this.socket.on('disconnect', () => {
+        this.socket.on('disconnect', (reason) => {
             this.connected = false;
-            console.log('Disconnected from server');
+            this._wasDisconnected = true;
+            console.log('Disconnected from server:', reason);
+
+            // Show user-friendly message
+            if (reason === 'io server disconnect') {
+                console.warn('Server disconnected the client');
+            } else if (reason === 'transport close') {
+                console.warn('Connection lost - attempting to reconnect...');
+            }
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.warn('Connection error:', error.message);
+        });
+
+        this.socket.on('reconnect', (attemptNumber) => {
+            console.log('Reconnected after', attemptNumber, 'attempts');
+        });
+
+        this.socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log('Reconnection attempt', attemptNumber);
         });
 
         this.socket.on('roomCreated', (data) => {

@@ -11,7 +11,13 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+    },
+    // Increase timeouts to prevent disconnections on slow connections
+    pingTimeout: 60000,      // 60 seconds (default is 20s)
+    pingInterval: 25000,     // 25 seconds (default is 25s)
+    upgradeTimeout: 30000,   // 30 seconds for upgrade
+    maxHttpBufferSize: 1e7,  // 10MB max buffer
+    transports: ['websocket', 'polling'] // Prefer websocket
 });
 
 // Serve static files from client directory
@@ -273,9 +279,14 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle socket errors
+    socket.on('error', (error) => {
+        console.error(`Socket error for ${socket.id}:`, error.message);
+    });
+
     // Disconnect
-    socket.on('disconnect', () => {
-        console.log(`Player disconnected: ${socket.id}`);
+    socket.on('disconnect', (reason) => {
+        console.log(`Player disconnected: ${socket.id} (reason: ${reason})`);
 
         if (currentRoom) {
             const room = rooms.get(currentRoom);
@@ -307,7 +318,7 @@ io.on('connection', (socket) => {
 // Game loop for a room
 function startGameLoop(roomCode) {
     const TICK_RATE = 60; // 60 updates per second for smooth projectiles
-    const SYNC_RATE = 30; // Send state to clients 30 times per second
+    const SYNC_RATE = 20; // Send state to clients 20 times per second (reduced for bandwidth)
     let lastTime = Date.now();
     let lastSyncTime = Date.now();
     const syncInterval = 1000 / SYNC_RATE;

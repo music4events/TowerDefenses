@@ -610,6 +610,10 @@ class GameState {
         // Game speed multiplier (1, 2, 5, 10)
         this.gameSpeed = 1;
 
+        // Track if grid/paths need to be sent (reduces bandwidth)
+        this.gridDirty = true;
+        this.syncCounter = 0;
+
         // 4 main paths from edges to nexus (N, E, S, W)
         this.mainPaths = {
             north: [],
@@ -2507,6 +2511,8 @@ class GameState {
             }
         }
 
+        // Mark grid as dirty so it will be sent in next sync
+        this.gridDirty = true;
         return { success: true };
     }
 
@@ -2540,6 +2546,7 @@ class GameState {
             } else {
                 this.grid[gridY][gridX] = 0;
             }
+            this.gridDirty = true;
             return { success: true, type: 'turret' };
         }
 
@@ -2557,6 +2564,7 @@ class GameState {
 
             this.extractors.splice(extractorIndex, 1);
             this.grid[gridY][gridX] = 2; // Back to resource cell
+            this.gridDirty = true;
             return { success: true, type: 'extractor' };
         }
 
@@ -2573,6 +2581,7 @@ class GameState {
             this.walls.splice(wallIndex, 1);
             this.grid[gridY][gridX] = 0;
             this.recalculatePaths();
+            this.gridDirty = true;
             return { success: true, type: 'wall' };
         }
 
@@ -2881,7 +2890,15 @@ class GameState {
         const validExtractors = this.extractors.filter(e => e);
         const validProjectiles = this.projectiles.filter(p => p);
 
-        return {
+        // Increment sync counter - send full state every ~5 seconds (100 syncs at 20/sec)
+        this.syncCounter = (this.syncCounter || 0) + 1;
+        const sendFullState = this.gridDirty || this.syncCounter >= 100;
+        if (sendFullState) {
+            this.gridDirty = false;
+            this.syncCounter = 0;
+        }
+
+        const result = {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
             waveNumber: this.waveNumber,
@@ -2961,11 +2978,16 @@ class GameState {
                 delay: p.delay
             })),
             // Effects to trigger on client (explosions, deaths, etc.)
-            effects: effectsToSend,
-            grid: this.grid,
-            // Main paths for visualization
-            mainPaths: this.mainPaths
+            effects: effectsToSend
         };
+
+        // Only send grid/paths when they've changed or periodically for full sync
+        if (sendFullState) {
+            result.grid = this.grid;
+            result.mainPaths = this.mainPaths;
+        }
+
+        return result;
     }
 }
 
