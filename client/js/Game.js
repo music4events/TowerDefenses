@@ -852,6 +852,11 @@ export class Game {
             this.renderer.drawExtractor(extractor);
         }
 
+        // Draw turret zones FIRST (so they appear below turret bases)
+        for (const turret of this.turrets) {
+            this.renderer.drawTurretZone(turret);
+        }
+
         // Draw turrets
         const hoveredTurret = this.getHoveredTurret();
         for (const turret of this.turrets) {

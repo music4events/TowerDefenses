@@ -228,6 +228,82 @@ export class Renderer {
         this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
     }
 
+    // Draw boost/aura zones BEFORE turrets so they appear underneath
+    drawTurretZone(turret) {
+        const { x, y, config } = turret;
+        if (!config) return;
+
+        // Draw drone connection line to home
+        if (config.isDrone && turret.homeX !== undefined) {
+            this.ctx.strokeStyle = 'rgba(147, 112, 219, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([3, 3]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(turret.homeX, turret.homeY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+
+            // Draw home base marker
+            this.ctx.fillStyle = 'rgba(147, 112, 219, 0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(turret.homeX, turret.homeY, 6, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // Draw slowdown zone
+        if (config.isSlowdown) {
+            const slowRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            this.ctx.fillStyle = 'rgba(136, 221, 255, 0.05)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, slowRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(136, 221, 255, 0.25)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+
+        // Draw shockwave turret zone
+        if (config.isShockwave) {
+            const shockRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            const pulse = (Date.now() / 100) % (Math.PI * 2);
+            const pulseAlpha = 0.1 + Math.sin(pulse) * 0.05;
+
+            this.ctx.strokeStyle = `rgba(0, 212, 255, ${pulseAlpha})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, shockRange, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
+        // Draw speed booster zone
+        if (config.isSpeedBooster) {
+            const boostRange = (config.range || 4) * this.grid.cellSize;
+            this.ctx.fillStyle = config.boostColor || 'rgba(255, 170, 0, 0.08)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+
+        // Draw damage booster zone
+        if (config.isDamageBooster) {
+            const boostRange = (config.range || 4) * this.grid.cellSize;
+            this.ctx.fillStyle = config.boostColor || 'rgba(255, 68, 68, 0.08)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(255, 68, 68, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
+    }
+
     drawTurret(turret, isSelected = false, mode = null) {
         const { x, y, angle, config, cooldown, level } = turret;
         // Fallback for synced turrets without full config
@@ -245,77 +321,6 @@ export class Renderer {
         if (config?.gridSize === 3) {
             this.drawTurret3x3(turret, isSelected, mode);
             return;
-        }
-
-        // Draw drone connection line to home
-        if (config?.isDrone && turret.homeX !== undefined) {
-            this.ctx.strokeStyle = 'rgba(147, 112, 219, 0.3)';
-            this.ctx.lineWidth = 1;
-            this.ctx.setLineDash([3, 3]);
-            this.ctx.beginPath();
-            this.ctx.moveTo(turret.homeX, turret.homeY);
-            this.ctx.lineTo(x, y);
-            this.ctx.stroke();
-            this.ctx.setLineDash([]);
-
-            // Draw home base marker
-            this.ctx.fillStyle = 'rgba(147, 112, 219, 0.5)';
-            this.ctx.beginPath();
-            this.ctx.arc(turret.homeX, turret.homeY, 6, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-
-        // Draw slowdown zone - very transparent to not obscure turrets
-        if (config?.isSlowdown) {
-            const slowRange = (config.aoeRange || config.range) * this.grid.cellSize;
-            this.ctx.fillStyle = 'rgba(136, 221, 255, 0.05)';
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, slowRange, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.strokeStyle = 'rgba(136, 221, 255, 0.25)';
-            this.ctx.lineWidth = 1;
-            this.ctx.stroke();
-        }
-
-        // Draw shockwave turret zone
-        if (config?.isShockwave) {
-            const shockRange = (config.aoeRange || config.range) * this.grid.cellSize;
-            // Animated pulsing ring
-            const pulse = (Date.now() / 100) % (Math.PI * 2);
-            const pulseAlpha = 0.1 + Math.sin(pulse) * 0.05;
-
-            this.ctx.strokeStyle = `rgba(0, 212, 255, ${pulseAlpha})`;
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, shockRange, 0, Math.PI * 2);
-            this.ctx.stroke();
-        }
-
-        // Draw speed booster zone
-        if (config?.isSpeedBooster) {
-            const boostRange = (config.range || 4) * this.grid.cellSize;
-            this.ctx.fillStyle = config.boostColor || 'rgba(255, 170, 0, 0.08)';
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)';
-            this.ctx.lineWidth = 1;
-            this.ctx.stroke();
-        }
-
-        // Draw damage booster zone
-        if (config?.isDamageBooster) {
-            const boostRange = (config.range || 4) * this.grid.cellSize;
-            this.ctx.fillStyle = config.boostColor || 'rgba(255, 68, 68, 0.08)';
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            this.ctx.strokeStyle = 'rgba(255, 68, 68, 0.3)';
-            this.ctx.lineWidth = 1;
-            this.ctx.stroke();
         }
 
         // Selection/mode highlight
