@@ -13,30 +13,39 @@ class App {
     constructor() {
         this.game = null;
         this.network = null;
-        this.isMultiplayer = false;
+        this.isMultiplayer = true; // Always multiplayer now
         this.selectedGameMode = 'waves'; // 'waves' or 'endless'
+        this.currentLeaderboardMode = 'waves';
 
         this.setupLobby();
     }
 
     setupLobby() {
-        // Mode selection
-        document.getElementById('btn-solo').addEventListener('click', () => {
-            document.getElementById('game-mode-panel').classList.remove('hidden');
-            document.getElementById('multiplayer-panel').classList.add('hidden');
-        });
-
-        document.getElementById('btn-multiplayer').addEventListener('click', () => {
+        // Play button - show multiplayer panel
+        document.getElementById('btn-play').addEventListener('click', () => {
             document.getElementById('multiplayer-panel').classList.remove('hidden');
-            document.getElementById('game-mode-panel').classList.add('hidden');
+            document.getElementById('leaderboard-panel').classList.add('hidden');
         });
 
-        // Game mode selection buttons (solo)
-        document.querySelectorAll('#game-mode-panel .mode-select-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#game-mode-panel .mode-select-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                this.selectedGameMode = btn.dataset.mode;
+        // Leaderboard button
+        document.getElementById('btn-leaderboard').addEventListener('click', () => {
+            document.getElementById('leaderboard-panel').classList.remove('hidden');
+            document.getElementById('multiplayer-panel').classList.add('hidden');
+            document.getElementById('room-panel').classList.add('hidden');
+            this.loadLeaderboard('waves');
+        });
+
+        // Back from leaderboard
+        document.getElementById('btn-back-lobby').addEventListener('click', () => {
+            document.getElementById('leaderboard-panel').classList.add('hidden');
+        });
+
+        // Leaderboard tabs
+        document.querySelectorAll('.lb-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.loadLeaderboard(tab.dataset.mode);
             });
         });
 
@@ -47,11 +56,6 @@ class App {
                 btn.classList.add('selected');
                 this.selectedGameMode = btn.dataset.mode;
             });
-        });
-
-        // Start solo game button
-        document.getElementById('btn-start-solo').addEventListener('click', () => {
-            this.startSoloGame();
         });
 
         // Create room
@@ -116,7 +120,54 @@ class App {
             this.showError(message);
         };
 
+        this.network.onLeaderboard = (data) => {
+            this.displayLeaderboard(data);
+        };
+
+        this.network.onGameOver = (data) => {
+            this.handleGameOver(data);
+        };
+
         await this.network.connect();
+    }
+
+    async loadLeaderboard(mode) {
+        this.currentLeaderboardMode = mode;
+        const listEl = document.getElementById('leaderboard-list');
+        listEl.innerHTML = '<div class="lb-loading">Chargement...</div>';
+
+        // Make sure network is initialized
+        await this.initNetwork();
+        this.network.requestLeaderboard(mode);
+    }
+
+    displayLeaderboard(data) {
+        const listEl = document.getElementById('leaderboard-list');
+        const entries = data.entries || [];
+
+        if (entries.length === 0) {
+            listEl.innerHTML = '<div class="lb-empty">Aucun score pour le moment</div>';
+            return;
+        }
+
+        listEl.innerHTML = entries.map((entry, index) => `
+            <div class="lb-entry ${index < 3 ? 'lb-top-' + (index + 1) : ''}">
+                <span class="lb-rank">${index + 1}</span>
+                <span class="lb-name">${this.escapeHtml(entry.name)}</span>
+                <span class="lb-wave">${entry.wave}</span>
+                <span class="lb-kills">${entry.kills.toLocaleString()}</span>
+                <span class="lb-score">${entry.score.toLocaleString()}</span>
+            </div>
+        `).join('');
+    }
+
+    handleGameOver(data) {
+        // Show game over screen with score
+        const playerName = document.getElementById('player-name').value.trim() || 'Player';
+        console.log(`Game Over! Wave: ${data.wave}, Kills: ${data.kills}, Score: ${data.score}`);
+
+        // The score is automatically submitted by the server
+        // Show a notification or game over screen here if desired
     }
 
     showRoomPanel(data, isHost) {
@@ -168,21 +219,6 @@ class App {
         }, 3000);
     }
 
-    startSoloGame() {
-        this.isMultiplayer = false;
-        document.getElementById('lobby-screen').classList.add('hidden');
-        document.getElementById('game-container').classList.remove('hidden');
-
-        const canvas = document.getElementById('gameCanvas');
-        this.game = new Game(canvas, false, null, null, this.selectedGameMode);
-
-        // Setup speed control buttons
-        this.setupSpeedButtons();
-
-        console.log(`Tower Defense - Mode Solo (${this.selectedGameMode})`);
-        console.log('Raccourcis: 1-8 pour selectionner, clic gauche pour placer, clic droit pour annuler');
-    }
-
     startMultiplayerGame(initialState) {
         this.isMultiplayer = true;
         document.getElementById('lobby-screen').classList.add('hidden');
@@ -220,6 +256,19 @@ class App {
                 if (this.game) {
                     const isShowing = this.game.togglePathVisualization();
                     pathBtn.classList.toggle('active', isShowing);
+                }
+            });
+        }
+
+        // Particle/effects quality slider
+        const particleSlider = document.getElementById('particle-slider');
+        const particleValue = document.getElementById('particle-value');
+        if (particleSlider) {
+            particleSlider.addEventListener('input', () => {
+                const value = parseInt(particleSlider.value);
+                particleValue.textContent = value + '%';
+                if (this.game && this.game.renderer) {
+                    this.game.renderer.setEffectQuality(value / 100);
                 }
             });
         }

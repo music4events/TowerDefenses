@@ -234,6 +234,20 @@ export const TURRET_TYPES = {
         health: 80,
         maxHealth: 80
     },
+    'turret-range-booster': {
+        name: 'Range Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        color: '#44aaff',
+        cost: { iron: 300, copper: 120, gold: 60 },
+        isRangeBooster: true,
+        rangeBoost: 0.25,
+        boostColor: 'rgba(68, 170, 255, 0.15)',
+        size: 0.8,
+        health: 80,
+        maxHealth: 80
+    },
     // === TOURELLES 2x2 (BUFFED!) ===
     'turret-missile': {
         name: 'Missile Launcher',

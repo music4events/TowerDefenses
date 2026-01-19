@@ -65,6 +65,8 @@ export class Game {
         this.projectiles = [];
 
         this.waveNumber = 0;
+        this.totalKills = 0;
+        this.totalScore = 0;
         this.gameOver = false;
         this.lastTime = 0;
         this.gameSpeed = 1; // Speed multiplier (1, 2, 5, 10)

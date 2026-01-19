@@ -22,6 +22,18 @@ export class Renderer {
         this.particles = [];
         this.explosions = [];
         this.deathEffects = [];
+
+        // Effect quality (0.1 to 1.0) - affects particle counts
+        this.effectQuality = 1.0;
+    }
+
+    setEffectQuality(quality) {
+        this.effectQuality = Math.max(0.1, Math.min(1.0, quality));
+    }
+
+    // Returns true if we should render this particle based on quality setting
+    shouldRenderParticle() {
+        return Math.random() < this.effectQuality;
     }
 
     // Apply camera transform
@@ -302,6 +314,19 @@ export class Renderer {
             this.ctx.lineWidth = 1;
             this.ctx.stroke();
         }
+
+        // Draw range booster zone
+        if (config.isRangeBooster) {
+            const boostRange = (config.range || 4) * this.grid.cellSize;
+            this.ctx.fillStyle = config.boostColor || 'rgba(68, 170, 255, 0.08)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, boostRange, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = 'rgba(68, 170, 255, 0.3)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+        }
     }
 
     drawTurret(turret, isSelected = false, mode = null) {
@@ -413,6 +438,23 @@ export class Renderer {
             this.ctx.stroke();
         }
 
+        // Range booster crosshair symbol
+        if (config?.isRangeBooster) {
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            // Crosshair
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 6, y);
+            this.ctx.lineTo(x + 6, y);
+            this.ctx.moveTo(x, y - 6);
+            this.ctx.lineTo(x, y + 6);
+            this.ctx.stroke();
+            // Circle
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
         // Cooldown indicator
         if (cooldown > 0) {
             this.ctx.globalAlpha = 0.3;
@@ -443,6 +485,15 @@ export class Renderer {
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
             this.ctx.arc(x, y, size / 2 + (turret.speedBoosted ? 6 : 3), 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+        if (turret.rangeBoosted) {
+            // Blue glow for range boost
+            this.ctx.strokeStyle = 'rgba(68, 170, 255, 0.6)';
+            this.ctx.lineWidth = 2;
+            const offset = (turret.speedBoosted ? 3 : 0) + (turret.damageBoosted ? 3 : 0);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size / 2 + 3 + offset, 0, Math.PI * 2);
             this.ctx.stroke();
         }
 
@@ -476,8 +527,8 @@ export class Renderer {
             this.ctx.strokeRect(x - totalSize / 2 - 2, y - totalSize / 2 - 2, totalSize + 4, totalSize + 4);
         }
 
-        // Base platform
-        this.ctx.fillStyle = '#1a1a2e';
+        // Base platform (semi-transparent to show zones underneath)
+        this.ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
         this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
 
         // Main body
@@ -670,8 +721,8 @@ export class Renderer {
             );
         }
 
-        // Base platform (darker rectangle)
-        this.ctx.fillStyle = '#1a1a2e';
+        // Base platform (semi-transparent to show zones underneath)
+        this.ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
         this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
 
         // Main body (octagonal or circular)
@@ -2213,10 +2264,14 @@ export class Renderer {
                 const strikeProgress = Math.min(1, (1.2 - projectile.life) / 0.3);
                 const fadeOut = Math.max(0, projectile.life / 0.5);
 
-                // Beam width animation
-                const beamWidth = projectile.maxBeamWidth * strikeProgress * fadeOut;
+                // Beam width animation with default value
+                const maxBeamWidth = projectile.maxBeamWidth || 50;
+                const beamWidth = maxBeamWidth * strikeProgress * fadeOut;
 
-                if (beamWidth > 0) {
+                // Only draw beam if width is valid and positive
+                if (beamWidth > 0 && isFinite(beamWidth)) {
+                    this.ctx.save();
+
                     // Outer glow beam
                     const outerGradient = this.ctx.createLinearGradient(x - beamWidth * 1.5, 0, x + beamWidth * 1.5, 0);
                     outerGradient.addColorStop(0, 'rgba(255, 200, 100, 0)');
@@ -2225,7 +2280,7 @@ export class Renderer {
                     outerGradient.addColorStop(0.7, `rgba(255, 200, 100, ${fadeOut * 0.3})`);
                     outerGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
                     this.ctx.fillStyle = outerGradient;
-                    this.ctx.fillRect(x - beamWidth * 1.5, -100, beamWidth * 3, y + 100);
+                    this.ctx.fillRect(x - beamWidth * 1.5, 0, beamWidth * 3, y);
 
                     // Main beam
                     const beamGradient = this.ctx.createLinearGradient(x - beamWidth, 0, x + beamWidth, 0);
@@ -2235,11 +2290,13 @@ export class Renderer {
                     beamGradient.addColorStop(0.8, `rgba(255, 220, 150, ${fadeOut * 0.8})`);
                     beamGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
                     this.ctx.fillStyle = beamGradient;
-                    this.ctx.fillRect(x - beamWidth, -100, beamWidth * 2, y + 100);
+                    this.ctx.fillRect(x - beamWidth, 0, beamWidth * 2, y);
 
                     // Core beam (white)
                     this.ctx.fillStyle = `rgba(255, 255, 255, ${fadeOut})`;
-                    this.ctx.fillRect(x - beamWidth * 0.2, -100, beamWidth * 0.4, y + 100);
+                    this.ctx.fillRect(x - beamWidth * 0.2, 0, beamWidth * 0.4, y);
+
+                    this.ctx.restore();
                 }
 
                 // Ground impact explosion
@@ -3117,44 +3174,52 @@ export class Renderer {
                     continue;
                 }
 
-                // Beam width animation
+                // Beam width animation with default value
+                const maxBeamWidth = exp.maxBeamWidth || 40;
                 if (exp.time < 0.2) {
-                    exp.beamWidth = exp.maxBeamWidth * (exp.time / 0.2);
+                    exp.beamWidth = maxBeamWidth * (exp.time / 0.2);
                 } else if (exp.time > duration - 0.3) {
-                    exp.beamWidth = exp.maxBeamWidth * ((duration - exp.time) / 0.3);
+                    exp.beamWidth = maxBeamWidth * ((duration - exp.time) / 0.3);
                 } else {
-                    exp.beamWidth = exp.maxBeamWidth;
+                    exp.beamWidth = maxBeamWidth;
                 }
 
-                // Main beam from sky
-                const beamGradient = this.ctx.createLinearGradient(exp.x - exp.beamWidth, 0, exp.x + exp.beamWidth, 0);
-                beamGradient.addColorStop(0, `rgba(255, 255, 255, 0)`);
-                beamGradient.addColorStop(0.3, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
-                beamGradient.addColorStop(0.5, `rgba(255, 255, 255, ${exp.alpha})`);
-                beamGradient.addColorStop(0.7, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
-                beamGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
-                this.ctx.fillStyle = beamGradient;
-                this.ctx.fillRect(exp.x - exp.beamWidth, -50, exp.beamWidth * 2, exp.y + 50);
+                // Main beam from sky - only if width is valid
+                if (exp.beamWidth > 0 && isFinite(exp.beamWidth)) {
+                    this.ctx.save();
+                    const beamGradient = this.ctx.createLinearGradient(exp.x - exp.beamWidth, 0, exp.x + exp.beamWidth, 0);
+                    beamGradient.addColorStop(0, `rgba(255, 255, 255, 0)`);
+                    beamGradient.addColorStop(0.3, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
+                    beamGradient.addColorStop(0.5, `rgba(255, 255, 255, ${exp.alpha})`);
+                    beamGradient.addColorStop(0.7, `rgba(255, 220, 150, ${exp.alpha * 0.8})`);
+                    beamGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                    this.ctx.fillStyle = beamGradient;
+                    this.ctx.fillRect(exp.x - exp.beamWidth, 0, exp.beamWidth * 2, exp.y);
 
-                // Beam core
-                this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
-                this.ctx.fillRect(exp.x - exp.beamWidth * 0.2, -50, exp.beamWidth * 0.4, exp.y + 50);
+                    // Beam core
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
+                    this.ctx.fillRect(exp.x - exp.beamWidth * 0.2, 0, exp.beamWidth * 0.4, exp.y);
+                    this.ctx.restore();
+                }
 
                 // Impact explosion at ground
-                exp.impactRadius = exp.maxRadius * Math.min(2, exp.time / 0.3);
-                const impactGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.impactRadius);
-                impactGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.alpha})`);
-                impactGradient.addColorStop(0.3, `rgba(255, 220, 100, ${exp.alpha * 0.9})`);
-                impactGradient.addColorStop(0.6, `rgba(255, 150, 50, ${exp.alpha * 0.6})`);
-                impactGradient.addColorStop(1, `rgba(255, 100, 0, 0)`);
-                this.ctx.fillStyle = impactGradient;
-                this.ctx.beginPath();
-                this.ctx.arc(exp.x, exp.y, exp.impactRadius, 0, Math.PI * 2);
-                this.ctx.fill();
+                const maxRadius = exp.maxRadius || 50;
+                exp.impactRadius = maxRadius * Math.min(2, exp.time / 0.3);
+                if (exp.impactRadius > 0 && isFinite(exp.impactRadius)) {
+                    const impactGradient = this.ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, exp.impactRadius);
+                    impactGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.alpha})`);
+                    impactGradient.addColorStop(0.3, `rgba(255, 220, 100, ${exp.alpha * 0.9})`);
+                    impactGradient.addColorStop(0.6, `rgba(255, 150, 50, ${exp.alpha * 0.6})`);
+                    impactGradient.addColorStop(1, `rgba(255, 100, 0, 0)`);
+                    this.ctx.fillStyle = impactGradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, exp.impactRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
 
                 // Expanding shockwave ring
-                const shockRadius = exp.maxRadius * 3 * (exp.time / 0.6);
-                if (shockRadius < exp.maxRadius * 4) {
+                const shockRadius = maxRadius * 3 * (exp.time / 0.6);
+                if (shockRadius < maxRadius * 4 && isFinite(shockRadius)) {
                     this.ctx.strokeStyle = `rgba(255, 200, 100, ${exp.alpha * 0.5})`;
                     this.ctx.lineWidth = 6;
                     this.ctx.beginPath();

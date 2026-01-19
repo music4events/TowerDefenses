@@ -185,6 +185,17 @@ const TURRET_TYPES = {
         health: 80,
         maxHealth: 80
     },
+    'turret-range-booster': {
+        name: 'Range Booster',
+        damage: 0,
+        range: 4,
+        fireRate: 0.5,
+        cost: { iron: 300, copper: 120, gold: 60 },
+        isRangeBooster: true,
+        rangeBoost: 0.25, // 25% more range for nearby turrets
+        health: 80,
+        maxHealth: 80
+    },
     // === TOURELLES 2x2 (BUFFED!) ===
     'turret-missile': {
         name: 'Missile Launcher',
@@ -570,6 +581,167 @@ const ENEMY_TYPES = {
         health: 100000, speed: 0.05, damage: 2000, reward: { iron: 3000, copper: 1500, gold: 1000 },
         turretAttackRange: 5, turretAttackDamage: 500, turretAttackRate: 1,
         isSpawner: true, spawnType: 'overlord', spawnInterval: 15, spawnCount: 1, armor: 0.7
+    },
+    // === MEGA BOSS - Waves 100-200 (Every 10 waves) ===
+    'titan-prime': {
+        health: 60000, speed: 0.1, damage: 800, reward: { iron: 2000, copper: 1000, gold: 600 },
+        turretAttackRange: 3.5, turretAttackDamage: 200, turretAttackRate: 1.5,
+        isSpawner: true, spawnType: 'titan', spawnInterval: 8, spawnCount: 1, armor: 0.5,
+        splitOnDeath: true, splitCount: 2, splitType: 'mega-boss', isMegaBoss: true, bossSize: 2
+    },
+    'void-herald': {
+        health: 75000, speed: 0.08, damage: 1000, reward: { iron: 2200, copper: 1100, gold: 700 },
+        turretAttackRange: 4, turretAttackDamage: 250, turretAttackRate: 1.5,
+        isFlying: true, isSpawner: true, spawnType: 'flying-boss', spawnInterval: 6, spawnCount: 1,
+        splitOnDeath: true, splitCount: 2, splitType: 'carrier-boss', isMegaBoss: true, bossSize: 2
+    },
+    'siege-breaker': {
+        health: 90000, speed: 0.12, damage: 1200, reward: { iron: 2500, copper: 1200, gold: 800 },
+        turretAttackRange: 5, turretAttackDamage: 300, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'devastator', spawnInterval: 5, spawnCount: 1, armor: 0.6, frontArmor: 0.85,
+        splitOnDeath: true, splitCount: 3, splitType: 'boss', isMegaBoss: true, bossSize: 2.5
+    },
+    'swarm-emperor': {
+        health: 70000, speed: 0.15, damage: 700, reward: { iron: 2000, copper: 1000, gold: 650 },
+        turretAttackRange: 3, turretAttackDamage: 150, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'swarm-mother', spawnInterval: 10, spawnCount: 1,
+        splitOnDeath: true, splitCount: 3, splitType: 'splitter', isMegaBoss: true, bossSize: 2
+    },
+    'inferno-lord': {
+        health: 100000, speed: 0.1, damage: 1500, reward: { iron: 2800, copper: 1400, gold: 900 },
+        turretAttackRange: 4.5, turretAttackDamage: 350, turretAttackRate: 1.2,
+        isSpawner: true, spawnType: 'kamikaze', spawnInterval: 1.5, spawnCount: 5, armor: 0.55,
+        splitOnDeath: true, splitCount: 2, splitType: 'devastator', isMegaBoss: true, bossSize: 2.5
+    },
+    'fortress-titan': {
+        health: 150000, speed: 0.06, damage: 2000, reward: { iron: 3500, copper: 1800, gold: 1200 },
+        turretAttackRange: 5, turretAttackDamage: 400, turretAttackRate: 1,
+        isSpawner: true, spawnType: 'armored-front', spawnInterval: 3, spawnCount: 4, armor: 0.7, frontArmor: 0.9,
+        splitOnDeath: true, splitCount: 2, splitType: 'juggernaut', isMegaBoss: true, bossSize: 3
+    },
+    'sky-sovereign': {
+        health: 120000, speed: 0.08, damage: 1200, reward: { iron: 3000, copper: 1500, gold: 1000 },
+        isFlying: true, isSpawner: true, spawnType: 'leviathan', spawnInterval: 12, spawnCount: 1,
+        splitOnDeath: true, splitCount: 3, splitType: 'flying-boss', isMegaBoss: true, bossSize: 3,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'harbinger-of-doom': {
+        health: 180000, speed: 0.05, damage: 2500, reward: { iron: 4000, copper: 2000, gold: 1500 },
+        turretAttackRange: 5.5, turretAttackDamage: 500, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'overlord', spawnInterval: 15, spawnCount: 1, armor: 0.65,
+        splitOnDeath: true, splitCount: 2, splitType: 'colossus', isMegaBoss: true, bossSize: 3.5
+    },
+    'oblivion-bringer': {
+        health: 200000, speed: 0.04, damage: 3000, reward: { iron: 4500, copper: 2200, gold: 1800 },
+        turretAttackRange: 6, turretAttackDamage: 600, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'apocalypse', spawnInterval: 20, spawnCount: 1, armor: 0.75,
+        splitOnDeath: true, splitCount: 1, splitType: 'world-ender', isMegaBoss: true, bossSize: 4
+    },
+    'eternal-nightmare': {
+        health: 300000, speed: 0.03, damage: 5000, reward: { iron: 6000, copper: 3000, gold: 2500 },
+        turretAttackRange: 7, turretAttackDamage: 800, turretAttackRate: 0.6,
+        isSpawner: true, spawnType: 'world-ender', spawnInterval: 25, spawnCount: 1, armor: 0.8,
+        splitOnDeath: true, splitCount: 2, splitType: 'harbinger-of-doom', isMegaBoss: true, bossSize: 5
+    },
+    // === MEGA BOSS - Waves 210-300 (Tier 6) ===
+    'dimensional-rift': {
+        health: 400000, speed: 0.04, damage: 6000, reward: { iron: 8000, copper: 4000, gold: 3000 },
+        turretAttackRange: 7, turretAttackDamage: 900, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'eternal-nightmare', spawnInterval: 30, spawnCount: 1, armor: 0.82,
+        splitOnDeath: true, splitCount: 2, splitType: 'oblivion-bringer', isMegaBoss: true, bossSize: 5.5
+    },
+    'chaos-incarnate': {
+        health: 500000, speed: 0.035, damage: 7000, reward: { iron: 9000, copper: 4500, gold: 3500 },
+        turretAttackRange: 8, turretAttackDamage: 1000, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'harbinger-of-doom', spawnInterval: 12, spawnCount: 2, armor: 0.83,
+        splitOnDeath: true, splitCount: 3, splitType: 'fortress-titan', isMegaBoss: true, bossSize: 6
+    },
+    'storm-bringer': {
+        health: 450000, speed: 0.05, damage: 6500, reward: { iron: 8500, copper: 4200, gold: 3200 },
+        isFlying: true, isSpawner: true, spawnType: 'sky-sovereign', spawnInterval: 15, spawnCount: 2,
+        splitOnDeath: true, splitCount: 3, splitType: 'leviathan', isMegaBoss: true, bossSize: 5.5,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'plague-father': {
+        health: 550000, speed: 0.03, damage: 5500, reward: { iron: 9500, copper: 4800, gold: 3800 },
+        turretAttackRange: 6, turretAttackDamage: 700, turretAttackRate: 0.8,
+        isSpawner: true, spawnType: 'swarm-emperor', spawnInterval: 8, spawnCount: 2, armor: 0.75,
+        splitOnDeath: true, splitCount: 4, splitType: 'swarm-mother', isMegaBoss: true, bossSize: 6
+    },
+    'void-tyrant': {
+        health: 600000, speed: 0.028, damage: 8000, reward: { iron: 10000, copper: 5000, gold: 4000 },
+        turretAttackRange: 8, turretAttackDamage: 1100, turretAttackRate: 0.5,
+        isSpawner: true, spawnType: 'oblivion-bringer', spawnInterval: 20, spawnCount: 1, armor: 0.85,
+        splitOnDeath: true, splitCount: 2, splitType: 'eternal-nightmare', isMegaBoss: true, bossSize: 6.5
+    },
+    // === MEGA BOSS - Waves 300-400 (Tier 7 - Godlike) ===
+    'primordial-terror': {
+        health: 800000, speed: 0.025, damage: 10000, reward: { iron: 12000, copper: 6000, gold: 5000 },
+        turretAttackRange: 9, turretAttackDamage: 1300, turretAttackRate: 0.4,
+        isSpawner: true, spawnType: 'void-tyrant', spawnInterval: 25, spawnCount: 1, armor: 0.87,
+        splitOnDeath: true, splitCount: 2, splitType: 'chaos-incarnate', isMegaBoss: true, bossSize: 7
+    },
+    'elder-god': {
+        health: 1000000, speed: 0.022, damage: 12000, reward: { iron: 15000, copper: 7500, gold: 6000 },
+        turretAttackRange: 10, turretAttackDamage: 1500, turretAttackRate: 0.4,
+        isSpawner: true, spawnType: 'eternal-nightmare', spawnInterval: 15, spawnCount: 2, armor: 0.88,
+        splitOnDeath: true, splitCount: 3, splitType: 'void-tyrant', isMegaBoss: true, bossSize: 7.5
+    },
+    'cosmic-horror': {
+        health: 900000, speed: 0.03, damage: 11000, reward: { iron: 13000, copper: 6500, gold: 5500 },
+        isFlying: true, isSpawner: true, spawnType: 'storm-bringer', spawnInterval: 12, spawnCount: 2,
+        splitOnDeath: true, splitCount: 2, splitType: 'sky-sovereign', isMegaBoss: true, bossSize: 7,
+        turretAttackRange: 0, turretAttackDamage: 0, turretAttackRate: 999
+    },
+    'death-incarnate': {
+        health: 1200000, speed: 0.02, damage: 15000, reward: { iron: 18000, copper: 9000, gold: 7500 },
+        turretAttackRange: 10, turretAttackDamage: 2000, turretAttackRate: 0.3,
+        isSpawner: true, spawnType: 'inferno-lord', spawnInterval: 5, spawnCount: 3, armor: 0.89,
+        splitOnDeath: true, splitCount: 2, splitType: 'primordial-terror', isMegaBoss: true, bossSize: 8
+    },
+    'the-consumer': {
+        health: 1500000, speed: 0.018, damage: 18000, reward: { iron: 20000, copper: 10000, gold: 8000 },
+        turretAttackRange: 11, turretAttackDamage: 2500, turretAttackRate: 0.3,
+        isSpawner: true, spawnType: 'elder-god', spawnInterval: 30, spawnCount: 1, armor: 0.9,
+        splitOnDeath: true, splitCount: 2, splitType: 'death-incarnate', isMegaBoss: true, bossSize: 8.5
+    },
+    // === MEGA BOSS - Waves 400-500 (Tier 8 - Ultimate Cosmic) ===
+    'reality-shatterer': {
+        health: 2000000, speed: 0.015, damage: 22000, reward: { iron: 25000, copper: 12500, gold: 10000 },
+        turretAttackRange: 12, turretAttackDamage: 3000, turretAttackRate: 0.25,
+        isSpawner: true, spawnType: 'the-consumer', spawnInterval: 35, spawnCount: 1, armor: 0.91,
+        splitOnDeath: true, splitCount: 2, splitType: 'elder-god', isMegaBoss: true, bossSize: 9
+    },
+    'universe-devourer': {
+        health: 2500000, speed: 0.012, damage: 25000, reward: { iron: 30000, copper: 15000, gold: 12000 },
+        turretAttackRange: 12, turretAttackDamage: 3500, turretAttackRate: 0.25,
+        isSpawner: true, spawnType: 'primordial-terror', spawnInterval: 15, spawnCount: 2, armor: 0.92,
+        splitOnDeath: true, splitCount: 3, splitType: 'the-consumer', isMegaBoss: true, bossSize: 9.5
+    },
+    'void-emperor': {
+        health: 3000000, speed: 0.01, damage: 30000, reward: { iron: 35000, copper: 17500, gold: 15000 },
+        turretAttackRange: 13, turretAttackDamage: 4000, turretAttackRate: 0.2,
+        isSpawner: true, spawnType: 'death-incarnate', spawnInterval: 12, spawnCount: 2, armor: 0.93,
+        splitOnDeath: true, splitCount: 2, splitType: 'universe-devourer', isMegaBoss: true, bossSize: 10
+    },
+    'omega-beast': {
+        health: 4000000, speed: 0.008, damage: 40000, reward: { iron: 45000, copper: 22500, gold: 20000 },
+        turretAttackRange: 14, turretAttackDamage: 5000, turretAttackRate: 0.2,
+        isSpawner: true, spawnType: 'reality-shatterer', spawnInterval: 20, spawnCount: 2, armor: 0.94,
+        splitOnDeath: true, splitCount: 3, splitType: 'void-emperor', isMegaBoss: true, bossSize: 11
+    },
+    'genesis-destroyer': {
+        health: 5000000, speed: 0.006, damage: 50000, reward: { iron: 60000, copper: 30000, gold: 25000 },
+        turretAttackRange: 15, turretAttackDamage: 6000, turretAttackRate: 0.15,
+        isSpawner: true, spawnType: 'universe-devourer', spawnInterval: 15, spawnCount: 2, armor: 0.95,
+        splitOnDeath: true, splitCount: 2, splitType: 'omega-beast', isMegaBoss: true, bossSize: 12
+    },
+    // === FINAL BOSS - Wave 500 ===
+    'the-absolute': {
+        health: 10000000, speed: 0.005, damage: 100000, reward: { iron: 100000, copper: 50000, gold: 50000 },
+        turretAttackRange: 20, turretAttackDamage: 10000, turretAttackRate: 0.1,
+        isSpawner: true, spawnType: 'genesis-destroyer', spawnInterval: 20, spawnCount: 2, armor: 0.96,
+        splitOnDeath: true, splitCount: 3, splitType: 'omega-beast', isMegaBoss: true, bossSize: 15
     }
 };
 
@@ -584,6 +756,8 @@ class GameState {
         this.nexusHealth = 1000;
         this.nexusMaxHealth = 1000;
         this.waveNumber = 0;
+        this.totalKills = 0;
+        this.totalScore = 0;
 
         this.grid = [];
         this.resourceMap = [];
@@ -793,7 +967,20 @@ class GameState {
             const bossTypes = ['boss', 'flying-boss', 'carrier-boss', 'mega-boss',
                                'titan', 'leviathan', 'swarm-mother', 'devastator',
                                'overlord', 'colossus', 'hive-queen', 'juggernaut',
-                               'apocalypse', 'world-ender'];
+                               'apocalypse', 'world-ender',
+                               // Wave 100-200 mega bosses
+                               'titan-prime', 'void-herald', 'siege-breaker', 'swarm-emperor',
+                               'inferno-lord', 'fortress-titan', 'sky-sovereign',
+                               'harbinger-of-doom', 'oblivion-bringer', 'eternal-nightmare',
+                               // Wave 210-300 mega bosses (Tier 6)
+                               'dimensional-rift', 'chaos-incarnate', 'storm-bringer',
+                               'plague-father', 'void-tyrant',
+                               // Wave 300-400 mega bosses (Tier 7)
+                               'primordial-terror', 'elder-god', 'cosmic-horror',
+                               'death-incarnate', 'the-consumer',
+                               // Wave 400-500 mega bosses (Tier 8)
+                               'reality-shatterer', 'universe-devourer', 'void-emperor',
+                               'omega-beast', 'genesis-destroyer', 'the-absolute'];
 
             this.enemies = this.enemies.filter(e => {
                 if (!e) return false;
@@ -806,8 +993,9 @@ class GameState {
                             type: 'boss-death',
                             x: e.x,
                             y: e.y,
-                            size: enemyType?.size || 1.5,
-                            color: enemyType?.color || '#880088'
+                            size: enemyType?.bossSize || enemyType?.size || 1.5,
+                            color: enemyType?.color || '#880088',
+                            isMegaBoss: enemyType?.isMegaBoss || false
                         });
                     } else {
                         // Normal death effect
@@ -821,6 +1009,10 @@ class GameState {
                     }
 
                     if (!e.reachedNexus) {
+                        // Increment kill counter and score (based on enemy max health)
+                        this.totalKills++;
+                        this.totalScore += e.maxHealth || 100;
+
                         if (enemyType && enemyType.reward) {
                             for (const [res, amt] of Object.entries(enemyType.reward)) {
                                 this.resources[res] = (this.resources[res] || 0) + amt;
@@ -853,14 +1045,16 @@ class GameState {
                 if (!turret) continue;
                 turret.speedBoosted = false;
                 turret.damageBoosted = false;
+                turret.rangeBoosted = false;
                 turret.speedBoostAmount = 0;
                 turret.damageBoostAmount = 0;
+                turret.rangeBoostAmount = 0;
             }
 
             // Update booster turrets FIRST so they can set boost flags
             for (const turret of this.turrets) {
                 if (!turret || !turret.config) continue;
-                if (turret.config.isSpeedBooster || turret.config.isDamageBooster) {
+                if (turret.config.isSpeedBooster || turret.config.isDamageBooster || turret.config.isRangeBooster) {
                     try {
                         this.updateTurret(turret, adjustedDelta);
                     } catch (err) {
@@ -872,7 +1066,7 @@ class GameState {
             // Update all other turrets
             for (const turret of this.turrets) {
                 if (!turret || !turret.config) continue;
-                if (!turret.config.isSpeedBooster && !turret.config.isDamageBooster) {
+                if (!turret.config.isSpeedBooster && !turret.config.isDamageBooster && !turret.config.isRangeBooster) {
                     try {
                         this.updateTurret(turret, adjustedDelta);
                     } catch (err) {
@@ -996,6 +1190,37 @@ class GameState {
             if (wave >= 150 && Math.random() < 0.004 + bossSpawnBonus) types.push('apocalypse');
             // === MEGA BOSS Tier 5 (Ultimate) ===
             if (wave >= 200 && Math.random() < 0.002 + bossSpawnBonus) types.push('world-ender');
+            // === MEGA BOSS Wave 100-200 Types ===
+            if (wave >= 100 && Math.random() < 0.004 + bossSpawnBonus) types.push('titan-prime');
+            if (wave >= 110 && Math.random() < 0.004 + bossSpawnBonus) types.push('void-herald');
+            if (wave >= 120 && Math.random() < 0.003 + bossSpawnBonus) types.push('siege-breaker');
+            if (wave >= 130 && Math.random() < 0.003 + bossSpawnBonus) types.push('swarm-emperor');
+            if (wave >= 140 && Math.random() < 0.003 + bossSpawnBonus) types.push('inferno-lord');
+            if (wave >= 150 && Math.random() < 0.002 + bossSpawnBonus) types.push('fortress-titan');
+            if (wave >= 160 && Math.random() < 0.002 + bossSpawnBonus) types.push('sky-sovereign');
+            if (wave >= 170 && Math.random() < 0.002 + bossSpawnBonus) types.push('harbinger-of-doom');
+            if (wave >= 180 && Math.random() < 0.001 + bossSpawnBonus) types.push('oblivion-bringer');
+            if (wave >= 200 && Math.random() < 0.0005 + bossSpawnBonus) types.push('eternal-nightmare');
+            // === MEGA BOSS Tier 6 (Waves 210-300 - Dimensional) ===
+            if (wave >= 210 && Math.random() < 0.001 + bossSpawnBonus) types.push('dimensional-rift');
+            if (wave >= 220 && Math.random() < 0.001 + bossSpawnBonus) types.push('chaos-incarnate');
+            if (wave >= 240 && Math.random() < 0.0008 + bossSpawnBonus) types.push('storm-bringer');
+            if (wave >= 260 && Math.random() < 0.0008 + bossSpawnBonus) types.push('plague-father');
+            if (wave >= 280 && Math.random() < 0.0006 + bossSpawnBonus) types.push('void-tyrant');
+            // === MEGA BOSS Tier 7 (Waves 300-400 - Elder) ===
+            if (wave >= 300 && Math.random() < 0.0005 + bossSpawnBonus) types.push('primordial-terror');
+            if (wave >= 320 && Math.random() < 0.0004 + bossSpawnBonus) types.push('elder-god');
+            if (wave >= 340 && Math.random() < 0.0004 + bossSpawnBonus) types.push('cosmic-horror');
+            if (wave >= 360 && Math.random() < 0.0003 + bossSpawnBonus) types.push('death-incarnate');
+            if (wave >= 380 && Math.random() < 0.0003 + bossSpawnBonus) types.push('the-consumer');
+            // === MEGA BOSS Tier 8 (Waves 400-500 - Ultimate Cosmic) ===
+            if (wave >= 400 && Math.random() < 0.0002 + bossSpawnBonus) types.push('reality-shatterer');
+            if (wave >= 420 && Math.random() < 0.0002 + bossSpawnBonus) types.push('universe-devourer');
+            if (wave >= 440 && Math.random() < 0.00015 + bossSpawnBonus) types.push('void-emperor');
+            if (wave >= 460 && Math.random() < 0.00015 + bossSpawnBonus) types.push('omega-beast');
+            if (wave >= 480 && Math.random() < 0.0001 + bossSpawnBonus) types.push('genesis-destroyer');
+            // === THE FINAL BOSS (Wave 500+) ===
+            if (wave >= 500 && Math.random() < 0.00005 + bossSpawnBonus) types.push('the-absolute');
 
             const type = types[Math.floor(Math.random() * types.length)];
 
@@ -1192,6 +1417,107 @@ class GameState {
         // Mega boss every 50 waves (starting wave 50)
         if (this.waveNumber >= 50 && this.waveNumber % 50 === 0) {
             this.enemiesToSpawn.push({ type: 'mega-boss', delay: 20 });
+        }
+
+        // === MEGA BOSSES FOR WAVES 100-200 (Every 10 waves) ===
+        // These are epic bosses that spawn previous bosses when killed
+        if (this.waveNumber === 100) {
+            this.enemiesToSpawn.push({ type: 'titan-prime', delay: 25 });
+        }
+        if (this.waveNumber === 110) {
+            this.enemiesToSpawn.push({ type: 'void-herald', delay: 25 });
+        }
+        if (this.waveNumber === 120) {
+            this.enemiesToSpawn.push({ type: 'siege-breaker', delay: 25 });
+        }
+        if (this.waveNumber === 130) {
+            this.enemiesToSpawn.push({ type: 'swarm-emperor', delay: 25 });
+        }
+        if (this.waveNumber === 140) {
+            this.enemiesToSpawn.push({ type: 'inferno-lord', delay: 25 });
+        }
+        if (this.waveNumber === 150) {
+            this.enemiesToSpawn.push({ type: 'fortress-titan', delay: 30 });
+        }
+        if (this.waveNumber === 160) {
+            this.enemiesToSpawn.push({ type: 'sky-sovereign', delay: 30 });
+        }
+        if (this.waveNumber === 170) {
+            this.enemiesToSpawn.push({ type: 'harbinger-of-doom', delay: 30 });
+        }
+        if (this.waveNumber === 180) {
+            this.enemiesToSpawn.push({ type: 'oblivion-bringer', delay: 35 });
+        }
+        if (this.waveNumber === 190) {
+            // Two mega-bosses at wave 190!
+            this.enemiesToSpawn.push({ type: 'harbinger-of-doom', delay: 30 });
+            this.enemiesToSpawn.push({ type: 'oblivion-bringer', delay: 40 });
+        }
+        if (this.waveNumber === 200) {
+            // THE ULTIMATE BOSS
+            this.enemiesToSpawn.push({ type: 'eternal-nightmare', delay: 35 });
+        }
+
+        // === MEGA BOSSES - Waves 210-300 (Tier 6 - Dimensional) ===
+        if (this.waveNumber === 210) {
+            this.enemiesToSpawn.push({ type: 'dimensional-rift', delay: 35 });
+        }
+        if (this.waveNumber === 220) {
+            this.enemiesToSpawn.push({ type: 'chaos-incarnate', delay: 35 });
+        }
+        if (this.waveNumber === 240) {
+            this.enemiesToSpawn.push({ type: 'storm-bringer', delay: 35 });
+        }
+        if (this.waveNumber === 260) {
+            this.enemiesToSpawn.push({ type: 'plague-father', delay: 35 });
+        }
+        if (this.waveNumber === 280) {
+            this.enemiesToSpawn.push({ type: 'void-tyrant', delay: 35 });
+        }
+        if (this.waveNumber === 300) {
+            // Major milestone boss + escort
+            this.enemiesToSpawn.push({ type: 'primordial-terror', delay: 30 });
+            this.enemiesToSpawn.push({ type: 'void-tyrant', delay: 45 });
+        }
+
+        // === MEGA BOSSES - Waves 300-400 (Tier 7 - Elder) ===
+        if (this.waveNumber === 320) {
+            this.enemiesToSpawn.push({ type: 'elder-god', delay: 35 });
+        }
+        if (this.waveNumber === 340) {
+            this.enemiesToSpawn.push({ type: 'cosmic-horror', delay: 35 });
+        }
+        if (this.waveNumber === 360) {
+            this.enemiesToSpawn.push({ type: 'death-incarnate', delay: 35 });
+        }
+        if (this.waveNumber === 380) {
+            this.enemiesToSpawn.push({ type: 'the-consumer', delay: 35 });
+        }
+        if (this.waveNumber === 400) {
+            // Major milestone - dual bosses
+            this.enemiesToSpawn.push({ type: 'reality-shatterer', delay: 30 });
+            this.enemiesToSpawn.push({ type: 'the-consumer', delay: 50 });
+        }
+
+        // === MEGA BOSSES - Waves 400-500 (Tier 8 - Ultimate) ===
+        if (this.waveNumber === 420) {
+            this.enemiesToSpawn.push({ type: 'universe-devourer', delay: 35 });
+        }
+        if (this.waveNumber === 440) {
+            this.enemiesToSpawn.push({ type: 'void-emperor', delay: 35 });
+        }
+        if (this.waveNumber === 460) {
+            this.enemiesToSpawn.push({ type: 'omega-beast', delay: 35 });
+        }
+        if (this.waveNumber === 480) {
+            this.enemiesToSpawn.push({ type: 'genesis-destroyer', delay: 35 });
+        }
+        if (this.waveNumber === 500) {
+            // THE ABSOLUTE - FINAL BOSS
+            this.enemiesToSpawn.push({ type: 'the-absolute', delay: 40 });
+            // Escort of previous tier bosses
+            this.enemiesToSpawn.push({ type: 'reality-shatterer', delay: 60 });
+            this.enemiesToSpawn.push({ type: 'universe-devourer', delay: 80 });
         }
 
         this.enemiesToSpawn.sort((a, b) => a.delay - b.delay);
@@ -1491,7 +1817,9 @@ class GameState {
         const speedMult = 1 + (turret.speedBoostAmount || 0);
         turret.cooldown -= deltaTime * speedMult;
 
-        const range = (turret.config.range || 4) * this.cellSize;
+        // Apply range boost from nearby range boosters
+        const rangeMult = 1 + (turret.rangeBoostAmount || 0);
+        const range = (turret.config.range || 4) * this.cellSize * rangeMult;
         const minRange = (turret.config.minRange || 0) * this.cellSize;
 
         // Healer turret - heals other turrets
@@ -1616,7 +1944,7 @@ class GameState {
 
             for (const other of this.turrets) {
                 if (other === turret) continue;
-                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isHealer) continue;
+                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isRangeBooster || other.config?.isHealer) continue;
 
                 const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
                 if (dist <= boostRange) {
@@ -1635,13 +1963,32 @@ class GameState {
 
             for (const other of this.turrets) {
                 if (other === turret) continue;
-                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isHealer) continue;
+                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isRangeBooster || other.config?.isHealer) continue;
 
                 const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
                 if (dist <= boostRange) {
                     // Mark as damage boosted
                     other.damageBoosted = true;
                     other.damageBoostAmount = Math.max(other.damageBoostAmount || 0, boostAmount);
+                }
+            }
+            return;
+        }
+
+        // Range Booster - boosts nearby turrets' range
+        if (turret.config.isRangeBooster) {
+            const boostRange = (turret.config.range || 4) * this.cellSize;
+            const boostAmount = turret.config.rangeBoost || 0.25;
+
+            for (const other of this.turrets) {
+                if (other === turret) continue;
+                if (other.config?.isSpeedBooster || other.config?.isDamageBooster || other.config?.isRangeBooster || other.config?.isHealer) continue;
+
+                const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
+                if (dist <= boostRange) {
+                    // Mark as range boosted
+                    other.rangeBoosted = true;
+                    other.rangeBoostAmount = Math.max(other.rangeBoostAmount || 0, boostAmount);
                 }
             }
             return;
@@ -2789,8 +3136,9 @@ class GameState {
         gScore.set(`${startX},${startY}`, 0);
 
         // Max iterations to prevent infinite loops on large maps
+        // Increased for 150x114 map (17100 cells) with complex mazes
         let iterations = 0;
-        const maxIterations = 5000;
+        const maxIterations = 50000;
 
         while (openSet.length > 0 && iterations < maxIterations) {
             iterations++;
@@ -2904,6 +3252,8 @@ class GameState {
             waveNumber: this.waveNumber,
             waveTimer: this.waveTimer,
             waveActive: this.waveActive,
+            totalKills: this.totalKills,
+            totalScore: this.totalScore,
             enemies: validEnemies.map(e => ({
                 id: e.id,
                 type: e.type,
@@ -2936,7 +3286,8 @@ class GameState {
                 homeX: t.homeX,
                 homeY: t.homeY,
                 speedBoosted: t.speedBoosted || false,
-                damageBoosted: t.damageBoosted || false
+                damageBoosted: t.damageBoosted || false,
+                rangeBoosted: t.rangeBoosted || false
             })),
             walls: validWalls.map(w => ({
                 id: w.id,

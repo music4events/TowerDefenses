@@ -15,6 +15,8 @@ export class Network {
         this.onPlayerLeft = null;
         this.onChatMessage = null;
         this.onError = null;
+        this.onLeaderboard = null;
+        this.onGameOver = null;
     }
 
     connect(serverUrl = '') {
@@ -168,8 +170,15 @@ export class Network {
         });
 
         this.socket.on('gameOver', (data) => {
-            this.game.gameOver = true;
-            this.game.ui.showGameOver();
+            if (this.game) {
+                this.game.gameOver = true;
+                this.game.ui.showGameOver();
+            }
+            if (this.onGameOver) this.onGameOver(data);
+        });
+
+        this.socket.on('leaderboard', (data) => {
+            if (this.onLeaderboard) this.onLeaderboard(data);
         });
 
         this.socket.on('gameSpeedChanged', (data) => {
@@ -234,6 +243,12 @@ export class Network {
         }
     }
 
+    requestLeaderboard(mode) {
+        if (this.socket) {
+            this.socket.emit('getLeaderboard', { mode });
+        }
+    }
+
     handleGameStateUpdate(data) {
         try {
             // Skip if no valid data
@@ -252,6 +267,12 @@ export class Network {
             }
             if (state.waveNumber !== undefined) {
                 this.game.waveNumber = state.waveNumber;
+            }
+            if (state.totalKills !== undefined) {
+                this.game.totalKills = state.totalKills;
+            }
+            if (state.totalScore !== undefined) {
+                this.game.totalScore = state.totalScore;
             }
 
             // Sync grid if provided
@@ -451,6 +472,7 @@ export class Network {
                 // Sync boost states
                 localTurret.speedBoosted = serverTurret.speedBoosted || false;
                 localTurret.damageBoosted = serverTurret.damageBoosted || false;
+                localTurret.rangeBoosted = serverTurret.rangeBoosted || false;
             }
         }
 

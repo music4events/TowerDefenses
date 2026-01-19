@@ -2,10 +2,68 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const GameState = require('./game/GameState');
 
 const app = express();
+
+// Leaderboard storage
+const LEADERBOARD_FILE = path.join(__dirname, 'leaderboard.json');
+const MAX_LEADERBOARD_ENTRIES = 100;
+
+function loadLeaderboard() {
+    try {
+        if (fs.existsSync(LEADERBOARD_FILE)) {
+            const data = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (err) {
+        console.error('Error loading leaderboard:', err);
+    }
+    return { waves: [], endless: [] };
+}
+
+function saveLeaderboard(leaderboard) {
+    try {
+        fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(leaderboard, null, 2));
+    } catch (err) {
+        console.error('Error saving leaderboard:', err);
+    }
+}
+
+function calculateScore(baseScore, wave, mode) {
+    // Score = somme des HP des ennemis tués (pas de bonus)
+    return baseScore;
+}
+
+function addToLeaderboard(mode, entry) {
+    const leaderboard = loadLeaderboard();
+    const list = leaderboard[mode] || [];
+
+    // Add new entry
+    list.push({
+        name: entry.name,
+        wave: entry.wave,
+        kills: entry.kills,
+        score: entry.score,
+        date: new Date().toISOString()
+    });
+
+    // Sort by score descending
+    list.sort((a, b) => b.score - a.score);
+
+    // Keep only top 100
+    leaderboard[mode] = list.slice(0, MAX_LEADERBOARD_ENTRIES);
+
+    saveLeaderboard(leaderboard);
+    return leaderboard[mode];
+}
+
+function getLeaderboard(mode) {
+    const leaderboard = loadLeaderboard();
+    return leaderboard[mode] || [];
+}
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -321,6 +379,13 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Get leaderboard
+    socket.on('getLeaderboard', (data) => {
+        const mode = data.mode || 'waves';
+        const entries = getLeaderboard(mode);
+        socket.emit('leaderboard', { mode, entries });
+    });
+
     // Handle socket errors
     socket.on('error', (error) => {
         console.error(`[${new Date().toISOString()}] Socket error for ${socket.id}:`, error.message);
@@ -395,11 +460,30 @@ function startGameLoop(roomCode) {
 
             // Check game over
             if (room.gameState.isGameOver()) {
+                const wave = room.gameState.waveNumber;
+                const kills = room.gameState.totalKills || 0;
+                const baseScore = room.gameState.totalScore || 0;
+                const mode = room.gameMode || 'waves';
+                const score = calculateScore(baseScore, wave, mode);
+
+                // Submit score for each player in the room
+                for (const [playerId, player] of room.players) {
+                    addToLeaderboard(mode, {
+                        name: player.name,
+                        wave: wave,
+                        kills: kills,
+                        score: score
+                    });
+                }
+
                 io.to(roomCode).emit('gameOver', {
-                    waveReached: room.gameState.waveNumber
+                    waveReached: wave,
+                    wave: wave,
+                    kills: kills,
+                    score: score
                 });
                 clearInterval(gameLoop);
-                console.log(`Game over in room ${roomCode} at wave ${room.gameState.waveNumber}`);
+                console.log(`Game over in room ${roomCode} at wave ${wave}, kills: ${kills}, score: ${score}`);
             }
         } catch (error) {
             console.error(`Error in game loop for room ${roomCode}:`, error);

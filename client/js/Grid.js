@@ -263,7 +263,12 @@ export class Grid {
 
         openSet.push({ x: startX, y: startY, f: fScore.get(startKey) });
 
-        while (openSet.length > 0) {
+        // Max iterations to prevent infinite loops on large maps
+        let iterations = 0;
+        const maxIterations = 50000;
+
+        while (openSet.length > 0 && iterations < maxIterations) {
+            iterations++;
             // Get node with lowest fScore
             openSet.sort((a, b) => a.f - b.f);
             const current = openSet.shift();

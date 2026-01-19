@@ -98,6 +98,13 @@ body {
     font-weight: bold;
 }
 
+#kill-counter {
+    display: block;
+    color: #4a9eff;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
 #wave-timer {
     color: #8892b0;
     font-size: 14px;
@@ -224,6 +231,7 @@ body {
 .btn-icon.turret-shock { background: #00bfff; }
 .btn-icon.turret-speed { background: #ffaa00; }
 .btn-icon.turret-damage { background: #ff4444; }
+.btn-icon.turret-range { background: #44aaff; }
 /* Tourelles 2x2 */
 .btn-icon.turret-missile { background: linear-gradient(135deg, #8b0000, #ff4400); border: 2px solid #ff6600; }
 .btn-icon.turret-plasma { background: linear-gradient(135deg, #9400d3, #da70d6); border: 2px solid #ff00ff; }
@@ -379,6 +387,59 @@ body {
     background: #2ecc71;
     border-color: #2ecc71;
     color: #fff;
+}
+
+/* Graphics settings */
+#graphics-settings {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #e94560;
+    border-radius: 4px;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+}
+
+#graphics-settings span {
+    color: #8892b0;
+    font-size: 12px;
+}
+
+#particle-slider {
+    flex: 1;
+    height: 8px;
+    -webkit-appearance: none;
+    background: #0f3460;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#particle-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #e94560;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(233, 69, 96, 0.5);
+}
+
+#particle-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #e94560;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 5px rgba(233, 69, 96, 0.5);
+}
+
+#particle-value {
+    min-width: 35px;
+    text-align: right;
+    color: #e94560;
+    font-weight: bold;
 }
 
 /* Action modes (Sell/Upgrade) */
@@ -804,4 +865,140 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #e94560;
+}
+
+/* Leaderboard Styles */
+#leaderboard-panel {
+    width: 100%;
+    max-width: 600px;
+}
+
+.back-btn {
+    margin-bottom: 20px;
+}
+
+.leaderboard-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.lb-tab {
+    flex: 1;
+    background: #16213e;
+    border: 2px solid #0f3460;
+    color: #8892b0;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.lb-tab:hover {
+    background: #1a2a4e;
+    color: #fff;
+}
+
+.lb-tab.active {
+    background: #e94560;
+    border-color: #e94560;
+    color: #fff;
+}
+
+.leaderboard-content {
+    background: #16213e;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.leaderboard-header {
+    display: grid;
+    grid-template-columns: 50px 1fr 80px 100px 100px;
+    gap: 10px;
+    padding: 10px 15px;
+    background: #0f3460;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #8892b0;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lb-entry {
+    display: grid;
+    grid-template-columns: 50px 1fr 80px 100px 100px;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #1a1a2e;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.lb-entry:hover {
+    background: #252540;
+}
+
+.lb-entry .lb-rank {
+    font-weight: bold;
+    color: #8892b0;
+}
+
+.lb-entry .lb-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lb-entry .lb-score {
+    font-weight: bold;
+    color: #e94560;
+}
+
+/* Top 3 special styles */
+.lb-top-1 {
+    background: linear-gradient(135deg, #3d2e00 0%, #1a1a2e 100%);
+    border: 1px solid #ffd700;
+}
+
+.lb-top-1 .lb-rank {
+    color: #ffd700;
+    font-size: 18px;
+}
+
+.lb-top-2 {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a2e 100%);
+    border: 1px solid #c0c0c0;
+}
+
+.lb-top-2 .lb-rank {
+    color: #c0c0c0;
+}
+
+.lb-top-3 {
+    background: linear-gradient(135deg, #2d1810 0%, #1a1a2e 100%);
+    border: 1px solid #cd7f32;
+}
+
+.lb-top-3 .lb-rank {
+    color: #cd7f32;
+}
+
+.lb-loading, .lb-empty {
+    text-align: center;
+    padding: 40px;
+    color: #8892b0;
+    font-style: italic;
 }

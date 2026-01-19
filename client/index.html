@@ -12,25 +12,8 @@
         <div class="lobby-container">
             <h1>Tower Defense Coop</h1>
             <div class="lobby-mode-select">
-                <button id="btn-solo" class="lobby-btn">Jouer Solo</button>
-                <button id="btn-multiplayer" class="lobby-btn primary">Multijoueur</button>
-            </div>
-
-            <div id="game-mode-panel" class="hidden">
-                <h3>Mode de jeu</h3>
-                <div class="game-mode-options">
-                    <button class="mode-select-btn selected" data-mode="waves">
-                        <span class="mode-icon">🌊</span>
-                        <span class="mode-name">Vagues</span>
-                        <span class="mode-desc">Vagues avec pauses entre chaque</span>
-                    </button>
-                    <button class="mode-select-btn" data-mode="endless">
-                        <span class="mode-icon">♾️</span>
-                        <span class="mode-name">Endless</span>
-                        <span class="mode-desc">Ennemis en continu, difficulte croissante</span>
-                    </button>
-                </div>
-                <button id="btn-start-solo" class="lobby-btn primary">Lancer la partie</button>
+                <button id="btn-play" class="lobby-btn primary">Jouer</button>
+                <button id="btn-leaderboard" class="lobby-btn">Classement</button>
             </div>
 
             <div id="multiplayer-panel" class="hidden">
@@ -76,6 +59,27 @@
             </div>
 
             <div id="lobby-error" class="error-msg hidden"></div>
+
+            <!-- Leaderboard Panel -->
+            <div id="leaderboard-panel" class="hidden">
+                <button id="btn-back-lobby" class="lobby-btn back-btn">Retour</button>
+                <div class="leaderboard-tabs">
+                    <button class="lb-tab active" data-mode="waves">Mode Vagues</button>
+                    <button class="lb-tab" data-mode="endless">Mode Endless</button>
+                </div>
+                <div class="leaderboard-content">
+                    <div class="leaderboard-header">
+                        <span class="lb-rank">#</span>
+                        <span class="lb-name">Joueur</span>
+                        <span class="lb-wave">Vague</span>
+                        <span class="lb-kills">Kills</span>
+                        <span class="lb-score">Score</span>
+                    </div>
+                    <div id="leaderboard-list" class="leaderboard-list">
+                        <div class="lb-loading">Chargement...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -103,6 +107,7 @@
             </div>
             <div id="wave-info">
                 <span id="wave-number">Vague 1</span>
+                <span id="kill-counter">Kills: 0 | Score: 0</span>
                 <span id="wave-timer"></span>
                 <button id="btn-skip-wave" class="skip-btn hidden">Lancer la vague</button>
             </div>
@@ -113,6 +118,11 @@
                 <button class="speed-btn" data-speed="5">x5</button>
                 <button class="speed-btn" data-speed="10">x10</button>
                 <button id="btn-show-paths" class="path-btn" title="Afficher les itineraires">📍</button>
+            </div>
+            <div id="graphics-settings">
+                <span>Particules:</span>
+                <input type="range" id="particle-slider" min="10" max="100" value="100" title="Nombre de particules affichées">
+                <span id="particle-value">100%</span>
             </div>
             <div id="nexus-health">
                 <div id="nexus-health-bar">
@@ -202,6 +212,11 @@
                         <div class="btn-icon turret-damage"></div>
                         <span class="btn-name">Dmg Boost</span>
                         <span class="btn-cost"><span class="cost-iron">250</span> <span class="cost-copper">100</span> <span class="cost-gold">50</span></span>
+                    </button>
+                    <button class="build-btn" data-building="turret-range-booster">
+                        <div class="btn-icon turret-range"></div>
+                        <span class="btn-name">Range Boost</span>
+                        <span class="btn-cost"><span class="cost-iron">300</span> <span class="cost-copper">120</span> <span class="cost-gold">60</span></span>
                     </button>
                     <!-- TOURELLES 2x2 -->
                     <button class="build-btn medium-turret" data-building="turret-missile">

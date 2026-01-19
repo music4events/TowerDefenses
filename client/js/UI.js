@@ -10,6 +10,7 @@ export class UI {
         };
 
         this.waveNumber = document.getElementById('wave-number');
+        this.killCounter = document.getElementById('kill-counter');
         this.waveTimer = document.getElementById('wave-timer');
         this.skipWaveBtn = document.getElementById('btn-skip-wave');
         this.nexusHealthFill = document.getElementById('nexus-health-fill');
@@ -89,6 +90,13 @@ export class UI {
             } else {
                 this.waveNumber.textContent = `Vague ${this.game.waveNumber}`;
             }
+        }
+
+        // Update kill counter and score
+        if (this.killCounter) {
+            const kills = this.game.totalKills || 0;
+            const score = this.game.totalScore || 0;
+            this.killCounter.textContent = `Kills: ${kills.toLocaleString()} | Score: ${score.toLocaleString()}`;
         }
 
         if (this.waveTimer && this.game.waveManager) {
