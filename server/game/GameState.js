@@ -380,16 +380,17 @@ const TURRET_TYPES = {
     'turret-missile-battery': {
         name: 'Missile Battery',
         gridSize: 3,
-        damage: 55,
-        range: 24,               // +6 range
-        fireRate: 1.8,
+        damage: 70,
+        range: 24,
+        fireRate: 2.0,
         cost: { iron: 1200, copper: 500, gold: 200 },
-        projectileSpeed: 18,
+        projectileSpeed: 14,
         isMissileBattery: true,
-        missileCount: 12,
+        missileCount: 8,
         isMissile: true,
-        homingStrength: 0.35,
-        explosionRadius: 1.8,
+        homingStrength: 0.25,
+        spreadRadius: 2.5,
+        explosionRadius: 2.0,
         health: 520,
         maxHealth: 520
     },
@@ -1846,10 +1847,11 @@ class GameState {
             const missileCount = turret.config.missileCount || turret.config.rocketCount || 2;
             const speed = (turret.config.projectileSpeed || 12) * this.cellSize;
             const homingStrength = turret.config.homingStrength || 0.15;
+            const spreadRadius = (turret.config.spreadRadius || 0) * this.cellSize;
 
             // Find strongest target for battery
             let missileTarget = target;
-            if (turret.config.isMissileBattery || turret.config.isNuclear) {
+            if (turret.config.isMissileBattery) {
                 let maxHealth = 0;
                 for (const enemy of this.enemies) {
                     if (!enemy || enemy.dead) continue;
@@ -1862,17 +1864,34 @@ class GameState {
             }
 
             for (let i = 0; i < missileCount; i++) {
-                const offsetAngle = turret.angle + (i - (missileCount - 1) / 2) * 0.2;
-                const startX = turret.x + Math.cos(offsetAngle) * this.cellSize * 0.3;
-                const startY = turret.y + Math.sin(offsetAngle) * this.cellSize * 0.3;
+                // Launch from different positions on the turret
+                const launchAngle = turret.config.isMissileBattery
+                    ? (i / missileCount) * Math.PI * 2
+                    : turret.angle + (i - (missileCount - 1) / 2) * 0.2;
+                const launchOffset = turret.config.isMissileBattery ? this.cellSize * 0.6 : this.cellSize * 0.3;
+                const startX = turret.x + Math.cos(launchAngle) * launchOffset;
+                const startY = turret.y + Math.sin(launchAngle) * launchOffset;
 
-                const dx = missileTarget.x - startX;
-                const dy = missileTarget.y - startY;
+                // Calculate target position with spread
+                let targetX = missileTarget.x;
+                let targetY = missileTarget.y;
+                if (spreadRadius > 0) {
+                    const spreadAngle = Math.random() * Math.PI * 2;
+                    const spreadDist = Math.random() * spreadRadius;
+                    targetX += Math.cos(spreadAngle) * spreadDist;
+                    targetY += Math.sin(spreadAngle) * spreadDist;
+                }
+
+                const dx = targetX - startX;
+                const dy = targetY - startY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 let projType = 'missile';
                 if (turret.config.isRocketArray) projType = 'rocket';
                 if (turret.config.isMissileBattery) projType = 'battery-missile';
+
+                // Initial launch angle with slight variation
+                const initialAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.4;
 
                 this.projectiles.push({
                     id: Date.now() + Math.random() + i,
@@ -1881,8 +1900,8 @@ class GameState {
                     y: startY,
                     startX: startX,
                     startY: startY,
-                    vx: (dx / dist) * speed * 0.6,
-                    vy: (dy / dist) * speed * 0.6,
+                    vx: Math.cos(initialAngle) * speed * 0.5,
+                    vy: Math.sin(initialAngle) * speed * 0.5 - (turret.config.isMissileBattery ? speed * 0.2 : 0),
                     maxSpeed: speed,
                     damage: damage,
                     aoeRadius: turret.config.explosionRadius || 1.5,
@@ -1890,6 +1909,8 @@ class GameState {
                     hitEnemies: [],
                     // Homing properties
                     targetId: missileTarget.id,
+                    targetX: targetX,
+                    targetY: targetY,
                     homingStrength: homingStrength,
                     life: 5.0,
                     delay: i * (turret.config.salvoDelay || 0.05)

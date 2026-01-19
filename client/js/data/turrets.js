@@ -530,21 +530,22 @@ export const TURRET_TYPES = {
     'turret-missile-battery': {
         name: 'Missile Battery',
         gridSize: 3,
-        damage: 55,               // Plus de dégâts!
-        range: 24,                // +6 portée!
-        fireRate: 1.8,            // Plus rapide!
+        damage: 70,               // Plus de dégâts par missile
+        range: 24,                // Longue portée
+        fireRate: 2.0,            // Cadence équilibrée
         color: '#556b2f',
         cost: { iron: 1200, copper: 500, gold: 200 },
-        projectileSpeed: 18,      // Missiles rapides!
+        projectileSpeed: 14,      // Missiles fluides
         projectileColor: '#9acd32',
 
         isMissileBattery: true,
-        missileCount: 12,         // 12 missiles comme demandé!
+        missileCount: 8,          // Réduit pour performance
         isMissile: true,
-        homingStrength: 0.35,     // Guidage amélioré!
-        salvoDelay: 0.04,         // Salve rapide!
+        homingStrength: 0.25,     // Guidage
+        salvoDelay: 0.06,         // Salve satisfaisante
+        spreadRadius: 2.5,        // Missiles dispersés autour de la cible
         trailColor: '#adff2f',
-        explosionRadius: 1.8,     // Grosses explosions!
+        explosionRadius: 2.0,     // Grosses explosions!
 
         size: 2.8,
         health: 520,

@@ -1083,37 +1083,44 @@ export class Turret {
         }
 
         const target = strongestEnemy || this.target;
-        const missileCount = this.config.missileCount || 12;
-        const speed = (this.config.projectileSpeed || 16) * this.grid.cellSize;
-        const salvoDelay = this.config.salvoDelay || 0.03;
+        const missileCount = this.config.missileCount || 8; // Reduced from 12
+        const speed = (this.config.projectileSpeed || 14) * this.grid.cellSize;
+        const salvoDelay = this.config.salvoDelay || 0.06; // Slower salvo for visual effect
+        const spreadRadius = (this.config.spreadRadius || 2) * this.grid.cellSize;
 
         for (let i = 0; i < missileCount; i++) {
-            const row = Math.floor(i / 4);
-            const col = i % 4;
-            const offsetX = (col - 1.5) * this.grid.cellSize * 0.4;
-            const offsetY = (row - 1) * this.grid.cellSize * 0.4;
+            // Missiles launch from different positions on the turret
+            const launchAngle = (i / missileCount) * Math.PI * 2;
+            const launchOffset = this.grid.cellSize * 0.6;
+            const startX = this.x + Math.cos(launchAngle) * launchOffset;
+            const startY = this.y + Math.sin(launchAngle) * launchOffset;
 
-            const startX = this.x + offsetX;
-            const startY = this.y + offsetY;
+            // Each missile targets a random position around the main target
+            const targetSpreadAngle = Math.random() * Math.PI * 2;
+            const targetSpreadDist = Math.random() * spreadRadius;
+            const targetX = target.x + Math.cos(targetSpreadAngle) * targetSpreadDist;
+            const targetY = target.y + Math.sin(targetSpreadAngle) * targetSpreadDist;
 
-            const dx = target.x - startX;
-            const dy = target.y - startY;
+            const dx = targetX - startX;
+            const dy = targetY - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Add slight random spread for visual effect
-            const spreadAngle = (Math.random() - 0.5) * 0.3;
+            // Initial upward launch then homes in
+            const initialAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.6;
 
             projectiles.push({
                 type: 'battery-missile',
                 x: startX,
                 y: startY,
-                vx: (dx / dist) * speed * 0.6 * Math.cos(spreadAngle),
-                vy: (dy / dist) * speed * 0.6 * Math.sin(spreadAngle),
+                vx: Math.cos(initialAngle) * speed * 0.5,
+                vy: Math.sin(initialAngle) * speed * 0.5 - speed * 0.2, // Slight upward boost
                 maxSpeed: speed,
                 damage: this.config.damage,
                 config: this.config,
                 target: target,
-                homingStrength: this.config.homingStrength || 0.3,
+                targetX: targetX,
+                targetY: targetY,
+                homingStrength: this.config.homingStrength || 0.25,
                 aoeRadius: (this.config.explosionRadius || 1.5) * this.grid.cellSize,
                 sourceX: startX,
                 sourceY: startY,

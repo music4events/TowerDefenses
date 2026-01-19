@@ -1203,11 +1203,59 @@ export class Renderer {
         const { x, y, config, type } = projectile;
         const projColor = config?.projectileColor || '#ffff00';
 
-        if (type === 'artillery') {
-            // Larger projectile for artillery
+        if (type === 'bullet') {
+            // Enhanced bullet with trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            // Tracer trail
+            if (speed > 0) {
+                const trailLen = 8;
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Bright tip
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'artillery') {
+            // Artillery shell with arc trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            // Smoke puff trail
+            if (speed > 0) {
+                const trailLen = 10;
+                this.ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
+                for (let i = 0; i < 3; i++) {
+                    const t = (i + 1) / 4;
+                    const px = x - (dx / speed) * trailLen * t + (Math.random() - 0.5) * 4;
+                    const py = y - (dy / speed) * trailLen * t + (Math.random() - 0.5) * 4;
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, 3 - i, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            // Shell body
             this.ctx.fillStyle = projColor;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Highlight
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x - 1, y - 1, 2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'laser') {
             // Laser beam is drawn as a line
@@ -1316,52 +1364,49 @@ export class Renderer {
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'missile' || type === 'rocket' || type === 'battery-missile') {
-            // HOMING MISSILE with epic particle trail
+            // OPTIMIZED HOMING MISSILE - satisfying trail effect
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(dx * dx + dy * dy);
 
-            // Epic smoke/fire trail
-            if (projectile.trail && projectile.trail.length > 0) {
-                // Draw smoke trail first (behind fire)
-                for (let i = 0; i < projectile.trail.length; i++) {
+            const isBattery = type === 'battery-missile';
+            const missileLength = isBattery ? 12 : 16;
+            const missileWidth = isBattery ? 3 : 4;
+
+            // Fast trail rendering - simple colored line segments (NO gradients!)
+            if (projectile.trail && projectile.trail.length > 1) {
+                // Draw trail as connected lines with fading colors
+                this.ctx.lineCap = 'round';
+                for (let i = 1; i < projectile.trail.length; i++) {
                     const t = projectile.trail[i];
-                    const trailProgress = i / projectile.trail.length;
-                    const alpha = t.life * 0.4 * (1 - trailProgress * 0.5);
+                    const prev = projectile.trail[i - 1];
+                    const progress = i / projectile.trail.length;
+                    const alpha = t.life * (1 - progress * 0.3);
 
-                    if (alpha > 0.02) {
-                        // Smoke
-                        this.ctx.fillStyle = `rgba(80, 80, 80, ${alpha * 0.5})`;
-                        this.ctx.beginPath();
-                        this.ctx.arc(t.x, t.y, (t.size || 4) * 1.5 * t.life, 0, Math.PI * 2);
-                        this.ctx.fill();
+                    if (alpha > 0.1) {
+                        // Fire color based on position in trail
+                        const r = Math.floor(255 - progress * 55);
+                        const g = Math.floor(200 * (1 - progress * 0.7));
+                        const b = Math.floor(50 * (1 - progress));
 
-                        // Fire core
-                        const fireAlpha = t.life * 0.8;
-                        const gradient = this.ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, (t.size || 4) * t.life);
-                        gradient.addColorStop(0, `rgba(255, 255, 200, ${fireAlpha})`);
-                        gradient.addColorStop(0.3, `rgba(255, 150, 50, ${fireAlpha * 0.8})`);
-                        gradient.addColorStop(0.7, `rgba(255, 80, 0, ${fireAlpha * 0.5})`);
-                        gradient.addColorStop(1, `rgba(200, 50, 0, 0)`);
-                        this.ctx.fillStyle = gradient;
+                        this.ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                        this.ctx.lineWidth = (isBattery ? 4 : 6) * t.life;
                         this.ctx.beginPath();
-                        this.ctx.arc(t.x, t.y, (t.size || 4) * t.life, 0, Math.PI * 2);
-                        this.ctx.fill();
+                        this.ctx.moveTo(prev.x, prev.y);
+                        this.ctx.lineTo(t.x, t.y);
+                        this.ctx.stroke();
                     }
-
-                    t.life -= 0.08;
-                    t.size = (t.size || 4) * 0.97;
+                    t.life -= 0.12;
+                }
+                // Clean up dead particles
+                while (projectile.trail.length > 0 && projectile.trail[0].life <= 0) {
+                    projectile.trail.shift();
                 }
             }
 
-            // Missile glow
-            const glowSize = type === 'battery-missile' ? 15 : 20;
-            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowSize);
-            glowGradient.addColorStop(0, 'rgba(255, 200, 100, 0.6)');
-            glowGradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.3)');
-            glowGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
-            this.ctx.fillStyle = glowGradient;
+            // Missile glow - simple circle
+            const glowSize = isBattery ? 10 : 14;
+            this.ctx.fillStyle = 'rgba(255, 150, 50, 0.4)';
             this.ctx.beginPath();
             this.ctx.arc(x, y, glowSize, 0, Math.PI * 2);
             this.ctx.fill();
@@ -1371,39 +1416,33 @@ export class Renderer {
             this.ctx.translate(x, y);
             this.ctx.rotate(angle);
 
-            const missileLength = type === 'battery-missile' ? 14 : 18;
-            const missileWidth = type === 'battery-missile' ? 4 : 5;
-
-            // Body with metallic gradient
-            const bodyGradient = this.ctx.createLinearGradient(0, -missileWidth, 0, missileWidth);
-            bodyGradient.addColorStop(0, '#888888');
-            bodyGradient.addColorStop(0.5, '#cccccc');
-            bodyGradient.addColorStop(1, '#666666');
-            this.ctx.fillStyle = bodyGradient;
+            // Body - simple metallic look
+            this.ctx.fillStyle = '#aaaaaa';
             this.ctx.fillRect(-missileLength, -missileWidth/2, missileLength, missileWidth);
 
-            // Warhead (red tip)
+            // Highlight stripe
+            this.ctx.fillStyle = '#dddddd';
+            this.ctx.fillRect(-missileLength, -missileWidth/4, missileLength, missileWidth/2);
+
+            // Warhead (colored tip)
             this.ctx.fillStyle = projColor;
             this.ctx.beginPath();
-            this.ctx.moveTo(4, 0);
-            this.ctx.lineTo(-2, -missileWidth);
-            this.ctx.lineTo(-2, missileWidth);
+            this.ctx.moveTo(3, 0);
+            this.ctx.lineTo(-1, -missileWidth);
+            this.ctx.lineTo(-1, missileWidth);
             this.ctx.closePath();
             this.ctx.fill();
 
             // Fins
-            this.ctx.fillStyle = '#555555';
-            this.ctx.fillRect(-missileLength + 2, -missileWidth - 3, 4, 3);
-            this.ctx.fillRect(-missileLength + 2, missileWidth, 4, 3);
+            this.ctx.fillStyle = '#666666';
+            this.ctx.fillRect(-missileLength + 1, -missileWidth - 2, 3, 2);
+            this.ctx.fillRect(-missileLength + 1, missileWidth, 3, 2);
 
-            // Exhaust flame (animated)
-            const flameLength = 12 + Math.random() * 8;
-            const flameGradient = this.ctx.createLinearGradient(-missileLength, 0, -missileLength - flameLength, 0);
-            flameGradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
-            flameGradient.addColorStop(0.3, 'rgba(255, 150, 50, 0.9)');
-            flameGradient.addColorStop(0.6, 'rgba(255, 80, 0, 0.6)');
-            flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
-            this.ctx.fillStyle = flameGradient;
+            // Exhaust flame - simple animated triangle
+            const flameLength = 8 + Math.random() * 6;
+
+            // Outer flame (orange)
+            this.ctx.fillStyle = '#ff6600';
             this.ctx.beginPath();
             this.ctx.moveTo(-missileLength, -2);
             this.ctx.lineTo(-missileLength - flameLength, 0);
@@ -1411,11 +1450,11 @@ export class Renderer {
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Inner white hot flame
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            // Inner flame (yellow/white)
+            this.ctx.fillStyle = '#ffff88';
             this.ctx.beginPath();
             this.ctx.moveTo(-missileLength, -1);
-            this.ctx.lineTo(-missileLength - flameLength * 0.4, 0);
+            this.ctx.lineTo(-missileLength - flameLength * 0.5, 0);
             this.ctx.lineTo(-missileLength, 1);
             this.ctx.closePath();
             this.ctx.fill();
@@ -1596,79 +1635,54 @@ export class Renderer {
                 this.ctx.fill();
             }
         } else if (type === 'nuclear') {
-            // EPIC GUIDED Nuclear ICBM with radiation trail
+            // OPTIMIZED Nuclear ICBM - impressive but performant
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const angle = Math.atan2(dy, dx);
-            const speed = Math.sqrt(dx * dx + dy * dy);
 
-            // Epic radiation/fire trail
-            if (projectile.trail && projectile.trail.length > 0) {
-                for (let i = 0; i < projectile.trail.length; i++) {
+            // Simplified radiation trail - line segments instead of gradients
+            if (projectile.trail && projectile.trail.length > 1) {
+                this.ctx.lineCap = 'round';
+                for (let i = 1; i < projectile.trail.length; i++) {
                     const t = projectile.trail[i];
+                    const prev = projectile.trail[i - 1];
                     const progress = i / projectile.trail.length;
+                    const alpha = t.life * (1 - progress * 0.4);
 
-                    if (t.life > 0.05) {
-                        // Radiation particles (green/yellow)
-                        const radGradient = this.ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, (t.size || 6) * t.life);
-                        radGradient.addColorStop(0, `rgba(200, 255, 100, ${t.life * 0.9})`);
-                        radGradient.addColorStop(0.4, `rgba(255, 255, 0, ${t.life * 0.6})`);
-                        radGradient.addColorStop(0.7, `rgba(255, 150, 0, ${t.life * 0.4})`);
-                        radGradient.addColorStop(1, `rgba(255, 80, 0, 0)`);
-                        this.ctx.fillStyle = radGradient;
+                    if (alpha > 0.1) {
+                        // Radiation color (green -> yellow -> orange)
+                        const g = Math.floor(255 * (1 - progress * 0.3));
+                        const r = Math.floor(200 + progress * 55);
+
+                        this.ctx.strokeStyle = `rgba(${r}, ${g}, 50, ${alpha})`;
+                        this.ctx.lineWidth = 10 * t.life * (1 - progress * 0.5);
                         this.ctx.beginPath();
-                        this.ctx.arc(t.x, t.y, (t.size || 6) * t.life * 1.5, 0, Math.PI * 2);
-                        this.ctx.fill();
+                        this.ctx.moveTo(prev.x, prev.y);
+                        this.ctx.lineTo(t.x, t.y);
+                        this.ctx.stroke();
                     }
-
-                    t.life -= 0.06;
-                    t.size = (t.size || 6) * 0.96;
+                    t.life -= 0.08;
+                }
+                // Clean up
+                while (projectile.trail.length > 0 && projectile.trail[0].life <= 0) {
+                    projectile.trail.shift();
                 }
             }
 
-            // Radioactive particles (extra effect)
-            if (!projectile.particles) projectile.particles = [];
-            if (Math.random() < 0.4) {
-                const pAngle = Math.random() * Math.PI * 2;
-                const pDist = 10 + Math.random() * 15;
-                projectile.particles.push({
-                    x: x + Math.cos(pAngle) * pDist,
-                    y: y + Math.sin(pAngle) * pDist,
-                    vx: Math.cos(pAngle) * 30,
-                    vy: Math.sin(pAngle) * 30,
-                    size: 3 + Math.random() * 4,
-                    life: 0.8,
-                    color: Math.random() > 0.5 ? '#00ff00' : '#ffff00'
-                });
-            }
-            if (projectile.particles.length > 25) projectile.particles.shift();
+            // Simple radioactive glow (pulsing)
+            const pulse = Math.sin(Date.now() / 50) * 0.3 + 0.7;
+            const glowSize = 25 * pulse;
 
-            // Draw radioactive sparks
-            for (const p of projectile.particles) {
-                p.x += p.vx * 0.016;
-                p.y += p.vy * 0.016;
-                p.life -= 0.04;
-                if (p.life > 0) {
-                    this.ctx.fillStyle = p.color;
-                    this.ctx.globalAlpha = p.life;
-                    this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-                    this.ctx.fill();
-                }
-            }
-            this.ctx.globalAlpha = 1;
-
-            // Big radiation glow (pulsing)
-            const pulse = Math.sin(Date.now() / 40) * 0.4 + 0.8;
-            const glowSize = 35 * pulse;
-            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, glowSize);
-            glowGradient.addColorStop(0, 'rgba(200, 255, 100, 0.9)');
-            glowGradient.addColorStop(0.3, 'rgba(255, 255, 0, 0.6)');
-            glowGradient.addColorStop(0.6, 'rgba(255, 150, 0, 0.3)');
-            glowGradient.addColorStop(1, 'rgba(255, 80, 0, 0)');
-            this.ctx.fillStyle = glowGradient;
+            // Outer glow (yellow/green)
+            this.ctx.fillStyle = `rgba(200, 255, 50, ${0.4 * pulse})`;
             this.ctx.beginPath();
             this.ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Inner glow
+            this.ctx.fillStyle = `rgba(255, 255, 100, ${0.6 * pulse})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, glowSize * 0.5, 0, Math.PI * 2);
             this.ctx.fill();
 
             // ICBM body
@@ -1676,73 +1690,64 @@ export class Renderer {
             this.ctx.translate(x, y);
             this.ctx.rotate(angle);
 
-            // Large missile body with metallic look
-            const bodyLength = 30;
-            const bodyWidth = 8;
+            const bodyLength = 28;
+            const bodyWidth = 7;
 
-            // Body gradient
-            const bodyGradient = this.ctx.createLinearGradient(0, -bodyWidth, 0, bodyWidth);
-            bodyGradient.addColorStop(0, '#555555');
-            bodyGradient.addColorStop(0.3, '#888888');
-            bodyGradient.addColorStop(0.5, '#aaaaaa');
-            bodyGradient.addColorStop(0.7, '#888888');
-            bodyGradient.addColorStop(1, '#555555');
-            this.ctx.fillStyle = bodyGradient;
+            // Body - simple metallic
+            this.ctx.fillStyle = '#777777';
             this.ctx.fillRect(-bodyLength, -bodyWidth/2, bodyLength, bodyWidth);
 
-            // Warhead cone (yellow/black radiation)
-            const whGradient = this.ctx.createLinearGradient(-5, 0, 10, 0);
-            whGradient.addColorStop(0, '#ffff00');
-            whGradient.addColorStop(0.5, '#ffcc00');
-            whGradient.addColorStop(1, '#ff9900');
-            this.ctx.fillStyle = whGradient;
+            // Highlight
+            this.ctx.fillStyle = '#aaaaaa';
+            this.ctx.fillRect(-bodyLength, -bodyWidth/4, bodyLength, bodyWidth/2);
+
+            // Warhead cone (yellow radiation)
+            this.ctx.fillStyle = '#ffcc00';
             this.ctx.beginPath();
-            this.ctx.moveTo(12, 0);
-            this.ctx.lineTo(-5, -bodyWidth - 2);
-            this.ctx.lineTo(-5, bodyWidth + 2);
+            this.ctx.moveTo(10, 0);
+            this.ctx.lineTo(-4, -bodyWidth - 1);
+            this.ctx.lineTo(-4, bodyWidth + 1);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // Radiation symbol on warhead
+            // Radiation hazard stripes
             this.ctx.fillStyle = '#000000';
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
-            this.ctx.fill();
-            for (let i = 0; i < 3; i++) {
-                const sAngle = (i / 3) * Math.PI * 2;
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, 0);
-                this.ctx.arc(0, 0, 6, sAngle - 0.3, sAngle + 0.3);
-                this.ctx.closePath();
-                this.ctx.fill();
-            }
+            this.ctx.fillRect(-2, -bodyWidth/2 - 1, 2, bodyWidth + 2);
+            this.ctx.fillRect(-6, -bodyWidth/2 - 1, 2, bodyWidth + 2);
 
             // Fins
-            this.ctx.fillStyle = '#444444';
-            this.ctx.fillRect(-bodyLength + 3, -bodyWidth - 5, 6, 5);
-            this.ctx.fillRect(-bodyLength + 3, bodyWidth, 6, 5);
-            this.ctx.fillRect(-bodyLength + 3, -3, 6, 6); // Center fin
+            this.ctx.fillStyle = '#555555';
+            this.ctx.fillRect(-bodyLength + 2, -bodyWidth - 4, 5, 4);
+            this.ctx.fillRect(-bodyLength + 2, bodyWidth, 5, 4);
 
             // Massive exhaust flame
-            const flameLength = 25 + Math.random() * 15;
-            const flameGradient = this.ctx.createLinearGradient(-bodyLength, 0, -bodyLength - flameLength, 0);
-            flameGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-            flameGradient.addColorStop(0.2, 'rgba(255, 255, 100, 0.95)');
-            flameGradient.addColorStop(0.4, 'rgba(255, 150, 50, 0.8)');
-            flameGradient.addColorStop(0.7, 'rgba(255, 80, 0, 0.5)');
-            flameGradient.addColorStop(1, 'rgba(200, 50, 0, 0)');
-            this.ctx.fillStyle = flameGradient;
+            const flameLength = 20 + Math.random() * 12;
+
+            // Outer flame (orange)
+            this.ctx.fillStyle = '#ff6600';
             this.ctx.beginPath();
-            this.ctx.moveTo(-bodyLength, -bodyWidth/2 + 1);
-            this.ctx.quadraticCurveTo(-bodyLength - flameLength * 0.7, 0, -bodyLength - flameLength, 0);
-            this.ctx.quadraticCurveTo(-bodyLength - flameLength * 0.7, 0, -bodyLength, bodyWidth/2 - 1);
+            this.ctx.moveTo(-bodyLength, -4);
+            this.ctx.lineTo(-bodyLength - flameLength, 0);
+            this.ctx.lineTo(-bodyLength, 4);
             this.ctx.closePath();
             this.ctx.fill();
 
-            // White hot core
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            // Middle flame (yellow)
+            this.ctx.fillStyle = '#ffcc00';
             this.ctx.beginPath();
-            this.ctx.ellipse(-bodyLength - 5, 0, flameLength * 0.15, 3, 0, 0, Math.PI * 2);
+            this.ctx.moveTo(-bodyLength, -2);
+            this.ctx.lineTo(-bodyLength - flameLength * 0.6, 0);
+            this.ctx.lineTo(-bodyLength, 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Core (white)
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.moveTo(-bodyLength, -1);
+            this.ctx.lineTo(-bodyLength - flameLength * 0.3, 0);
+            this.ctx.lineTo(-bodyLength, 1);
+            this.ctx.closePath();
             this.ctx.fill();
 
             this.ctx.restore();
@@ -1935,16 +1940,78 @@ export class Renderer {
             this.ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
             this.ctx.stroke();
         } else if (type === 'sniper') {
-            // Sniper bullet (faster, longer trail)
-            this.ctx.fillStyle = projColor;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 4, 0, Math.PI * 2);
-            this.ctx.fill();
-        } else {
-            // Default bullet
-            this.ctx.fillStyle = projColor;
+            // Sniper tracer - long elegant line
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            if (speed > 0) {
+                const trailLen = 20;
+
+                // Outer glow
+                this.ctx.strokeStyle = `rgba(255, 0, 255, 0.3)`;
+                this.ctx.lineWidth = 6;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Main tracer
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Bright tip
+            this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
             this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else if (type === 'pellet') {
+            // Shotgun pellet - small fast tracer
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            if (speed > 0) {
+                const trailLen = 6;
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else {
+            // Default bullet with small trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            if (speed > 0) {
+                const trailLen = 5;
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
