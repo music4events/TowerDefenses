@@ -1667,6 +1667,7 @@ class GameState {
         // Apply damage boost from nearby boosters
         const damageMult = 1 + (turret.damageBoostAmount || 0);
         const damage = (turret.config.damage || 10) * damageMult;
+        const range = (turret.config.range || 5) * this.cellSize;
 
         // Shotgun - multiple pellets with blast effect
         if (turret.config.pelletCount) {
