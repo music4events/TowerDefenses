@@ -274,6 +274,10 @@ export class Network {
             if (state.totalScore !== undefined) {
                 this.game.totalScore = state.totalScore;
             }
+            // Sync endless difficulty from server
+            if (state.endlessDifficulty !== undefined && this.game.waveManager) {
+                this.game.waveManager.endlessDifficulty = state.endlessDifficulty;
+            }
 
             // Sync grid if provided
             if (state.grid && this.game.grid) {

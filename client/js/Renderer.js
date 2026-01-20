@@ -1267,7 +1267,7 @@ export class Renderer {
         const projColor = projectile.color || config?.projectileColor || '#ffff00';
 
         // Beam types need valid startX/startY - skip if invalid
-        const beamTypes = ['laser', 'tesla', 'railgun', 'cryo-beam', 'particle-beam', 'ion-cannon', 'laser-array'];
+        const beamTypes = ['laser', 'tesla', 'railgun', 'cryo-beam', 'particle-beam', 'ion-cannon', 'laser-array', 'deathray', 'lightning'];
         if (beamTypes.includes(type)) {
             if (!isFinite(projectile.startX) || !isFinite(projectile.startY)) {
                 return;
@@ -1615,43 +1615,27 @@ export class Renderer {
             this.ctx.arc(projectile.startX, projectile.startY, 8 * pulse, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'flak') {
-            // NEON FLAK tracer - fast anti-air projectile with glowing trail
+            // OPTIMIZED FLAK tracer - simple fast rendering
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
-            const trailLength = 18;
+            const trailLength = 14;
 
-            let trailX = x;
-            let trailY = y;
             if (speed > 0) {
-                trailX = x - (dx / speed) * trailLength;
-                trailY = y - (dy / speed) * trailLength;
+                const trailX = x - (dx / speed) * trailLength;
+                const trailY = y - (dy / speed) * trailLength;
+
+                // Single glowing tracer line
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 3;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
             }
 
-            // Outer neon glow trail
-            this.ctx.strokeStyle = 'rgba(0, 221, 255, 0.2)';
-            this.ctx.lineWidth = 8;
-            this.ctx.lineCap = 'round';
-            this.ctx.beginPath();
-            this.ctx.moveTo(trailX, trailY);
-            this.ctx.lineTo(x, y);
-            this.ctx.stroke();
-
-            // Mid glow
-            this.ctx.strokeStyle = 'rgba(0, 221, 255, 0.5)';
-            this.ctx.lineWidth = 4;
-            this.ctx.stroke();
-
-            // Core tracer
-            this.ctx.strokeStyle = projColor;
-            this.ctx.lineWidth = 2;
-            this.ctx.stroke();
-
-            // Bright neon tip with glow
-            this.ctx.fillStyle = 'rgba(0, 221, 255, 0.4)';
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 6, 0, Math.PI * 2);
-            this.ctx.fill();
+            // Simple bright tip
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
@@ -2340,6 +2324,10 @@ export class Renderer {
             this.ctx.fill();
         } else if (type === 'nuclear') {
             // OPTIMIZED Nuclear ICBM - impressive but performant
+            // Skip if position is invalid (at origin or NaN)
+            if (!isFinite(x) || !isFinite(y) || (x === 0 && y === 0)) {
+                return;
+            }
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const angle = Math.atan2(dy, dx);
@@ -3460,6 +3448,15 @@ export class Renderer {
             const exp = this.explosions[i];
             exp.time += deltaTime;
 
+            // Skip rendering if particle limit reached (but still update time/cleanup)
+            if (!this.shouldRenderParticle()) {
+                // Still clean up expired explosions
+                if (exp.time > 2.0) {
+                    this.explosions.splice(i, 1);
+                }
+                continue;
+            }
+
             if (exp.isShockwave) {
                 // Shockwave: electric ring expanding outward
                 const duration = 0.4;
@@ -3818,15 +3815,22 @@ export class Renderer {
                     };
                 }
 
-                // Initial flash
+                // Initial flash - circular glow instead of rectangle
                 if (exp.flashAlpha > 0) {
-                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.flashAlpha * 0.8})`;
-                    this.ctx.fillRect(
-                        exp.x - this.grid.cellSize * 10,
-                        exp.y - this.grid.cellSize * 10,
-                        this.grid.cellSize * 20,
-                        this.grid.cellSize * 20
+                    this.ctx.globalAlpha = exp.flashAlpha * 0.8;
+                    const flashRadius = this.grid.cellSize * 8;
+                    const flashGradient = this.ctx.createRadialGradient(
+                        exp.x, exp.y, 0,
+                        exp.x, exp.y, flashRadius
                     );
+                    flashGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                    flashGradient.addColorStop(0.5, 'rgba(255, 255, 200, 0.5)');
+                    flashGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
+                    this.ctx.fillStyle = flashGradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, flashRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.globalAlpha = 1;
                     exp.flashAlpha -= deltaTime * 3;
                 }
 

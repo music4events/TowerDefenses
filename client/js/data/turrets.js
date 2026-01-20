@@ -353,20 +353,20 @@ export const TURRET_TYPES = {
     'turret-flak': {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
-        damage: 8,
+        damage: 15,               // Degats augmentes (moins de projectiles)
         range: 18,                // +4 portée!
-        fireRate: 0.08,           // Tir ULTRA rapide!
+        fireRate: 0.15,           // Cadence reduite pour perf
         color: '#2a5caa',
         cost: { iron: 800, copper: 300, gold: 100 },
-        projectileSpeed: 40,      // Plus rapide!
+        projectileSpeed: 50,      // Plus rapide!
         projectileColor: '#00ddff',
 
         isAntiAir: true,
-        flakCount: 20,            // 20 projectiles par salve!
-        flakSpread: 5,            // Grande dispersion
+        flakCount: 6,             // Reduit pour perf (6 au lieu de 20)
+        flakSpread: 8,            // Zone x6 plus grande!
         barrelCount: 2,
         flakExplosion: true,      // Explosions à l'impact!
-        flakExplosionRadius: 1.0, // AOE explosions plus grandes
+        flakExplosionRadius: 3.0, // AOE x3 plus grande!
 
         size: 2.8,
         health: 400,

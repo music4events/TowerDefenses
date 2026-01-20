@@ -293,18 +293,18 @@ const TURRET_TYPES = {
     'turret-flak': {
         name: 'FLAK Anti-Aerien',
         gridSize: 3,
-        damage: 8,
+        damage: 15,              // Degats augmentes (moins de projectiles)
         range: 18,               // +4 range
-        fireRate: 0.08,
+        fireRate: 0.15,          // Cadence reduite pour perf
         cost: { iron: 800, copper: 300, gold: 100 },
-        projectileSpeed: 40,
+        projectileSpeed: 50,
         projectileColor: '#00ddff',
         isAntiAir: true,
-        flakCount: 20,
-        flakSpread: 5,
+        flakCount: 6,            // Reduit pour perf (6 au lieu de 20)
+        flakSpread: 8,           // Zone x6 plus grande!
         barrelCount: 2,
         flakExplosion: true,
-        flakExplosionRadius: 1.0,
+        flakExplosionRadius: 3.0, // AOE x3 plus grande!
         health: 400,
         maxHealth: 400
     },
@@ -3337,6 +3337,7 @@ class GameState {
             waveActive: this.waveActive,
             totalKills: this.totalKills,
             totalScore: this.totalScore,
+            endlessDifficulty: this.endlessDifficulty || 1,
             enemies: validEnemies.map(e => ({
                 id: e.id,
                 type: e.type,
