@@ -260,15 +260,15 @@ class App {
             });
         }
 
-        // Particle/effects quality slider
+        // Particle limit slider (50-10000)
         const particleSlider = document.getElementById('particle-slider');
         const particleValue = document.getElementById('particle-value');
         if (particleSlider) {
             particleSlider.addEventListener('input', () => {
                 const value = parseInt(particleSlider.value);
-                particleValue.textContent = value + '%';
+                particleValue.textContent = value.toLocaleString();
                 if (this.game && this.game.renderer) {
-                    this.game.renderer.setEffectQuality(value / 100);
+                    this.game.renderer.setMaxParticles(value);
                 }
             });
         }
