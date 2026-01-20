@@ -260,13 +260,13 @@ class App {
             });
         }
 
-        // Particle limit slider (50-10000)
+        // Animation limit slider (50-10000)
         const particleSlider = document.getElementById('particle-slider');
         const particleValue = document.getElementById('particle-value');
         if (particleSlider) {
             particleSlider.addEventListener('input', () => {
                 const value = parseInt(particleSlider.value);
-                particleValue.textContent = value.toLocaleString();
+                particleValue.textContent = value.toLocaleString() + ' anim.';
                 if (this.game && this.game.renderer) {
                     this.game.renderer.setMaxParticles(value);
                 }

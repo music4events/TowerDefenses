@@ -435,11 +435,11 @@ body {
 }
 
 #particle-value {
-    min-width: 45px;
+    min-width: 70px;
     text-align: right;
     color: #e94560;
     font-weight: bold;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 /* Action modes (Sell/Upgrade) */
