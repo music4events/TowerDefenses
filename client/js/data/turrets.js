@@ -44,14 +44,14 @@ export const TURRET_TYPES = {
         name: 'Lance-flammes',
         damage: 15,
         range: 4,                 // Portée augmentée
-        fireRate: 0.04,           // Plus rapide
+        fireRate: 0.03,           // Plus rapide encore
         color: '#e74c3c',
         cost: { iron: 150, coal: 30 },
         continuous: true,
-        projectileSpeed: 7,       // Flammes plus rapides
-        flameCount: 6,            // Plus de particules
-        flameLife: 0.9,           // Durée plus longue
-        flameSpread: 0.35,
+        projectileSpeed: 5,       // Plus lent pour couvrir la zone
+        flameCount: 8,            // Plus de particules
+        flameLife: 1.2,           // Durée plus longue pour couvrir toute la portée
+        flameSpread: 0.5,         // Plus de dispersion
         dotDamage: 5,
         dotDuration: 2,
         size: 0.8,
@@ -362,11 +362,11 @@ export const TURRET_TYPES = {
         projectileColor: '#00ddff',
 
         isAntiAir: true,
-        flakCount: 16,            // 16 projectiles par salve!
-        flakSpread: 3,            // Plus de dispersion
+        flakCount: 20,            // 20 projectiles par salve!
+        flakSpread: 5,            // Grande dispersion
         barrelCount: 2,
         flakExplosion: true,      // Explosions à l'impact!
-        flakExplosionRadius: 0.8, // AOE explosions
+        flakExplosionRadius: 1.0, // AOE explosions plus grandes
 
         size: 2.8,
         health: 400,

@@ -537,11 +537,7 @@ export class Renderer {
             this.ctx.strokeRect(x - totalSize / 2 - 2, y - totalSize / 2 - 2, totalSize + 4, totalSize + 4);
         }
 
-        // Base platform (semi-transparent to show zones underneath)
-        this.ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
-        this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
-
-        // Main body
+        // Main body (circular, no square base to avoid covering zones)
         this.ctx.fillStyle = turretColor;
         this.ctx.beginPath();
         this.ctx.arc(x, y, totalSize / 2 - 4, 0, Math.PI * 2);
@@ -731,11 +727,7 @@ export class Renderer {
             );
         }
 
-        // Base platform (semi-transparent to show zones underneath)
-        this.ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
-        this.ctx.fillRect(x - totalSize / 2, y - totalSize / 2, totalSize, totalSize);
-
-        // Main body (octagonal or circular)
+        // Main body (circular, no square base to avoid covering zones)
         this.ctx.fillStyle = turretColor;
         this.ctx.beginPath();
         this.ctx.arc(x, y, totalSize / 2 - 5, 0, Math.PI * 2);
@@ -1283,47 +1275,92 @@ export class Renderer {
         }
 
         if (type === 'bullet') {
-            // Enhanced bullet with trail
+            // NEON bullet with glowing trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
+            const trailLen = 12;
 
-            // Tracer trail
             if (speed > 0) {
-                const trailLen = 8;
-                this.ctx.strokeStyle = projColor;
-                this.ctx.lineWidth = 2;
+                const trailX = x - (dx / speed) * trailLen;
+                const trailY = y - (dy / speed) * trailLen;
+
+                // Outer neon glow
+                this.ctx.strokeStyle = projColor + '40'; // 25% alpha
+                this.ctx.lineWidth = 6;
                 this.ctx.lineCap = 'round';
                 this.ctx.beginPath();
-                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
+                this.ctx.moveTo(trailX, trailY);
                 this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Mid glow
+                this.ctx.strokeStyle = projColor + '80'; // 50% alpha
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                // Core trail
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
                 this.ctx.stroke();
             }
 
-            // Bright tip
+            // Bright neon tip with glow
+            this.ctx.fillStyle = projColor + '60';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'artillery') {
-            // Artillery shell with arc trail
+            // NEON Artillery shell with fire trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
 
-            // Smoke puff trail
             if (speed > 0) {
-                const trailLen = 10;
-                this.ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
-                for (let i = 0; i < 3; i++) {
-                    const t = (i + 1) / 4;
-                    const px = x - (dx / speed) * trailLen * t + (Math.random() - 0.5) * 4;
-                    const py = y - (dy / speed) * trailLen * t + (Math.random() - 0.5) * 4;
+                const trailLen = 16;
+                const trailX = x - (dx / speed) * trailLen;
+                const trailY = y - (dy / speed) * trailLen;
+
+                // Fire trail glow
+                this.ctx.strokeStyle = 'rgba(255, 100, 0, 0.3)';
+                this.ctx.lineWidth = 10;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Inner fire trail
+                this.ctx.strokeStyle = 'rgba(255, 150, 50, 0.6)';
+                this.ctx.lineWidth = 6;
+                this.ctx.stroke();
+
+                // Core
+                this.ctx.strokeStyle = 'rgba(255, 200, 100, 0.8)';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                // Smoke puffs
+                for (let i = 0; i < 4; i++) {
+                    const t = (i + 1) / 5;
+                    const px = x - (dx / speed) * trailLen * t + (Math.random() - 0.5) * 6;
+                    const py = y - (dy / speed) * trailLen * t + (Math.random() - 0.5) * 6;
+                    this.ctx.fillStyle = `rgba(80, 80, 80, ${0.4 - i * 0.08})`;
                     this.ctx.beginPath();
-                    this.ctx.arc(px, py, 3 - i, 0, Math.PI * 2);
+                    this.ctx.arc(px, py, 4 - i * 0.7, 0, Math.PI * 2);
                     this.ctx.fill();
                 }
             }
+
+            // Shell glow
+            this.ctx.fillStyle = projColor + '50';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 9, 0, Math.PI * 2);
+            this.ctx.fill();
 
             // Shell body
             this.ctx.fillStyle = projColor;
@@ -1334,97 +1371,256 @@ export class Renderer {
             // Highlight
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
-            this.ctx.arc(x - 1, y - 1, 2, 0, Math.PI * 2);
+            this.ctx.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'laser') {
-            // Laser beam is drawn as a line
-            this.ctx.strokeStyle = '#2ecc71';
-            this.ctx.lineWidth = 3;
+            // NEON laser beam with pulsing glow - using synced color
+            const beamColor = projectile.color || config?.beamColor || '#2ecc71';
+            const time = Date.now() / 100;
+            const pulse = 0.7 + Math.sin(time) * 0.3;
+
+            // Extract RGB for glow
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 46, g: 204, b: 113 };
+            };
+            const rgb = hexToRgb(beamColor);
+
+            // Outer glow (widest)
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+            this.ctx.lineWidth = 14 * pulse;
+            this.ctx.lineCap = 'round';
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
+
+            // Mid glow
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+            this.ctx.lineWidth = 7 * pulse;
+            this.ctx.stroke();
+
+            // Core beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = 3;
+            this.ctx.stroke();
+
+            // White hot center
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
+
+            // Impact glow at target
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 10 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Muzzle glow at source
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+            this.ctx.beginPath();
+            this.ctx.arc(projectile.startX, projectile.startY, 6 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'tesla') {
-            // Electric arc
-            this.drawLightning(projectile.startX, projectile.startY, x, y, '#00d4ff');
+            // Electric arc with synced color
+            const teslaColor = projectile.color || config?.beamColor || '#00d4ff';
+            this.drawLightning(projectile.startX, projectile.startY, x, y, teslaColor);
         } else if (type === 'flame') {
-            // Epic flame particle with gradient and glow
+            // EPIC NEON flame particle with gradient, glow and motion blur
             const lifeRatio = Math.max(0, Math.min(1, projectile.life || 0));
-            const size = (projectile.size || 10) * (0.3 + lifeRatio * 0.7);
+            const baseSize = projectile.startSize || projectile.size || 15;
+            // Flames grow then shrink
+            const growthFactor = lifeRatio > 0.7 ? (1 - lifeRatio) * 3 + 0.1 : 1;
+            const size = baseSize * growthFactor * (0.5 + lifeRatio * 0.5);
 
             // Skip if size is invalid
             if (!isFinite(size) || size <= 0) return;
 
-            // Color transitions from white/yellow -> orange -> red as it fades
+            // Color transitions: white/yellow -> bright orange -> deep red/ember
+            const intensity = lifeRatio * lifeRatio;
             const r = 255;
-            const g = Math.floor(255 * lifeRatio * lifeRatio);  // Yellow fades faster
-            const b = Math.floor(100 * lifeRatio * lifeRatio * lifeRatio);
+            const g = Math.floor(255 * intensity);
+            const b = Math.floor(50 * intensity * intensity);
 
-            // Outer glow
-            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
-            glowGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lifeRatio * 0.8})`);
-            glowGradient.addColorStop(0.5, `rgba(255, ${Math.floor(g * 0.6)}, 0, ${lifeRatio * 0.4})`);
-            glowGradient.addColorStop(1, `rgba(255, 50, 0, 0)`);
-            this.ctx.fillStyle = glowGradient;
+            // Motion trail (draw flame stretched in direction of movement)
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+            if (speed > 0) {
+                const trailLen = size * 1.5;
+                const trailX = x - (dx / speed) * trailLen;
+                const trailY = y - (dy / speed) * trailLen;
+
+                // Trail glow
+                this.ctx.strokeStyle = `rgba(255, ${Math.floor(g * 0.7)}, 0, ${lifeRatio * 0.3})`;
+                this.ctx.lineWidth = size * 1.2;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+            }
+
+            // Outer glow (wide neon effect)
+            this.ctx.fillStyle = `rgba(255, ${Math.floor(g * 0.5)}, 0, ${lifeRatio * 0.15})`;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 2.5, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Core flame
+            // Mid glow
+            const glowGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.8);
+            glowGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${lifeRatio * 0.9})`);
+            glowGradient.addColorStop(0.4, `rgba(255, ${Math.floor(g * 0.6)}, 30, ${lifeRatio * 0.6})`);
+            glowGradient.addColorStop(0.7, `rgba(255, 80, 0, ${lifeRatio * 0.3})`);
+            glowGradient.addColorStop(1, `rgba(200, 30, 0, 0)`);
+            this.ctx.fillStyle = glowGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size * 1.8, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Core flame (brightest center)
             const coreGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size);
-            coreGradient.addColorStop(0, `rgba(255, 255, 200, ${lifeRatio})`);
-            coreGradient.addColorStop(0.3, `rgba(255, ${g}, 50, ${lifeRatio * 0.9})`);
-            coreGradient.addColorStop(1, `rgba(255, 100, 0, ${lifeRatio * 0.5})`);
+            coreGradient.addColorStop(0, `rgba(255, 255, 230, ${lifeRatio})`);
+            coreGradient.addColorStop(0.2, `rgba(255, 255, 150, ${lifeRatio * 0.95})`);
+            coreGradient.addColorStop(0.5, `rgba(255, ${g}, 50, ${lifeRatio * 0.85})`);
+            coreGradient.addColorStop(1, `rgba(255, 100, 0, ${lifeRatio * 0.4})`);
             this.ctx.fillStyle = coreGradient;
             this.ctx.beginPath();
             this.ctx.arc(x, y, size, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Sparks
-            if (Math.random() > 0.7) {
-                this.ctx.fillStyle = `rgba(255, 255, 100, ${lifeRatio})`;
-                const sparkX = x + (Math.random() - 0.5) * size * 2;
-                const sparkY = y + (Math.random() - 0.5) * size * 2;
+            // White hot center
+            if (lifeRatio > 0.5) {
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${(lifeRatio - 0.5) * 1.5})`;
                 this.ctx.beginPath();
-                this.ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+                this.ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
                 this.ctx.fill();
             }
+
+            // Embers/sparks
+            if (Math.random() > 0.6) {
+                const sparkCount = 2;
+                for (let s = 0; s < sparkCount; s++) {
+                    const sparkDist = size * (1 + Math.random());
+                    const sparkAngle = Math.random() * Math.PI * 2;
+                    const sparkX = x + Math.cos(sparkAngle) * sparkDist;
+                    const sparkY = y + Math.sin(sparkAngle) * sparkDist;
+                    const sparkSize = 1.5 + Math.random() * 2;
+
+                    this.ctx.fillStyle = `rgba(255, ${180 + Math.floor(Math.random() * 75)}, 50, ${lifeRatio * 0.9})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
         } else if (type === 'pellet') {
-            // Small shotgun pellet
-            this.ctx.fillStyle = projColor;
+            // NEON shotgun pellet with glowing trail
+            const dx = projectile.vx || 0;
+            const dy = projectile.vy || 0;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+            const trailLen = 8;
+
+            if (speed > 0) {
+                const trailX = x - (dx / speed) * trailLen;
+                const trailY = y - (dy / speed) * trailLen;
+
+                // Outer neon glow trail
+                this.ctx.strokeStyle = projColor + '30';
+                this.ctx.lineWidth = 5;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Mid glow
+                this.ctx.strokeStyle = projColor + '70';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                // Core tracer
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 1.5;
+                this.ctx.stroke();
+            }
+
+            // Bright neon tip
+            this.ctx.fillStyle = projColor + '60';
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 1.5, 0, Math.PI * 2);
             this.ctx.fill();
         } else if (type === 'railgun') {
-            // Piercing beam
-            const beamColor = config?.beamColor || '#6495ed';
-            const beamWidth = config?.beamWidth || 4;
+            // NEON RAILGUN - Piercing beam with intense glow
+            const beamColor = projectile.color || config?.beamColor || '#6495ed';
+            const beamWidth = projectile.beamWidth || config?.beamWidth || 4;
+            const time = Date.now() / 80;
+            const pulse = 0.8 + Math.sin(time * 2) * 0.2;
 
-            // Main beam
-            this.ctx.strokeStyle = beamColor;
-            this.ctx.lineWidth = beamWidth;
+            // Extract RGB for glow
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 100, g: 149, b: 237 };
+            };
+            const rgb = hexToRgb(beamColor);
+
+            // Outer neon glow (widest)
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+            this.ctx.lineWidth = beamWidth * 6 * pulse;
+            this.ctx.lineCap = 'round';
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Glow effect
-            this.ctx.strokeStyle = 'rgba(100, 149, 237, 0.4)';
-            this.ctx.lineWidth = beamWidth * 2;
+            // Mid glow
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+            this.ctx.lineWidth = beamWidth * 3 * pulse;
             this.ctx.stroke();
 
-            // Inner bright core
-            this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = 1;
+            // Main beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = beamWidth;
             this.ctx.stroke();
+
+            // White hot core
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.lineWidth = beamWidth / 2;
+            this.ctx.stroke();
+
+            // Impact flash at target
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 12 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Muzzle flash at source
+            this.ctx.fillStyle = `rgba(255, 255, 255, 0.7)`;
+            this.ctx.beginPath();
+            this.ctx.arc(projectile.startX, projectile.startY, 8 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'flak') {
-            // FLAK tracer - small fast projectile with trail
+            // NEON FLAK tracer - fast anti-air projectile with glowing trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
+            const trailLength = 18;
 
-            // Calculate trail direction (opposite of movement)
-            const trailLength = 12;
             let trailX = x;
             let trailY = y;
             if (speed > 0) {
@@ -1432,15 +1628,30 @@ export class Renderer {
                 trailY = y - (dy / speed) * trailLength;
             }
 
-            // Draw tracer line
-            this.ctx.strokeStyle = projColor;
-            this.ctx.lineWidth = 2;
+            // Outer neon glow trail
+            this.ctx.strokeStyle = 'rgba(0, 221, 255, 0.2)';
+            this.ctx.lineWidth = 8;
+            this.ctx.lineCap = 'round';
             this.ctx.beginPath();
             this.ctx.moveTo(trailX, trailY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Bright tip
+            // Mid glow
+            this.ctx.strokeStyle = 'rgba(0, 221, 255, 0.5)';
+            this.ctx.lineWidth = 4;
+            this.ctx.stroke();
+
+            // Core tracer
+            this.ctx.strokeStyle = projColor;
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+
+            // Bright neon tip with glow
+            this.ctx.fillStyle = 'rgba(0, 221, 255, 0.4)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+            this.ctx.fill();
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
             this.ctx.arc(x, y, 2, 0, Math.PI * 2);
@@ -1543,104 +1754,244 @@ export class Renderer {
 
             this.ctx.restore();
         } else if (type === 'plasma') {
-            // Plasma ball with pulsing glow
-            const pulse = Math.sin(Date.now() / 50 + (projectile.pulsePhase || 0)) * 0.3 + 0.7;
+            // NEON Plasma ball with pulsing electric glow
+            const plasmaColor = projectile.color || config?.projectileColor || '#da70d6';
+            const time = Date.now() / 50;
+            const pulse = Math.sin(time + (projectile.pulsePhase || 0)) * 0.3 + 0.7;
             const size = (projectile.plasmaSize || 15) * pulse;
 
             // Skip if size is invalid
             if (!isFinite(size) || size <= 0) return;
 
-            // Outer glow
-            const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
-            gradient.addColorStop(0, 'rgba(218, 112, 214, 0.8)');
-            gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.4)');
-            gradient.addColorStop(1, 'rgba(148, 0, 211, 0)');
+            // Extract RGB for gradient
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 218, g: 112, b: 214 };
+            };
+            const rgb = hexToRgb(plasmaColor);
+
+            // Outer neon glow (largest)
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size * 2.5, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Mid glow
+            const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 1.8);
+            gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`);
+            gradient.addColorStop(0.4, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`);
+            gradient.addColorStop(0.7, `rgba(${Math.floor(rgb.r * 0.7)}, ${Math.floor(rgb.g * 0.3)}, ${Math.floor(rgb.b * 0.8)}, 0.3)`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 1.8, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Core
-            this.ctx.fillStyle = '#ffffff';
+            // Core plasma with inner gradient
+            const coreGradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 0.6);
+            coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            coreGradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`);
+            coreGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`);
+            this.ctx.fillStyle = coreGradient;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Trail
-            if (projectile.trail) {
-                projectile.trail.push({ x, y, life: 1 });
-                if (projectile.trail.length > 10) projectile.trail.shift();
+            // Electric arcs around plasma
+            const arcCount = 4;
+            for (let i = 0; i < arcCount; i++) {
+                const arcAngle = (i / arcCount) * Math.PI * 2 + time * 0.1;
+                const arcLen = size * (0.8 + Math.random() * 0.4);
+                const arcEndX = x + Math.cos(arcAngle) * arcLen;
+                const arcEndY = y + Math.sin(arcAngle) * arcLen;
+
+                this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.7)`;
+                this.ctx.lineWidth = 1.5;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                // Jagged path
+                const midX = x + Math.cos(arcAngle) * arcLen * 0.5 + (Math.random() - 0.5) * 8;
+                const midY = y + Math.sin(arcAngle) * arcLen * 0.5 + (Math.random() - 0.5) * 8;
+                this.ctx.lineTo(midX, midY);
+                this.ctx.lineTo(arcEndX, arcEndY);
+                this.ctx.stroke();
             }
         } else if (type === 'cryo-beam') {
-            // Cryo beam with ice particles
-            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
-            this.ctx.lineWidth = 6;
+            // NEON Cryo beam with ice particles and freezing effect
+            const beamColor = projectile.color || config?.beamColor || '#00ffff';
+            const time = Date.now() / 120;
+            const pulse = 0.8 + Math.sin(time * 1.5) * 0.2;
+
+            // Outer freezing glow (widest)
+            this.ctx.strokeStyle = 'rgba(0, 200, 255, 0.12)';
+            this.ctx.lineWidth = 18 * pulse;
+            this.ctx.lineCap = 'round';
             this.ctx.beginPath();
             this.ctx.moveTo(projectile.startX, projectile.startY);
             this.ctx.lineTo(x, y);
             this.ctx.stroke();
 
-            // Inner beam
-            this.ctx.strokeStyle = 'rgba(170, 255, 255, 0.9)';
+            // Mid glow
+            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.35)';
+            this.ctx.lineWidth = 10 * pulse;
+            this.ctx.stroke();
+
+            // Core beam
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = 4;
+            this.ctx.stroke();
+
+            // White ice core
+            this.ctx.strokeStyle = 'rgba(200, 255, 255, 0.9)';
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
 
-            // Ice particles along beam
+            // Ice crystal particles along beam
             const dx = x - projectile.startX;
             const dy = y - projectile.startY;
-            for (let i = 0; i < 8; i++) {
+            const beamLen = Math.sqrt(dx * dx + dy * dy);
+            const particleCount = Math.min(12, Math.floor(beamLen / 20));
+
+            for (let i = 0; i < particleCount; i++) {
                 const t = Math.random();
-                const px = projectile.startX + dx * t + (Math.random() - 0.5) * 10;
-                const py = projectile.startY + dy * t + (Math.random() - 0.5) * 10;
-                this.ctx.fillStyle = 'rgba(200, 255, 255, 0.8)';
+                const offsetX = (Math.random() - 0.5) * 14;
+                const offsetY = (Math.random() - 0.5) * 14;
+                const px = projectile.startX + dx * t + offsetX;
+                const py = projectile.startY + dy * t + offsetY;
+                const crystalSize = 2 + Math.random() * 3;
+
+                // Crystal glow
+                this.ctx.fillStyle = 'rgba(150, 255, 255, 0.4)';
                 this.ctx.beginPath();
-                this.ctx.arc(px, py, 2 + Math.random() * 2, 0, Math.PI * 2);
+                this.ctx.arc(px, py, crystalSize * 2, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Crystal core
+                this.ctx.fillStyle = 'rgba(220, 255, 255, 0.9)';
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, crystalSize, 0, Math.PI * 2);
                 this.ctx.fill();
             }
+
+            // Freezing impact effect at target
+            this.ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 14 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = 'rgba(200, 255, 255, 0.7)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'gatling') {
-            // Fast tracer
+            // NEON fast tracer with glowing trail
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
-            const trailLength = 15;
+            const trailLength = 20;
 
-            this.ctx.strokeStyle = projColor;
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
             if (speed > 0) {
-                this.ctx.moveTo(x - (dx / speed) * trailLength, y - (dy / speed) * trailLength);
-            } else {
-                this.ctx.moveTo(x, y);
+                const trailX = x - (dx / speed) * trailLength;
+                const trailY = y - (dy / speed) * trailLength;
+
+                // Outer neon glow
+                this.ctx.strokeStyle = projColor + '30';
+                this.ctx.lineWidth = 8;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Mid glow
+                this.ctx.strokeStyle = projColor + '70';
+                this.ctx.lineWidth = 4;
+                this.ctx.stroke();
+
+                // Core tracer
+                this.ctx.strokeStyle = projColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
             }
-            this.ctx.lineTo(x, y);
-            this.ctx.stroke();
+
+            // Bright tip
+            this.ctx.fillStyle = projColor + '50';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'emp-wave') {
-            // EMP expanding wave
+            // NEON EMP expanding wave with electric effects
             const progress = 1 - projectile.life / 0.5;
             const radius = projectile.maxRadius * progress;
+            const time = Date.now() / 50;
+            const alpha = (1 - progress);
 
-            for (let w = 0; w < (projectile.waveCount || 3); w++) {
-                const waveRadius = radius - w * 15;
+            // Outer glow pulse
+            this.ctx.fillStyle = `rgba(100, 149, 237, ${alpha * 0.1})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Multiple wave rings with neon effect
+            for (let w = 0; w < 4; w++) {
+                const waveRadius = radius - w * 20;
                 if (waveRadius > 0) {
-                    this.ctx.strokeStyle = `rgba(100, 149, 237, ${(1 - progress) * 0.8})`;
-                    this.ctx.lineWidth = 4 - w;
+                    // Outer glow
+                    this.ctx.strokeStyle = `rgba(100, 149, 237, ${alpha * 0.2})`;
+                    this.ctx.lineWidth = 10 - w * 2;
                     this.ctx.beginPath();
                     this.ctx.arc(x, y, waveRadius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+
+                    // Core ring
+                    this.ctx.strokeStyle = `rgba(150, 200, 255, ${alpha * 0.8})`;
+                    this.ctx.lineWidth = 3 - w * 0.5;
+                    this.ctx.stroke();
+
+                    // White core
+                    this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+                    this.ctx.lineWidth = 1;
                     this.ctx.stroke();
                 }
             }
 
-            // Electric sparks
-            this.ctx.strokeStyle = '#ffffff';
-            this.ctx.lineWidth = 1;
-            for (let i = 0; i < 8; i++) {
-                const sparkAngle = (i / 8) * Math.PI * 2 + Date.now() / 100;
-                const sparkR = radius * 0.8;
+            // Electric arcs along the wave
+            const arcCount = 12;
+            for (let i = 0; i < arcCount; i++) {
+                const arcAngle = (i / arcCount) * Math.PI * 2 + time * 0.2;
+                const arcR = radius * 0.9;
+                const arcLen = 20 + Math.sin(time + i) * 10;
+
+                // Main arc
+                this.ctx.strokeStyle = `rgba(150, 200, 255, ${alpha * 0.8})`;
+                this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
-                this.ctx.moveTo(x + Math.cos(sparkAngle) * sparkR * 0.8, y + Math.sin(sparkAngle) * sparkR * 0.8);
-                this.ctx.lineTo(x + Math.cos(sparkAngle) * sparkR, y + Math.sin(sparkAngle) * sparkR);
+                this.ctx.moveTo(x + Math.cos(arcAngle) * (arcR - arcLen * 0.5), y + Math.sin(arcAngle) * (arcR - arcLen * 0.5));
+                // Jagged lightning
+                const midX = x + Math.cos(arcAngle) * arcR + (Math.random() - 0.5) * 8;
+                const midY = y + Math.sin(arcAngle) * arcR + (Math.random() - 0.5) * 8;
+                this.ctx.lineTo(midX, midY);
+                this.ctx.lineTo(x + Math.cos(arcAngle) * (arcR + arcLen * 0.5), y + Math.sin(arcAngle) * (arcR + arcLen * 0.5));
                 this.ctx.stroke();
             }
+
+            // Center pulse
+            const pulseSize = 15 + Math.sin(time * 3) * 5;
+            this.ctx.fillStyle = `rgba(100, 149, 237, ${alpha * 0.6})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'mega-tesla') {
             // EPIC Mega Tesla - Multiple chain lightning with electric field
             const time = Date.now() / 50;
@@ -1903,6 +2254,90 @@ export class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(x, y, 5, 0, Math.PI * 2);
             this.ctx.fill();
+        } else if (type === 'deathray') {
+            // DEATH RAY - Devastating wide beam of destruction
+            const beamColor = projectile.color || config?.beamColor || '#ff0000';
+            const beamWidth = projectile.beamWidth || config?.beamWidth || 8;
+            const time = Date.now() / 40;
+            const pulse = 0.8 + Math.sin(time * 3) * 0.2;
+
+            // Extract RGB for glow
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 255, g: 0, b: 0 };
+            };
+            const rgb = hexToRgb(beamColor);
+
+            // Outer destructive glow (widest, menacing)
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+            this.ctx.lineWidth = beamWidth * 10 * pulse;
+            this.ctx.lineCap = 'round';
+            this.ctx.beginPath();
+            this.ctx.moveTo(projectile.startX, projectile.startY);
+            this.ctx.lineTo(x, y);
+            this.ctx.stroke();
+
+            // Mid glow
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+            this.ctx.lineWidth = beamWidth * 5 * pulse;
+            this.ctx.stroke();
+
+            // Core beam
+            this.ctx.strokeStyle = `rgba(${rgb.r}, ${Math.floor(rgb.g * 0.5)}, ${Math.floor(rgb.b * 0.5)}, 0.8)`;
+            this.ctx.lineWidth = beamWidth * 2;
+            this.ctx.stroke();
+
+            // Intense core
+            this.ctx.strokeStyle = beamColor;
+            this.ctx.lineWidth = beamWidth;
+            this.ctx.stroke();
+
+            // White hot center
+            this.ctx.strokeStyle = 'rgba(255, 255, 200, 0.9)';
+            this.ctx.lineWidth = beamWidth / 2;
+            this.ctx.stroke();
+
+            // Crackling energy particles along beam
+            const dx = x - projectile.startX;
+            const dy = y - projectile.startY;
+            const beamLen = Math.sqrt(dx * dx + dy * dy);
+            for (let i = 0; i < 6; i++) {
+                const t = Math.random();
+                const offsetX = (Math.random() - 0.5) * beamWidth * 4;
+                const offsetY = (Math.random() - 0.5) * beamWidth * 4;
+                const px = projectile.startX + dx * t + offsetX;
+                const py = projectile.startY + dy * t + offsetY;
+
+                this.ctx.fillStyle = `rgba(255, ${150 + Math.floor(Math.random() * 100)}, 100, 0.8)`;
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, 2 + Math.random() * 3, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            // Devastating impact at target
+            const impactSize = beamWidth * 3 * pulse;
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, impactSize * 2, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = `rgba(255, 200, 100, 0.7)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, impactSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, impactSize / 2, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Muzzle flash at source
+            this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+            this.ctx.beginPath();
+            this.ctx.arc(projectile.startX, projectile.startY, beamWidth * 2 * pulse, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'nuclear') {
             // OPTIMIZED Nuclear ICBM - impressive but performant
             const dx = projectile.vx || 0;
@@ -2073,6 +2508,25 @@ export class Renderer {
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
 
+        } else if (type === 'lightning') {
+            // Lightning bolt from storm turret
+            const lightningColor = projectile.color || '#00ffff';
+            this.drawEpicLightning(
+                projectile.startX, projectile.startY,
+                x, y,
+                4, 3
+            );
+
+            // Impact flash at target
+            const flashSize = 15 + Math.sin(Date.now() / 50) * 5;
+            this.ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, flashSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
         } else if (type === 'storm-bolt') {
             // EPIC Lightning from sky with ground impact
             if (projectile.delay <= 0) {
@@ -2377,57 +2831,49 @@ export class Renderer {
             this.ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
             this.ctx.stroke();
         } else if (type === 'sniper') {
-            // Sniper tracer - long elegant line
+            // NEON Sniper tracer - long elegant high-velocity round
             const dx = projectile.vx || 0;
             const dy = projectile.vy || 0;
             const speed = Math.sqrt(dx * dx + dy * dy);
+            const trailLen = 28;
 
             if (speed > 0) {
-                const trailLen = 20;
+                const trailX = x - (dx / speed) * trailLen;
+                const trailY = y - (dy / speed) * trailLen;
 
-                // Outer glow
-                this.ctx.strokeStyle = `rgba(255, 0, 255, 0.3)`;
+                // Outer neon glow (widest)
+                this.ctx.strokeStyle = projColor + '20';
+                this.ctx.lineWidth = 12;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(trailX, trailY);
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+
+                // Mid glow
+                this.ctx.strokeStyle = projColor + '50';
                 this.ctx.lineWidth = 6;
-                this.ctx.lineCap = 'round';
-                this.ctx.beginPath();
-                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
-                this.ctx.lineTo(x, y);
                 this.ctx.stroke();
 
-                // Main tracer
+                // Core tracer
                 this.ctx.strokeStyle = projColor;
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
-                this.ctx.lineTo(x, y);
+                this.ctx.lineWidth = 2.5;
+                this.ctx.stroke();
+
+                // White hot core
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                this.ctx.lineWidth = 1;
                 this.ctx.stroke();
             }
 
-            // Bright tip
-            this.ctx.fillStyle = '#ffffff';
+            // Bright neon tip with glow
+            this.ctx.fillStyle = projColor + '60';
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.arc(x, y, 7, 0, Math.PI * 2);
             this.ctx.fill();
-        } else if (type === 'pellet') {
-            // Shotgun pellet - small fast tracer
-            const dx = projectile.vx || 0;
-            const dy = projectile.vy || 0;
-            const speed = Math.sqrt(dx * dx + dy * dy);
-
-            if (speed > 0) {
-                const trailLen = 6;
-                this.ctx.strokeStyle = projColor;
-                this.ctx.lineWidth = 2;
-                this.ctx.lineCap = 'round';
-                this.ctx.beginPath();
-                this.ctx.moveTo(x - (dx / speed) * trailLen, y - (dy / speed) * trailLen);
-                this.ctx.lineTo(x, y);
-                this.ctx.stroke();
-            }
-
             this.ctx.fillStyle = '#ffffff';
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+            this.ctx.arc(x, y, 2.5, 0, Math.PI * 2);
             this.ctx.fill();
         } else {
             // Default bullet with small trail
@@ -2623,28 +3069,75 @@ export class Renderer {
     }
 
     drawLightning(x1, y1, x2, y2, color) {
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x1, y1);
-
-        const segments = 5;
+        const segments = 8;
         const dx = (x2 - x1) / segments;
         const dy = (y2 - y1) / segments;
+        const points = [{ x: x1, y: y1 }];
 
+        // Build jagged path with more randomness
         for (let i = 1; i < segments; i++) {
-            const offsetX = (Math.random() - 0.5) * 20;
-            const offsetY = (Math.random() - 0.5) * 20;
-            this.ctx.lineTo(x1 + dx * i + offsetX, y1 + dy * i + offsetY);
+            const offsetX = (Math.random() - 0.5) * 30;
+            const offsetY = (Math.random() - 0.5) * 30;
+            points.push({
+                x: x1 + dx * i + offsetX,
+                y: y1 + dy * i + offsetY
+            });
+        }
+        points.push({ x: x2, y: y2 });
+
+        // Outer neon glow (widest)
+        this.ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+        this.ctx.lineWidth = 14;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.beginPath();
+        this.ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            this.ctx.lineTo(points[i].x, points[i].y);
+        }
+        this.ctx.stroke();
+
+        // Mid glow
+        this.ctx.strokeStyle = 'rgba(0, 212, 255, 0.35)';
+        this.ctx.lineWidth = 8;
+        this.ctx.stroke();
+
+        // Core lightning bolt
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        // White hot core
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+
+        // Small branches
+        for (let i = 1; i < points.length - 1; i++) {
+            if (Math.random() > 0.5) {
+                const branchAngle = Math.random() * Math.PI * 2;
+                const branchLen = 15 + Math.random() * 20;
+                const endX = points[i].x + Math.cos(branchAngle) * branchLen;
+                const endY = points[i].y + Math.sin(branchAngle) * branchLen;
+
+                this.ctx.strokeStyle = 'rgba(0, 212, 255, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[i].x, points[i].y);
+                this.ctx.lineTo(endX, endY);
+                this.ctx.stroke();
+            }
         }
 
-        this.ctx.lineTo(x2, y2);
-        this.ctx.stroke();
-
-        // Glow effect
-        this.ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
-        this.ctx.lineWidth = 6;
-        this.ctx.stroke();
+        // Impact glow at target
+        this.ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
+        this.ctx.beginPath();
+        this.ctx.arc(x2, y2, 8, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(x2, y2, 3, 0, Math.PI * 2);
+        this.ctx.fill();
     }
 
     addExplosion(x, y, radius, color = '#ff6600') {

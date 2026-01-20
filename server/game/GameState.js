@@ -6,6 +6,7 @@ const TURRET_TYPES = {
         fireRate: 0.1,
         cost: { iron: 100 },
         projectileSpeed: 15,
+        projectileColor: '#ffff00',
         health: 100,
         maxHealth: 100
     },
@@ -16,7 +17,8 @@ const TURRET_TYPES = {
         fireRate: 1.5,
         cost: { iron: 200, copper: 50 },
         projectileSpeed: 30,
-        penetration: false, // Stops on impact
+        projectileColor: '#ff00ff',
+        penetration: false,
         health: 80,
         maxHealth: 80
     },
@@ -27,6 +29,7 @@ const TURRET_TYPES = {
         fireRate: 2,
         cost: { iron: 300, copper: 100 },
         projectileSpeed: 8,
+        projectileColor: '#ff6600',
         aoeRadius: 2,
         health: 120,
         maxHealth: 120
@@ -35,12 +38,13 @@ const TURRET_TYPES = {
         name: 'Lance-flammes',
         damage: 15,
         range: 4,
-        fireRate: 0.04,
+        fireRate: 0.03,
         cost: { iron: 150, coal: 30 },
         continuous: true,
-        projectileSpeed: 7,
-        flameCount: 6,
-        flameLife: 0.9,
+        projectileSpeed: 5,
+        flameCount: 8,
+        flameLife: 1.2,
+        flameSpread: 0.5,
         dotDamage: 5,
         dotDuration: 2,
         health: 90,
@@ -75,6 +79,7 @@ const TURRET_TYPES = {
         fireRate: 0.8,
         cost: { iron: 150, copper: 30 },
         projectileSpeed: 12,
+        projectileColor: '#ffcc00',
         pelletCount: 6,
         spreadAngle: 0.5,
         health: 100,
@@ -87,6 +92,7 @@ const TURRET_TYPES = {
         fireRate: 2.5,
         cost: { iron: 400, copper: 150, coal: 50 },
         projectileSpeed: 7,
+        projectileColor: '#ff8800',
         aoeRadius: 1.5,
         shellCount: 3,
         shellSpread: 1.5,
@@ -101,6 +107,7 @@ const TURRET_TYPES = {
         fireRate: 0.5,
         cost: { iron: 250, copper: 100, gold: 30 },
         isHealer: true,
+        beamColor: '#88ff88',
         health: 80,
         maxHealth: 80
     },
@@ -113,6 +120,7 @@ const TURRET_TYPES = {
         cost: { iron: 180, copper: 60 },
         isSlowdown: true,
         aoeRange: 3,
+        frostColor: '#aaeeff',
         health: 90,
         maxHealth: 90
     },
@@ -124,7 +132,9 @@ const TURRET_TYPES = {
         fireRate: 3,
         cost: { iron: 350, copper: 120 },
         projectileSpeed: 6,
+        projectileColor: '#8b4513',
         aoeRadius: 2.5,
+        arcHeight: 3,
         health: 110,
         maxHealth: 110
     },
@@ -136,6 +146,8 @@ const TURRET_TYPES = {
         cost: { iron: 500, copper: 200, gold: 80 },
         instantHit: true,
         piercingBeam: true,
+        beamColor: '#6495ed',
+        beamWidth: 4,
         health: 90,
         maxHealth: 90
     },
@@ -146,6 +158,7 @@ const TURRET_TYPES = {
         fireRate: 0.3,
         cost: { iron: 300, copper: 150, gold: 50 },
         projectileSpeed: 18,
+        projectileColor: '#dda0dd',
         isDrone: true,
         patrolRadius: 4,
         moveSpeed: 2,
@@ -160,6 +173,7 @@ const TURRET_TYPES = {
         cost: { iron: 350, copper: 150, gold: 60 },
         isShockwave: true,
         aoeRange: 3,
+        shockColor: '#00d4ff',
         health: 100,
         maxHealth: 100
     },
@@ -205,9 +219,11 @@ const TURRET_TYPES = {
         fireRate: 1.2,
         cost: { iron: 600, copper: 200, gold: 80 },
         projectileSpeed: 12,
+        projectileColor: '#ff4400',
         isMissile: true,
         homingStrength: 0.25,
         missileCount: 3,
+        trailColor: '#ff6600',
         explosionRadius: 2.0,
         health: 250,
         maxHealth: 250
@@ -220,7 +236,9 @@ const TURRET_TYPES = {
         fireRate: 1.5,
         cost: { iron: 700, copper: 250, gold: 100 },
         projectileSpeed: 15,
+        projectileColor: '#da70d6',
         isPlasma: true,
+        plasmaSize: 20,
         aoeRadius: 1.8,
         health: 220,
         maxHealth: 220
@@ -235,6 +253,8 @@ const TURRET_TYPES = {
         isCryo: true,
         freezeChance: 0.1,
         slowAmount: 0.6,
+        beamColor: '#00ffff',
+        particleColor: '#aaffff',
         health: 200,
         maxHealth: 200
     },
@@ -246,7 +266,11 @@ const TURRET_TYPES = {
         fireRate: 0.03,
         cost: { iron: 650, copper: 220, gold: 60 },
         projectileSpeed: 25,
+        projectileColor: '#ffdd00',
         isGatling: true,
+        barrelCount: 6,
+        spinSpeed: 0.5,
+        spread: 0.15,
         health: 280,
         maxHealth: 280
     },
@@ -260,6 +284,8 @@ const TURRET_TYPES = {
         isEMP: true,
         stunDuration: 2.0,
         empRadius: 4,
+        empColor: '#6495ed',
+        waveCount: 3,
         health: 180,
         maxHealth: 180
     },
@@ -272,12 +298,13 @@ const TURRET_TYPES = {
         fireRate: 0.08,
         cost: { iron: 800, copper: 300, gold: 100 },
         projectileSpeed: 40,
+        projectileColor: '#00ddff',
         isAntiAir: true,
-        flakCount: 16,
-        flakSpread: 3,
+        flakCount: 20,
+        flakSpread: 5,
         barrelCount: 2,
         flakExplosion: true,
-        flakExplosionRadius: 0.8,
+        flakExplosionRadius: 1.0,
         health: 400,
         maxHealth: 400
     },
@@ -285,12 +312,15 @@ const TURRET_TYPES = {
         name: 'Mega Tesla',
         gridSize: 3,
         damage: 60,
-        range: 14,               // +4 range
+        range: 14,
         fireRate: 1.2,
         cost: { iron: 1200, copper: 500, gold: 200 },
         isMegaTesla: true,
         chainTargets: 8,
-        chainRange: 5,           // +1 chain range
+        chainRange: 5,
+        arcCount: 3,
+        boltWidth: 6,
+        glowColor: '#00ffff',
         health: 500,
         maxHealth: 500
     },
@@ -298,12 +328,16 @@ const TURRET_TYPES = {
         name: 'Mega Railgun',
         gridSize: 3,
         damage: 200,
-        range: 24,               // +6 range
+        range: 24,
         fireRate: 4.0,
         cost: { iron: 1500, copper: 600, gold: 250 },
         isMegaRailgun: true,
         instantHit: true,
         piercingBeam: true,
+        beamWidth: 12,
+        beamColor: '#00bfff',
+        coreColor: '#ffffff',
+        chargeTime: 1.0,
         health: 450,
         maxHealth: 450
     },
@@ -311,14 +345,17 @@ const TURRET_TYPES = {
         name: 'Rocket Artillery',
         gridSize: 3,
         damage: 60,
-        range: 22,               // +6 range
+        range: 22,
         fireRate: 1.8,
         cost: { iron: 1100, copper: 450, gold: 180 },
         projectileSpeed: 14,
+        projectileColor: '#ff4500',
         isRocketArray: true,
         rocketCount: 8,
         isMissile: true,
         homingStrength: 0.2,
+        salvoDelay: 0.08,
+        trailColor: '#ff6347',
         explosionRadius: 2.2,
         health: 480,
         maxHealth: 480
@@ -327,12 +364,15 @@ const TURRET_TYPES = {
         name: 'Laser Array',
         gridSize: 3,
         damage: 35,
-        range: 16,               // +4 range
+        range: 16,
         fireRate: 0.15,
         cost: { iron: 1000, copper: 400, gold: 160 },
         isLaserArray: true,
         laserCount: 4,
         instantHit: true,
+        beamColor: '#00ff00',
+        beamWidth: 3,
+        pulseEffect: true,
         health: 400,
         maxHealth: 400
     },
@@ -340,11 +380,16 @@ const TURRET_TYPES = {
         name: 'Particle Cannon',
         gridSize: 3,
         damage: 150,
-        range: 20,               // +5 range
+        range: 20,
         fireRate: 3.5,
         cost: { iron: 1300, copper: 550, gold: 220 },
         isParticle: true,
         instantHit: true,
+        beamWidth: 8,
+        beamColor: '#ff69b4',
+        particleCount: 50,
+        chargeTime: 1.5,
+        coreColor: '#ffffff',
         health: 420,
         maxHealth: 420
     },
@@ -352,14 +397,18 @@ const TURRET_TYPES = {
         name: 'Nuclear Launcher',
         gridSize: 3,
         damage: 600,
-        range: 28,               // +6 range
+        range: 28,
         minRange: 5,
         fireRate: 4.5,
         cost: { iron: 2000, copper: 800, gold: 400 },
         projectileSpeed: 6,
+        projectileColor: '#ffff00',
         isNuclear: true,
         aoeRadius: 7,
         homingStrength: 0.08,
+        radiationDamage: 40,
+        radiationDuration: 4,
+        mushroomCloud: true,
         health: 600,
         maxHealth: 600
     },
@@ -367,12 +416,15 @@ const TURRET_TYPES = {
         name: 'Storm Generator',
         gridSize: 3,
         damage: 25,
-        range: 14,               // +4 range
+        range: 14,
         fireRate: 0.2,
         cost: { iron: 1100, copper: 500, gold: 200 },
         isStorm: true,
-        stormRadius: 6,          // +1 storm radius
-        lightningStrikes: 6,     // +1 strikes
+        stormRadius: 6,
+        lightningStrikes: 6,
+        strikeChance: 0.3,
+        cloudColor: '#4b0082',
+        boltColor: '#da70d6',
         health: 450,
         maxHealth: 450
     },
@@ -380,11 +432,16 @@ const TURRET_TYPES = {
         name: 'Death Ray',
         gridSize: 3,
         damage: 100,
-        range: 18,               // +4 range
+        range: 18,
         fireRate: 0.05,
         cost: { iron: 1400, copper: 600, gold: 280 },
         isDeathRay: true,
         continuous: true,
+        beamWidth: 10,
+        beamColor: '#ff0000',
+        coreColor: '#ffff00',
+        heatBuildup: true,
+        maxHeat: 100,
         health: 380,
         maxHealth: 380
     },
@@ -396,11 +453,14 @@ const TURRET_TYPES = {
         fireRate: 2.0,
         cost: { iron: 1200, copper: 500, gold: 200 },
         projectileSpeed: 14,
+        projectileColor: '#9acd32',
         isMissileBattery: true,
         missileCount: 8,
         isMissile: true,
         homingStrength: 0.25,
+        salvoDelay: 0.06,
         spreadRadius: 2.5,
+        trailColor: '#adff2f',
         explosionRadius: 2.0,
         health: 520,
         maxHealth: 520
@@ -409,13 +469,16 @@ const TURRET_TYPES = {
         name: 'Orbital Strike',
         gridSize: 3,
         damage: 500,
-        range: 40,               // +10 range (massive)
+        range: 40,
         minRange: 3,
         fireRate: 4.0,
         cost: { iron: 2500, copper: 1000, gold: 500 },
         isOrbital: true,
         strikeDelay: 1.0,
-        strikeRadius: 6,         // +1 strike radius
+        strikeRadius: 6,
+        beamFromSky: true,
+        warningColor: '#ff0000',
+        strikeColor: '#ffffff',
         health: 400,
         maxHealth: 400
     }
@@ -2147,7 +2210,9 @@ class GameState {
                 vx: 0,
                 vy: 0,
                 damage: 0,
-                life: 0.2
+                life: 0.2,
+                color: turret.config.beamColor || '#6495ed',
+                beamWidth: turret.config.beamWidth || 4
             });
             return;
         }
@@ -2161,7 +2226,7 @@ class GameState {
                 type: 'laser-pulse',
                 x: turret.x,
                 y: turret.y,
-                color: '#2ecc71'
+                color: turret.config.beamColor || '#2ecc71'
             });
 
             this.projectiles.push({
@@ -2174,7 +2239,8 @@ class GameState {
                 vx: 0,
                 vy: 0,
                 damage: 0,
-                life: 0.1
+                life: 0.15,
+                color: turret.config.beamColor || '#2ecc71'
             });
         } else if (turret.config.chainTargets) {
             // Tesla chain with electric spark effect
@@ -2208,7 +2274,8 @@ class GameState {
                         vx: 0,
                         vy: 0,
                         damage: 0,
-                        life: 0.15
+                        life: 0.15,
+                        color: turret.config.beamColor || '#00d4ff'
                     });
 
                     prevX = current.x;
@@ -2225,13 +2292,16 @@ class GameState {
             target.burnDamage = turret.config.dotDamage || 5;
             target.burnTime = turret.config.dotDuration || 2;
 
-            const spread = turret.config.flameSpread || 0.35;
-            const speed = (turret.config.projectileSpeed || 6) * this.cellSize;
+            const spread = turret.config.flameSpread || 0.5;
+            const speed = (turret.config.projectileSpeed || 5) * this.cellSize;
+            const flameCount = turret.config.flameCount || 8;
+            const flameLife = turret.config.flameLife || 1.2;
 
-            // Create more flame particles for better visual
-            for (let i = 0; i < 5; i++) {
+            // Create flame particles for visual effect
+            for (let i = 0; i < flameCount; i++) {
                 const angle = turret.angle + (Math.random() - 0.5) * spread;
                 const particleSpeed = speed * (0.8 + Math.random() * 0.4);
+                const size = 10 + Math.random() * 10;
 
                 this.projectiles.push({
                     id: Date.now() + Math.random() + i,
@@ -2243,8 +2313,9 @@ class GameState {
                     vx: Math.cos(angle) * particleSpeed,
                     vy: Math.sin(angle) * particleSpeed,
                     damage: 0,
-                    life: 0.4 + Math.random() * 0.2,
-                    size: 8 + Math.random() * 8
+                    life: flameLife * (0.7 + Math.random() * 0.6),
+                    size: size,
+                    startSize: size
                 });
             }
         } else if (turret.config.isMissile || turret.config.isMissileBattery || turret.config.isRocketArray) {
@@ -2321,7 +2392,9 @@ class GameState {
                     targetY: targetY,
                     homingStrength: homingStrength,
                     life: 5.0,
-                    delay: i * (turret.config.salvoDelay || 0.05)
+                    delay: i * (turret.config.salvoDelay || 0.05),
+                    color: turret.config.projectileColor || '#ff6600',
+                    trailColor: turret.config.trailColor || '#ff4400'
                 });
             }
         } else if (turret.config.isNuclear) {
@@ -2360,7 +2433,9 @@ class GameState {
                 targetY: strongestEnemy.y,
                 homingStrength: turret.config.homingStrength || 0.08,
                 life: 8.0,
-                hitEnemies: []
+                hitEnemies: [],
+                color: turret.config.projectileColor || '#00ff00',
+                glowColor: turret.config.glowColor || '#00ff00'
             });
         } else if (turret.config.flakCount || turret.config.isAntiAir) {
             // FLAK - multiple fast projectiles with AOE explosions
@@ -2388,7 +2463,8 @@ class GameState {
                     vx: (dx / dist) * speed,
                     vy: (dy / dist) * speed,
                     damage: damage,
-                    aoeRadius: turret.config.flakExplosionRadius || 0.8,
+                    color: turret.config.projectileColor || '#00ddff',
+                    aoeRadius: turret.config.flakExplosionRadius || 1.0,
                     targetX: targetX,
                     targetY: targetY,
                     hitEnemies: [],
@@ -2413,7 +2489,8 @@ class GameState {
                 vy: 0,
                 damage: 0,
                 life: strikeDelay,
-                radius: strikeRadius
+                radius: strikeRadius,
+                color: turret.config.warningColor || '#ff0000'
             });
 
             // Create delayed strike
@@ -2430,7 +2507,8 @@ class GameState {
                 aoeRadius: turret.config.strikeRadius || 5,
                 delay: strikeDelay,
                 life: 1.5,
-                radius: strikeRadius
+                radius: strikeRadius,
+                color: turret.config.beamColor || '#00ffff'
             });
         } else if (turret.config.isStorm) {
             // STORM - area effect with lightning strikes
@@ -2449,7 +2527,8 @@ class GameState {
                 vy: 0,
                 damage: 0,
                 life: 0.5,
-                radius: stormRadius
+                radius: stormRadius,
+                color: turret.config.cloudColor || '#4a0080'
             });
 
             // Lightning strikes hitting enemies in area
@@ -2473,7 +2552,8 @@ class GameState {
                     vx: 0,
                     vy: 0,
                     damage: 0,
-                    life: 0.2
+                    life: 0.2,
+                    color: turret.config.lightningColor || '#00ffff'
                 });
             }
         } else if (turret.config.isDeathRay) {
@@ -2490,7 +2570,9 @@ class GameState {
                 vx: 0,
                 vy: 0,
                 damage: 0,
-                life: 0.08
+                life: 0.08,
+                color: turret.config.beamColor || '#ff0000',
+                beamWidth: turret.config.beamWidth || 8
             });
         } else if (turret.config.isLaserArray) {
             // LASER ARRAY - multiple instant beams
@@ -2515,7 +2597,8 @@ class GameState {
                     vx: 0,
                     vy: 0,
                     damage: 0,
-                    life: 0.1
+                    life: 0.1,
+                    color: turret.config.beamColor || '#ff0066'
                 });
             }
         } else {
@@ -3319,8 +3402,14 @@ class GameState {
                 vx: p.vx,
                 vy: p.vy,
                 damage: p.damage,
+                radius: p.radius,
+                // Color properties for client rendering
                 color: p.color,
+                trailColor: p.trailColor,
+                beamWidth: p.beamWidth,
+                glowColor: p.glowColor,
                 size: p.size,
+                startSize: p.startSize,
                 homingStrength: p.homingStrength,
                 targetId: p.targetId,
                 maxSpeed: p.maxSpeed,

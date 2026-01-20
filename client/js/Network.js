@@ -346,9 +346,14 @@ export class Network {
                     vx: sp.vx || 0,
                     vy: sp.vy || 0,
                     damage: sp.damage,
-                    // Color for rendering
+                    radius: sp.radius,
+                    // Color properties for rendering
                     color: sp.color,
+                    trailColor: sp.trailColor,
+                    beamWidth: sp.beamWidth,
+                    glowColor: sp.glowColor,
                     size: sp.size,
+                    startSize: sp.startSize,
                     // Homing properties
                     homingStrength: sp.homingStrength,
                     targetId: sp.targetId,
@@ -379,7 +384,14 @@ export class Network {
                 localProj.life = sp.life;
                 localProj.targetX = sp.targetX;
                 localProj.targetY = sp.targetY;
+                localProj.radius = sp.radius || localProj.radius;
                 localProj.size = sp.size || localProj.size;
+                localProj.startSize = sp.startSize || localProj.startSize;
+                // Sync color properties
+                if (sp.color) localProj.color = sp.color;
+                if (sp.trailColor) localProj.trailColor = sp.trailColor;
+                if (sp.beamWidth) localProj.beamWidth = sp.beamWidth;
+                if (sp.glowColor) localProj.glowColor = sp.glowColor;
 
                 // Add trail particles for rendering (client-side only)
                 if (localProj.trail && (localProj.vx || localProj.vy)) {
