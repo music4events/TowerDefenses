@@ -1264,6 +1264,14 @@ export class Renderer {
         const { x, y, config, type } = projectile;
         const projColor = projectile.color || config?.projectileColor || '#ffff00';
 
+        // Beam types need valid startX/startY - skip if invalid
+        const beamTypes = ['laser', 'tesla', 'railgun', 'cryo-beam', 'particle-beam', 'ion-cannon', 'laser-array'];
+        if (beamTypes.includes(type)) {
+            if (!isFinite(projectile.startX) || !isFinite(projectile.startY)) {
+                return;
+            }
+        }
+
         if (type === 'bullet') {
             // Enhanced bullet with trail
             const dx = projectile.vx || 0;
@@ -2630,6 +2638,10 @@ export class Renderer {
     }
 
     addExplosion(x, y, radius, color = '#ff6600') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         this.explosions.push({
             x, y,
             radius,
@@ -2641,6 +2653,10 @@ export class Renderer {
     }
 
     addShockwave(x, y, radius, color = '#00d4ff') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         // Shockwave is an expanding electric ring
         this.explosions.push({
             x, y,
@@ -2654,6 +2670,10 @@ export class Renderer {
     }
 
     addMissileExplosion(x, y, radius, color = '#ff6600') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         // Epic missile explosion with fire, debris and shockwave
         this.explosions.push({
             x, y,
@@ -2699,6 +2719,10 @@ export class Renderer {
     }
 
     addNuclearExplosion(x, y, radius) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         // Massive nuclear explosion with mushroom cloud
         this.explosions.push({
             x, y,
@@ -2714,6 +2738,10 @@ export class Renderer {
     }
 
     addOrbitalBeam(x, y, radius) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         // Orbital strike beam from sky
         this.explosions.push({
             x, y,
@@ -2729,6 +2757,10 @@ export class Renderer {
     }
 
     addFlakExplosion(x, y, radius) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(radius)) {
+            return;
+        }
         // Small flak burst explosion
         this.explosions.push({
             x, y,
@@ -2741,6 +2773,10 @@ export class Renderer {
     }
 
     addMuzzleFlash(x, y, angle, color = '#ffff00', size = 10) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
+            return;
+        }
         this.particles.push({
             x, y,
             vx: Math.cos(angle) * 50,
@@ -2754,6 +2790,10 @@ export class Renderer {
     }
 
     addShotgunBlast(x, y, angle, spread = 0.5, color = '#ffcc00') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
+            return;
+        }
         // Shotgun blast with multiple particles
         for (let i = 0; i < 8; i++) {
             const particleAngle = angle + (Math.random() - 0.5) * spread;
@@ -2770,6 +2810,10 @@ export class Renderer {
     }
 
     addCannonFire(x, y, angle, color = '#ff6600') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
+            return;
+        }
         // Artillery cannon smoke ring
         this.particles.push({
             x, y,
@@ -2795,6 +2839,10 @@ export class Renderer {
     }
 
     addLaserPulse(x, y, color = '#2ecc71') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y)) {
+            return;
+        }
         // Laser charging pulse
         this.particles.push({
             x, y,
@@ -2808,6 +2856,10 @@ export class Renderer {
     }
 
     addElectricSpark(x, y, color = '#00d4ff') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y)) {
+            return;
+        }
         // Electric sparks around tesla turret
         for (let i = 0; i < 6; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -2825,6 +2877,10 @@ export class Renderer {
     }
 
     addBossDeathEffect(x, y, bossSize = 1.5, color = '#880088') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(bossSize)) {
+            return;
+        }
         // Epic boss death explosion with screen shake, multiple rings, and particles
         const baseRadius = this.grid.cellSize * bossSize * 2;
 
@@ -3413,6 +3469,10 @@ export class Renderer {
     }
 
     addDeathEffect(x, y, color = '#ff4444') {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y)) {
+            return;
+        }
         // Create particles for death
         for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;

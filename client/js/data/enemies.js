@@ -509,7 +509,7 @@ export const ENEMY_TYPES = {
         health: 200000, speed: 0.04, damage: 3000, color: '#220022', size: 4,
         turretAttackRange: 6, turretAttackDamage: 600, turretAttackRate: 0.8,
         isSpawner: true, spawnType: 'apocalypse', spawnInterval: 20, spawnCount: 1, armor: 0.75,
-        splitOnDeath: true, splitCount: 1, splitType: 'world-ender', isMegaBoss: true,
+        splitOnDeath: true, splitCount: 2, splitType: 'harbinger-of-doom', isMegaBoss: true,
         reward: { iron: 4500, copper: 2200, gold: 1800 }
     },
     'eternal-nightmare': {

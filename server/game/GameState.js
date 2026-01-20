@@ -635,7 +635,7 @@ const ENEMY_TYPES = {
         health: 200000, speed: 0.04, damage: 3000, reward: { iron: 4500, copper: 2200, gold: 1800 },
         turretAttackRange: 6, turretAttackDamage: 600, turretAttackRate: 0.8,
         isSpawner: true, spawnType: 'apocalypse', spawnInterval: 20, spawnCount: 1, armor: 0.75,
-        splitOnDeath: true, splitCount: 1, splitType: 'world-ender', isMegaBoss: true, bossSize: 4
+        splitOnDeath: true, splitCount: 2, splitType: 'harbinger-of-doom', isMegaBoss: true, bossSize: 4
     },
     'eternal-nightmare': {
         health: 300000, speed: 0.03, damage: 5000, reward: { iron: 6000, copper: 3000, gold: 2500 },
