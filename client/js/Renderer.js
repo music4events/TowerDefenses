@@ -23,26 +23,27 @@ export class Renderer {
         this.explosions = [];
         this.deathEffects = [];
 
-        // Maximum simultaneous particles/effects (50-10000)
-        this.maxParticles = 5000;
+        // Maximum rendered particles/effects (50-10000) - for performance optimization
+        this.maxRenderedParticles = 5000;
+        this.particlesRenderedThisFrame = 0;
     }
 
     setMaxParticles(limit) {
-        this.maxParticles = Math.max(50, Math.min(10000, limit));
+        this.maxRenderedParticles = Math.max(50, Math.min(10000, limit));
     }
 
-    // Returns current total particle count
-    getTotalParticleCount() {
-        let total = this.particles.length + this.deathEffects.length;
-        for (const exp of this.explosions) {
-            total += (exp.particles?.length || 0) + (exp.debris?.length || 0) + 1;
+    // Reset counter at start of each frame
+    resetParticleCounter() {
+        this.particlesRenderedThisFrame = 0;
+    }
+
+    // Check if we should render this particle (for optimization)
+    shouldRenderParticle() {
+        if (this.particlesRenderedThisFrame >= this.maxRenderedParticles) {
+            return false;
         }
-        return total;
-    }
-
-    // Check if we can add more particles
-    canAddParticle() {
-        return this.getTotalParticleCount() < this.maxParticles;
+        this.particlesRenderedThisFrame++;
+        return true;
     }
 
     // Apply camera transform
@@ -2782,8 +2783,8 @@ export class Renderer {
     }
 
     addMuzzleFlash(x, y, angle, color = '#ffff00', size = 10) {
-        // Safety check - skip invalid coordinates or if at particle limit
-        if (!isFinite(x) || !isFinite(y) || !isFinite(angle) || !this.canAddParticle()) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
             return;
         }
         this.particles.push({
@@ -2803,8 +2804,8 @@ export class Renderer {
         if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
             return;
         }
-        // Shotgun blast with multiple particles (limited)
-        for (let i = 0; i < 8 && this.canAddParticle(); i++) {
+        // Shotgun blast with multiple particles
+        for (let i = 0; i < 8; i++) {
             const particleAngle = angle + (Math.random() - 0.5) * spread;
             this.particles.push({
                 x, y,
@@ -2819,8 +2820,8 @@ export class Renderer {
     }
 
     addCannonFire(x, y, angle, color = '#ff6600') {
-        // Safety check - skip invalid coordinates or at limit
-        if (!isFinite(x) || !isFinite(y) || !isFinite(angle) || !this.canAddParticle()) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y) || !isFinite(angle)) {
             return;
         }
         // Artillery cannon smoke ring
@@ -2835,23 +2836,21 @@ export class Renderer {
             angle: angle
         });
         // Fire flash
-        if (this.canAddParticle()) {
-            this.particles.push({
-                x, y,
-                vx: Math.cos(angle) * 60,
-                vy: Math.sin(angle) * 60,
-                size: 15,
-                color: color,
-                life: 0.15,
-                isMuzzleFlash: true,
-                angle: angle
-            });
-        }
+        this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * 60,
+            vy: Math.sin(angle) * 60,
+            size: 15,
+            color: color,
+            life: 0.15,
+            isMuzzleFlash: true,
+            angle: angle
+        });
     }
 
     addLaserPulse(x, y, color = '#2ecc71') {
-        // Safety check - skip invalid coordinates or at limit
-        if (!isFinite(x) || !isFinite(y) || !this.canAddParticle()) {
+        // Safety check - skip invalid coordinates
+        if (!isFinite(x) || !isFinite(y)) {
             return;
         }
         // Laser charging pulse
@@ -2871,8 +2870,8 @@ export class Renderer {
         if (!isFinite(x) || !isFinite(y)) {
             return;
         }
-        // Electric sparks around tesla turret (limited)
-        for (let i = 0; i < 6 && this.canAddParticle(); i++) {
+        // Electric sparks around tesla turret
+        for (let i = 0; i < 6; i++) {
             const angle = Math.random() * Math.PI * 2;
             this.particles.push({
                 x: x + Math.cos(angle) * 10,
@@ -3484,8 +3483,8 @@ export class Renderer {
         if (!isFinite(x) || !isFinite(y)) {
             return;
         }
-        // Create particles for death (limited)
-        for (let i = 0; i < 8 && this.canAddParticle(); i++) {
+        // Create particles for death
+        for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;
             const speed = 50 + Math.random() * 50;
             this.deathEffects.push({
@@ -3515,6 +3514,9 @@ export class Renderer {
                 continue;
             }
 
+            // Skip rendering if over limit (but keep updating)
+            if (!this.shouldRenderParticle()) continue;
+
             this.ctx.fillStyle = p.color;
             this.ctx.globalAlpha = p.alpha;
             this.ctx.beginPath();
@@ -3538,6 +3540,9 @@ export class Renderer {
             // Update position
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
+
+            // Skip rendering if over limit (but keep updating)
+            if (!this.shouldRenderParticle()) continue;
 
             const alpha = Math.min(1, p.life * 4); // Quick fade
 

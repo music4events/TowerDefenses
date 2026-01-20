@@ -815,6 +815,7 @@ export class Game {
 
     render(deltaTime) {
         this.renderer.clear();
+        this.renderer.resetParticleCounter(); // Reset for frame-based rendering limit
         this.renderer.applyCamera();
         this.renderer.drawGrid();
         this.renderer.drawResources();
