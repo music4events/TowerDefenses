@@ -3575,11 +3575,22 @@ export class Renderer {
                     continue;
                 }
 
-                // Initial flash (first 0.1s)
+                // Initial flash (first 0.1s) - circular glow centered on explosion
                 if (exp.time < 0.15) {
                     exp.flashAlpha = 1 - exp.time / 0.15;
-                    this.ctx.fillStyle = `rgba(255, 255, 255, ${exp.flashAlpha * 0.8})`;
-                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    const flashRadius = exp.maxRadius * 4;
+                    const flashGradient = this.ctx.createRadialGradient(
+                        exp.x, exp.y, 0,
+                        exp.x, exp.y, flashRadius
+                    );
+                    flashGradient.addColorStop(0, `rgba(255, 255, 255, ${exp.flashAlpha * 0.9})`);
+                    flashGradient.addColorStop(0.3, `rgba(255, 255, 200, ${exp.flashAlpha * 0.7})`);
+                    flashGradient.addColorStop(0.6, `rgba(255, 200, 100, ${exp.flashAlpha * 0.4})`);
+                    flashGradient.addColorStop(1, 'rgba(255, 150, 50, 0)');
+                    this.ctx.fillStyle = flashGradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(exp.x, exp.y, flashRadius, 0, Math.PI * 2);
+                    this.ctx.fill();
                 }
 
                 // Ground explosion radius
