@@ -42,6 +42,78 @@ export const BUILDING_TYPES = {
     }
 };
 
+// Wall upgrade paths
+export const WALL_UPGRADES = {
+    'wall': {
+        levels: {
+            1: {
+                cost: { iron: 30 },
+                healthBonus: 100,
+                color: '#634545',
+                name: 'Mur +1'
+            },
+            2: {
+                cost: { iron: 50, copper: 10 },
+                healthBonus: 150,
+                color: '#735555',
+                name: 'Mur +2'
+            },
+            3: {
+                cost: { iron: 80, copper: 25 },
+                healthBonus: 200,
+                color: '#836565',
+                name: 'Mur +3'
+            },
+            4: {
+                cost: { iron: 120, copper: 40, gold: 10 },
+                healthBonus: 300,
+                color: '#937575',
+                name: 'Mur +4'
+            },
+            5: {
+                cost: { iron: 200, copper: 60, gold: 25 },
+                healthBonus: 500,
+                color: '#a38585',
+                name: 'Mur +5'
+            }
+        }
+    },
+    'wall-reinforced': {
+        levels: {
+            1: {
+                cost: { iron: 60, copper: 30 },
+                healthBonus: 200,
+                color: '#7b5433',
+                name: 'Mur Renforcé +1'
+            },
+            2: {
+                cost: { iron: 100, copper: 50 },
+                healthBonus: 300,
+                color: '#8b6443',
+                name: 'Mur Renforcé +2'
+            },
+            3: {
+                cost: { iron: 150, copper: 75, gold: 15 },
+                healthBonus: 400,
+                color: '#9b7453',
+                name: 'Mur Renforcé +3'
+            },
+            4: {
+                cost: { iron: 200, copper: 100, gold: 30 },
+                healthBonus: 600,
+                color: '#ab8463',
+                name: 'Mur Renforcé +4'
+            },
+            5: {
+                cost: { iron: 300, copper: 150, gold: 50 },
+                healthBonus: 1000,
+                color: '#bb9473',
+                name: 'Mur Renforcé +5'
+            }
+        }
+    }
+};
+
 export const RESOURCE_TYPES = {
     'iron': {
         name: 'Fer',

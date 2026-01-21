@@ -485,8 +485,31 @@ const TURRET_TYPES = {
 };
 
 const BUILDING_TYPES = {
-    'wall': { health: 200, cost: { iron: 20 } },
+    'wall': { health: 200, cost: { iron: 20 }, blocking: true },
+    'wall-reinforced': { health: 500, cost: { iron: 50, copper: 20 }, blocking: true },
     'extractor': { health: 100, cost: { iron: 50 } }
+};
+
+// Wall upgrade paths
+const WALL_UPGRADES = {
+    'wall': {
+        levels: {
+            1: { cost: { iron: 30 }, healthBonus: 100 },
+            2: { cost: { iron: 50, copper: 10 }, healthBonus: 150 },
+            3: { cost: { iron: 80, copper: 25 }, healthBonus: 200 },
+            4: { cost: { iron: 120, copper: 40, gold: 10 }, healthBonus: 300 },
+            5: { cost: { iron: 200, copper: 60, gold: 25 }, healthBonus: 500 }
+        }
+    },
+    'wall-reinforced': {
+        levels: {
+            1: { cost: { iron: 60, copper: 30 }, healthBonus: 200 },
+            2: { cost: { iron: 100, copper: 50 }, healthBonus: 300 },
+            3: { cost: { iron: 150, copper: 75, gold: 15 }, healthBonus: 400 },
+            4: { cost: { iron: 200, copper: 100, gold: 30 }, healthBonus: 600 },
+            5: { cost: { iron: 300, copper: 150, gold: 50 }, healthBonus: 1000 }
+        }
+    }
 };
 
 const ENEMY_TYPES = {
@@ -1770,42 +1793,62 @@ class GameState {
             }
         }
 
-        // Movement - Flying enemies or enemies with no path go directly to nexus
+        // NEW MOVEMENT: All enemies rush directly toward nexus
+        // Only walls can block ground enemies
         const nexusWorldX = this.nexusX * this.cellSize + this.cellSize / 2;
         const nexusWorldY = this.nexusY * this.cellSize + this.cellSize / 2;
 
-        if ((enemyType && enemyType.isFlying) || enemy.ignoreWalls) {
-            // Flying or ignoreWalls: direct path to nexus (through walls if needed)
-            const dx = nexusWorldX - enemy.x;
-            const dy = nexusWorldY - enemy.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+        // Initialize attack cooldown if not present
+        if (enemy.wallAttackCooldown === undefined) enemy.wallAttackCooldown = 0;
+        enemy.wallAttackCooldown -= deltaTime;
 
-            if (dist > 2) {
-                const slowMult = enemy.slowMultiplier || 1;
-                const moveSpeed = (enemy.speed || 1) * slowMult * this.cellSize * deltaTime;
-                enemy.x += (dx / dist) * moveSpeed;
-                enemy.y += (dy / dist) * moveSpeed;
-                enemy.angle = Math.atan2(dy, dx);
-            }
-        } else if (enemy.path && enemy.pathIndex < enemy.path.length) {
-            // Normal pathing
-            const target = enemy.path[enemy.pathIndex];
-            if (target) {
-                const targetX = target.x * this.cellSize + this.cellSize / 2;
-                const targetY = target.y * this.cellSize + this.cellSize / 2;
+        const dx = nexusWorldX - enemy.x;
+        const dy = nexusWorldY - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-                const dx = targetX - enemy.x;
-                const dy = targetY - enemy.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 2) {
+            const slowMult = enemy.slowMultiplier || 1;
+            const moveSpeed = (enemy.speed || 1) * slowMult * this.cellSize * deltaTime;
+            const nextX = enemy.x + (dx / dist) * moveSpeed;
+            const nextY = enemy.y + (dy / dist) * moveSpeed;
 
-                if (dist > 2) {
-                    const slowMult = enemy.slowMultiplier || 1;
-                    const moveSpeed = (enemy.speed || 1) * slowMult * this.cellSize * deltaTime;
-                    enemy.x += (dx / dist) * moveSpeed;
-                    enemy.y += (dy / dist) * moveSpeed;
-                    enemy.angle = Math.atan2(dy, dx);
+            // Update angle regardless
+            enemy.angle = Math.atan2(dy, dx);
+
+            // Flying enemies ignore walls
+            if (enemyType && enemyType.isFlying) {
+                enemy.x = nextX;
+                enemy.y = nextY;
+                enemy.isAttackingWall = false;
+            } else {
+                // Ground enemies check for wall collision
+                const blockingWall = this.findBlockingWall(nextX, nextY);
+
+                if (blockingWall) {
+                    // Stop and attack the wall
+                    enemy.isAttackingWall = true;
+                    enemy.targetWallId = blockingWall.id;
+
+                    // Face the wall
+                    const wallDx = blockingWall.x - enemy.x;
+                    const wallDy = blockingWall.y - enemy.y;
+                    enemy.angle = Math.atan2(wallDy, wallDx);
+
+                    // Attack the wall
+                    if (enemy.wallAttackCooldown <= 0) {
+                        enemy.wallAttackCooldown = 1; // 1 second attack rate
+                        blockingWall.health -= (enemy.damage || 10);
+
+                        // Check if wall is destroyed
+                        if (blockingWall.health <= 0) {
+                            this.removeWall(blockingWall);
+                        }
+                    }
                 } else {
-                    enemy.pathIndex++;
+                    // No wall blocking, move forward
+                    enemy.x = nextX;
+                    enemy.y = nextY;
+                    enemy.isAttackingWall = false;
                 }
             }
         }
@@ -1869,6 +1912,50 @@ class GameState {
             }
         } else {
             enemy.isAttackingTurret = false;
+        }
+    }
+
+    // Find wall that blocks enemy movement
+    findBlockingWall(nextX, nextY) {
+        const enemyRadius = this.cellSize * 0.4;
+
+        for (const wall of this.walls) {
+            if (wall.health <= 0) continue;
+
+            const wallHalfSize = this.cellSize * 0.5;
+
+            // Check collision between enemy circle and wall square
+            const closestX = Math.max(wall.x - wallHalfSize, Math.min(nextX, wall.x + wallHalfSize));
+            const closestY = Math.max(wall.y - wallHalfSize, Math.min(nextY, wall.y + wallHalfSize));
+
+            const distX = nextX - closestX;
+            const distY = nextY - closestY;
+            const distSquared = distX * distX + distY * distY;
+
+            if (distSquared < enemyRadius * enemyRadius) {
+                return wall;
+            }
+        }
+
+        return null;
+    }
+
+    // Remove a wall (when destroyed by enemies)
+    removeWall(wall) {
+        const wallIndex = this.walls.findIndex(w => w.id === wall.id);
+        if (wallIndex > -1) {
+            const removedWall = this.walls[wallIndex];
+            this.walls.splice(wallIndex, 1);
+            this.grid[removedWall.gridY][removedWall.gridX] = 0;
+            this.gridDirty = true;
+
+            // Add destruction effect
+            this.pendingEffects.push({
+                type: 'wallDestroyed',
+                x: removedWall.x,
+                y: removedWall.y,
+                color: '#8b4513'
+            });
         }
     }
 
@@ -2924,18 +3011,22 @@ class GameState {
             } else {
                 this.grid[gridY][gridX] = 1;
             }
-        } else if (buildingType === 'wall') {
+        } else if (buildingType === 'wall' || buildingType === 'wall-reinforced') {
+            const wallConfig = BUILDING_TYPES[buildingType] || BUILDING_TYPES['wall'];
             this.walls.push({
                 id: Date.now(),
+                type: buildingType,
                 gridX,
                 gridY,
                 x: worldX,
                 y: worldY,
-                health: 200,
+                health: wallConfig.health,
+                maxHealth: wallConfig.health,
+                level: 0,
+                maxLevel: 5,
                 playerId
             });
             this.grid[gridY][gridX] = 1;
-            this.recalculatePaths();
         } else if (buildingType === 'extractor') {
             const resourceType = this.resourceMap[gridY][gridX];
             if (resourceType) {
@@ -3016,16 +3107,30 @@ class GameState {
         // Find wall at position
         const wallIndex = this.walls.findIndex(w => w.gridX === gridX && w.gridY === gridY);
         if (wallIndex > -1) {
-            const baseCost = BUILDING_TYPES['wall']?.cost || { iron: 20 };
+            const wall = this.walls[wallIndex];
+            const wallType = wall.type || 'wall';
+            const baseCost = BUILDING_TYPES[wallType]?.cost || { iron: 20 };
 
-            // 75% refund
+            // 75% refund of base cost
             for (const [res, amt] of Object.entries(baseCost)) {
                 this.resources[res] = (this.resources[res] || 0) + Math.floor(amt * 0.75);
             }
 
+            // Also refund upgrade costs (50% of what was spent)
+            const upgrades = WALL_UPGRADES[wallType];
+            if (upgrades && wall.level > 0) {
+                for (let lvl = 1; lvl <= wall.level; lvl++) {
+                    const levelCost = upgrades.levels[lvl]?.cost;
+                    if (levelCost) {
+                        for (const [res, amt] of Object.entries(levelCost)) {
+                            this.resources[res] = (this.resources[res] || 0) + Math.floor(amt * 0.5);
+                        }
+                    }
+                }
+            }
+
             this.walls.splice(wallIndex, 1);
             this.grid[gridY][gridX] = 0;
-            this.recalculatePaths();
             this.gridDirty = true;
             return { success: true, type: 'wall' };
         }
@@ -3104,6 +3209,43 @@ class GameState {
             extractor.extractionRate = 1 + (extractor.level - 1) * 0.5;
 
             return { success: true, type: 'extractor', level: extractor.level };
+        }
+
+        // Find wall at position
+        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
+        if (wall) {
+            if (wall.level >= (wall.maxLevel || 5)) {
+                return { success: false, message: 'Already max level' };
+            }
+
+            const wallType = wall.type || 'wall';
+            const upgrades = WALL_UPGRADES[wallType];
+            if (!upgrades) {
+                return { success: false, message: 'Wall cannot be upgraded' };
+            }
+
+            const nextLevel = upgrades.levels[wall.level + 1];
+            if (!nextLevel) {
+                return { success: false, message: 'No more upgrades available' };
+            }
+
+            const upgradeCost = nextLevel.cost;
+            if (!this.canAfford(upgradeCost)) {
+                return { success: false, message: 'Not enough resources' };
+            }
+
+            // Deduct cost
+            for (const [res, amt] of Object.entries(upgradeCost)) {
+                this.resources[res] -= amt;
+            }
+
+            // Apply upgrade
+            wall.level++;
+            const healthBonus = nextLevel.healthBonus;
+            wall.maxHealth += healthBonus;
+            wall.health = Math.min(wall.health + healthBonus, wall.maxHealth);
+
+            return { success: true, type: 'wall', level: wall.level };
         }
 
         return { success: false, message: 'No upgradeable building at this position' };
@@ -3427,6 +3569,7 @@ class GameState {
                 frosted: e.frosted,
                 slowMultiplier: e.slowMultiplier,
                 isAttackingTurret: e.isAttackingTurret,
+                isAttackingWall: e.isAttackingWall || false,
                 ignoreWalls: e.ignoreWalls || false
             })),
             turrets: validTurrets.map(t => ({
@@ -3452,11 +3595,14 @@ class GameState {
             })),
             walls: validWalls.map(w => ({
                 id: w.id,
+                type: w.type || 'wall',
                 gridX: w.gridX,
                 gridY: w.gridY,
                 x: w.x,
                 y: w.y,
-                health: w.health
+                health: w.health,
+                maxHealth: w.maxHealth || 200,
+                level: w.level || 0
             })),
             extractors: validExtractors.map(e => ({
                 id: e.id,

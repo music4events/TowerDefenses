@@ -528,14 +528,19 @@ export class Network {
                 // Wall doesn't exist locally, create it
                 const { Wall } = window.WallModule || {};
                 if (Wall) {
-                    localWall = new Wall(serverWall.gridX, serverWall.gridY, 'wall', this.game.grid);
+                    const wallType = serverWall.type || 'wall';
+                    localWall = new Wall(serverWall.gridX, serverWall.gridY, wallType, this.game.grid);
                     localWall.id = serverWall.id;
                     localWall.health = serverWall.health;
+                    localWall.maxHealth = serverWall.maxHealth || serverWall.health;
+                    localWall.level = serverWall.level || 0;
                     this.game.walls.push(localWall);
                 }
             } else {
-                // Update existing wall health
+                // Update existing wall properties
                 localWall.health = serverWall.health;
+                localWall.maxHealth = serverWall.maxHealth || localWall.maxHealth;
+                localWall.level = serverWall.level || 0;
             }
         }
 
@@ -679,6 +684,7 @@ export class Network {
                     localEnemy.frosted = serverEnemy.frosted;
                     localEnemy.slowMultiplier = serverEnemy.slowMultiplier || 1;
                     localEnemy.isAttackingTurret = serverEnemy.isAttackingTurret;
+                    localEnemy.isAttackingWall = serverEnemy.isAttackingWall || false;
                     localEnemy.ignoreWalls = serverEnemy.ignoreWalls || false;
                 }
             }

@@ -1075,19 +1075,38 @@ export class Renderer {
 
     drawWall(wall) {
         const { x, y, health } = wall;
-        const maxHealth = wall.maxHealth || 200; // Fallback for synced walls
+        const maxHealth = wall.maxHealth || 200;
+        const level = wall.level || 0;
         const size = this.grid.cellSize * 0.9;
 
-        // Wall block - color changes based on health
+        // Wall block - use wall's color (based on level) or fallback
         const healthPercent = health / maxHealth;
-        if (healthPercent > 0.6) {
-            this.ctx.fillStyle = this.colors.wall;
-        } else if (healthPercent > 0.3) {
-            this.ctx.fillStyle = '#6b4423';
-        } else {
-            this.ctx.fillStyle = '#8b4513';
+        let baseColor = wall.getColor ? wall.getColor() : this.colors.wall;
+
+        // Darken color if damaged
+        if (healthPercent <= 0.6) {
+            baseColor = this.darkenColor(baseColor, healthPercent > 0.3 ? 0.15 : 0.3);
         }
+
+        this.ctx.fillStyle = baseColor;
         this.ctx.fillRect(x - size / 2, y - size / 2, size, size);
+
+        // Border to show upgrade level (brighter for higher levels)
+        if (level > 0) {
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + level * 0.1})`;
+            this.ctx.lineWidth = 1 + level * 0.5;
+            this.ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+
+            // Level indicator (small dots in corner)
+            const dotSize = 3;
+            const dotSpacing = 5;
+            this.ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < Math.min(level, 5); i++) {
+                this.ctx.beginPath();
+                this.ctx.arc(x - size / 2 + 4 + i * dotSpacing, y + size / 2 - 4, dotSize / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
 
         // Damage cracks
         if (health < maxHealth * 0.7) {
@@ -1106,18 +1125,38 @@ export class Renderer {
             this.ctx.stroke();
         }
 
-        // Health bar when damaged
-        if (health < maxHealth) {
-            const barWidth = size;
-            const barHeight = 4;
-            const barY = y - size / 2 - 6;
+        // Health bar (always show for walls, as they're key defensive structures)
+        const barWidth = size;
+        const barHeight = 4;
+        const barY = y - size / 2 - 8;
 
-            this.ctx.fillStyle = '#333';
-            this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
+        // Background
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
 
-            this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
-            this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
-        }
+        // Health fill
+        this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
+        this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+
+        // Border for health bar
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x - barWidth / 2, barY, barWidth, barHeight);
+    }
+
+    // Helper to darken a hex color
+    darkenColor(hex, amount) {
+        // Remove # if present
+        hex = hex.replace('#', '');
+        let r = parseInt(hex.substring(0, 2), 16);
+        let g = parseInt(hex.substring(2, 4), 16);
+        let b = parseInt(hex.substring(4, 6), 16);
+
+        r = Math.floor(r * (1 - amount));
+        g = Math.floor(g * (1 - amount));
+        b = Math.floor(b * (1 - amount));
+
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     drawExtractor(extractor) {

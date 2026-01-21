@@ -392,6 +392,19 @@ export class Game {
                 this.resources.iron -= cost.iron;
                 extractor.upgrade();
             }
+            return;
+        }
+
+        // Check for wall (solo upgrade)
+        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
+        if (wall && wall.upgrade) {
+            const cost = wall.getUpgradeCost();
+            if (cost && this.canAfford(cost)) {
+                for (const [resource, amount] of Object.entries(cost)) {
+                    this.resources[resource] -= amount;
+                }
+                wall.upgrade();
+            }
         }
     }
 
@@ -428,7 +441,10 @@ export class Game {
             if (structure.health <= 0) {
                 this.walls.splice(wallIndex, 1);
                 this.grid.removeBuilding(structure.gridX, structure.gridY);
-                this.recalculateEnemyPaths();
+                // Add destruction effect
+                if (this.renderer) {
+                    this.renderer.addExplosion(structure.x, structure.y, this.cellSize, '#8b4513');
+                }
             }
             return;
         }
@@ -444,7 +460,6 @@ export class Game {
             if (structure.health <= 0) {
                 this.turrets.splice(turretIndex, 1);
                 this.grid.removeBuilding(structure.gridX, structure.gridY);
-                this.recalculateEnemyPaths();
             }
         }
     }
@@ -1014,37 +1029,12 @@ export class Game {
     }
 
     recalculateEnemyPaths() {
-        // Server handles pathfinding in multiplayer
-        if (this.isMultiplayer) return;
-
-        // Recalculate main paths when grid changes
-        this.grid.calculateMainPaths();
-
-        // Mark all enemies for progressive path recalculation
-        for (const enemy of this.enemies) {
-            enemy.needsPathRecalc = true;
-        }
+        // No longer needed - enemies now rush directly toward nexus
+        // and only walls block them (collision detection happens per-frame)
     }
 
     progressivePathRecalc(maxPerFrame = 5) {
-        // Process a limited number of path recalculations per frame to avoid lag
-        // Scale with game speed
-        const scaledMax = maxPerFrame * this.gameSpeed;
-        let recalculated = 0;
-
-        for (const enemy of this.enemies) {
-            if (enemy.needsPathRecalc && recalculated < scaledMax) {
-                if (enemy.setPath) {
-                    // Use main paths for efficiency
-                    const path = this.grid.findNearestMainPath(enemy.gridX, enemy.gridY);
-                    if (path && path.length > 0) {
-                        enemy.setPath(path);
-                    }
-                }
-                enemy.needsPathRecalc = false;
-                recalculated++;
-            }
-        }
+        // No longer needed - enemies now rush directly toward nexus
     }
 
     // Toggle path visualization

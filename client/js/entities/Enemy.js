@@ -18,11 +18,6 @@ export class Enemy {
         this.damage = this.config.damage;
         this.angle = 0;
 
-        this.path = [];
-        this.pathIndex = 0;
-        this.targetX = this.x;
-        this.targetY = this.y;
-
         // Status effects
         this.burning = false;
         this.burnDamage = 0;
@@ -59,25 +54,6 @@ export class Enemy {
         this.frosted = false;
     }
 
-    setPath(path) {
-        this.path = path;
-        this.pathIndex = 0;
-        this.isAttackingWall = false;
-        this.targetWall = null;
-        if (path && path.length > 0) {
-            this.updateTarget();
-        }
-    }
-
-    updateTarget() {
-        if (this.pathIndex < this.path.length) {
-            const target = this.path[this.pathIndex];
-            const worldPos = this.grid.gridToWorld(target.x, target.y);
-            this.targetX = worldPos.x;
-            this.targetY = worldPos.y;
-        }
-    }
-
     update(deltaTime, nexus, enemies, game) {
         if (this.dead) return;
 
@@ -111,33 +87,14 @@ export class Enemy {
         // Reset frosted each frame (reapplied by slowdown turrets)
         this.frosted = false;
 
-        // Flying enemies move directly towards nexus, ignoring walls
+        // NEW MOVEMENT LOGIC: All enemies rush directly toward nexus
+        // Only walls can block ground enemies
         if (this.config.isFlying) {
-            this.updateFlying(deltaTime, nexus);
-        }
-        // Normal ground movement
-        else if ((!this.path || this.path.length === 0 || this.pathIndex >= this.path.length) && game) {
-            this.findAndAttackWall(game, deltaTime, nexus);
+            // Flying enemies ignore all obstacles
+            this.moveTowardNexus(deltaTime, nexus);
         } else {
-            this.isAttackingWall = false;
-
-            // Movement
-            const dx = this.targetX - this.x;
-            const dy = this.targetY - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist > 2) {
-                const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
-                this.x += (dx / dist) * moveSpeed;
-                this.y += (dy / dist) * moveSpeed;
-                this.angle = Math.atan2(dy, dx);
-            } else {
-                // Reached current target
-                this.pathIndex++;
-                if (this.pathIndex < this.path.length) {
-                    this.updateTarget();
-                }
-            }
+            // Ground enemies check for walls in their path
+            this.moveWithWallCollision(deltaTime, nexus, game);
         }
 
         // Attack turrets while passing (if has turret attack capability)
@@ -183,72 +140,97 @@ export class Enemy {
         this.slowMultiplier = 1;
     }
 
-    findAndAttackWall(game, deltaTime, nexus) {
-        // Find nearest wall or blocking structure
-        let nearestWall = null;
-        let nearestDist = Infinity;
+    // Direct movement toward nexus (for flying enemies)
+    moveTowardNexus(deltaTime, nexus) {
+        const dx = nexus.x - this.x;
+        const dy = nexus.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-        for (const wall of game.walls) {
-            const dist = Math.sqrt((this.x - wall.x) ** 2 + (this.y - wall.y) ** 2);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestWall = wall;
-            }
-        }
-
-        // Also check turrets as obstacles
-        for (const turret of game.turrets) {
-            const dist = Math.sqrt((this.x - turret.x) ** 2 + (this.y - turret.y) ** 2);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestWall = turret;
-            }
-        }
-
-        if (nearestWall && nearestDist < this.grid.cellSize * 1.5) {
-            // Close enough to attack
-            this.isAttackingWall = true;
-            this.targetWall = nearestWall;
-
-            // Face the wall
-            const dx = nearestWall.x - this.x;
-            const dy = nearestWall.y - this.y;
-            this.angle = Math.atan2(dy, dx);
-
-            // Attack
-            if (this.attackCooldown <= 0) {
-                this.attackCooldown = this.attackRate;
-                game.damageStructure(nearestWall, this.damage);
-            }
-        } else if (nearestWall) {
-            // Move towards nearest wall
-            this.isAttackingWall = false;
-            const dx = nearestWall.x - this.x;
-            const dy = nearestWall.y - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
+        if (dist > 2) {
             const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
             this.x += (dx / dist) * moveSpeed;
             this.y += (dy / dist) * moveSpeed;
             this.angle = Math.atan2(dy, dx);
+        }
+
+        this.isAttackingWall = false;
+        this.targetWall = null;
+    }
+
+    // Ground movement with wall collision detection
+    moveWithWallCollision(deltaTime, nexus, game) {
+        if (!game) {
+            this.moveTowardNexus(deltaTime, nexus);
+            return;
+        }
+
+        // Direction toward nexus
+        const dx = nexus.x - this.x;
+        const dy = nexus.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= 2) return; // Already at nexus
+
+        // Calculate next position
+        const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
+        const nextX = this.x + (dx / dist) * moveSpeed;
+        const nextY = this.y + (dy / dist) * moveSpeed;
+
+        // Update angle regardless
+        this.angle = Math.atan2(dy, dx);
+
+        // Check if there's a wall blocking the path
+        const blockingWall = this.findBlockingWall(nextX, nextY, game);
+
+        if (blockingWall) {
+            // Stop and attack the wall
+            this.isAttackingWall = true;
+            this.targetWall = blockingWall;
+
+            // Face the wall
+            const wallDx = blockingWall.x - this.x;
+            const wallDy = blockingWall.y - this.y;
+            this.angle = Math.atan2(wallDy, wallDx);
+
+            // Attack the wall
+            if (this.attackCooldown <= 0) {
+                this.attackCooldown = this.attackRate;
+                game.damageStructure(blockingWall, this.damage);
+            }
         } else {
-            // No walls, try to recalculate path
-            const path = this.grid.findPath(this.gridX, this.gridY, nexus.gridX, nexus.gridY);
-            if (path) {
-                this.setPath(path);
-            } else {
-                // No path found, move directly towards nexus
-                const dx = nexus.x - this.x;
-                const dy = nexus.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 2) {
-                    const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
-                    this.x += (dx / dist) * moveSpeed;
-                    this.y += (dy / dist) * moveSpeed;
-                    this.angle = Math.atan2(dy, dx);
-                }
+            // No wall blocking, move forward
+            this.x = nextX;
+            this.y = nextY;
+            this.isAttackingWall = false;
+            this.targetWall = null;
+        }
+    }
+
+    // Find wall that blocks movement
+    findBlockingWall(nextX, nextY, game) {
+        const enemyRadius = this.grid.cellSize * 0.4; // Enemy collision radius
+
+        for (const wall of game.walls) {
+            if (wall.isDestroyed && wall.isDestroyed()) continue;
+            if (wall.health <= 0) continue;
+
+            // Wall position and size
+            const wallHalfSize = this.grid.cellSize * 0.5;
+
+            // Check collision between enemy circle and wall square
+            const closestX = Math.max(wall.x - wallHalfSize, Math.min(nextX, wall.x + wallHalfSize));
+            const closestY = Math.max(wall.y - wallHalfSize, Math.min(nextY, wall.y + wallHalfSize));
+
+            const distX = nextX - closestX;
+            const distY = nextY - closestY;
+            const distSquared = distX * distX + distY * distY;
+
+            if (distSquared < enemyRadius * enemyRadius) {
+                return wall;
             }
         }
+
+        return null;
     }
 
     takeDamage(amount, sourceX = null, sourceY = null) {
@@ -298,9 +280,6 @@ export class Enemy {
 
         const radius = this.config.explosionRadius * this.grid.cellSize;
 
-        // Damage nearby enemies (friendly fire for kamikazes is off)
-        // But damage structures in radius if implemented
-
         // Add explosion effect
         if (game && game.renderer) {
             game.renderer.addExplosion(this.x, this.y, radius, '#ffaa00');
@@ -322,20 +301,6 @@ export class Enemy {
 
     getReward() {
         return this.config.reward || { iron: 5 };
-    }
-
-    updateFlying(deltaTime, nexus) {
-        // Flying enemies move directly towards nexus, ignoring pathfinding
-        const dx = nexus.x - this.x;
-        const dy = nexus.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 2) {
-            const moveSpeed = this.speed * this.slowMultiplier * this.grid.cellSize * deltaTime;
-            this.x += (dx / dist) * moveSpeed;
-            this.y += (dy / dist) * moveSpeed;
-            this.angle = Math.atan2(dy, dx);
-        }
     }
 
     attackNearbyTurrets(game, deltaTime) {
