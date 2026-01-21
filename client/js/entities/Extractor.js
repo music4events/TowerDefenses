@@ -22,7 +22,21 @@ export class Extractor {
 
         // Upgrade system
         this.level = 1;
-        this.maxLevel = 5;
+        this.maxLevel = 100;
+    }
+
+    getStats() {
+        return {
+            name: `Mine de ${this.resourceType}`,
+            level: this.level,
+            maxLevel: this.maxLevel,
+            health: this.health,
+            maxHealth: this.maxHealth,
+            extractionRate: this.extractionRate.toFixed(2),
+            stored: this.stored,
+            maxStorage: this.maxStorage,
+            resourceType: this.resourceType
+        };
     }
 
     update(deltaTime) {

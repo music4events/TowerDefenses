@@ -1058,6 +1058,9 @@ class GameState {
                 const extractionTime = 1 / (extractor.extractionRate || 1);
                 if (extractor.timer >= extractionTime) {
                     extractor.timer = 0;
+                    // Track stored (up to maxStorage)
+                    extractor.stored = Math.min((extractor.stored || 0) + 1, extractor.maxStorage || 50);
+                    // Add directly to player resources
                     if (extractor.resourceType) {
                         this.resources[extractor.resourceType] =
                             (this.resources[extractor.resourceType] || 0) + 1;
@@ -2750,6 +2753,10 @@ class GameState {
                     level: 1,
                     maxLevel: 100,
                     extractionRate: 1, // Resources per second
+                    health: 100,
+                    maxHealth: 100,
+                    stored: 0,
+                    maxStorage: 50,
                     playerId
                 });
                 this.grid[gridY][gridX] = 1;
@@ -2879,28 +2886,28 @@ class GameState {
                 this.resources[res] -= amt;
             }
 
-            // Apply upgrade using linear scaling based on base config
+            // Apply upgrade using flat values
             turret.level++;
             const baseConfig = TURRET_TYPES[turret.type];
             const levelBonus = turret.level - 1;
 
-            // Linear scaling: +1.5% damage per level (at level 100: +148.5% = 2.485x)
-            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.015));
+            // Flat damage: +1 damage per level (level 100: base + 99)
+            turret.config.damage = Math.floor(baseConfig.damage + levelBonus * 1);
 
-            // Linear scaling: +0.5% range per level (at level 100: +49.5% = 1.495x)
-            turret.config.range = baseConfig.range * (1 + levelBonus * 0.005);
+            // Flat range: +0.05 range per level (level 100: base + 4.95)
+            turret.config.range = baseConfig.range + levelBonus * 0.05;
 
-            // Linear scaling: fire rate decreases by 0.5% per level (at level 100: ~33% faster)
+            // Flat fire rate reduction: -0.5% per level (level 100: ~33% faster)
             const fireRateBonus = 1 + levelBonus * 0.005;
             turret.config.fireRate = Math.max(0.02, baseConfig.fireRate / fireRateBonus);
 
             // Also upgrade aoeRange for slowdown/shockwave turrets
             if (baseConfig.aoeRange) {
-                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.005);
+                turret.config.aoeRange = baseConfig.aoeRange + levelBonus * 0.03;
             }
 
-            // Upgrade health: +1% per level
-            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.01));
+            // Flat health: +5 HP per level
+            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) + levelBonus * 5);
             turret.health = Math.min(turret.health + 10, turret.maxHealth);
 
             return { success: true, type: 'turret', level: turret.level };
@@ -2925,9 +2932,15 @@ class GameState {
                 this.resources[res] -= amt;
             }
 
-            // Apply upgrade: +50% extraction rate per level
+            // Apply upgrade
             extractor.level++;
-            extractor.extractionRate = 1 + (extractor.level - 1) * 0.5;
+            // +10% extraction rate per level (flat bonus)
+            extractor.extractionRate = 1 + (extractor.level - 1) * 0.1;
+            // +10 max storage per level
+            extractor.maxStorage = 50 + (extractor.level - 1) * 10;
+            // +5 max health per level
+            extractor.maxHealth = 100 + (extractor.level - 1) * 5;
+            extractor.health = Math.min(extractor.health + 10, extractor.maxHealth);
 
             return { success: true, type: 'extractor', level: extractor.level };
         }
@@ -3335,7 +3348,12 @@ class GameState {
                 y: e.y,
                 resourceType: e.resourceType,
                 level: e.level || 1,
-                extractionRate: e.extractionRate || 1
+                maxLevel: e.maxLevel || 100,
+                extractionRate: e.extractionRate || 1,
+                health: e.health || 100,
+                maxHealth: e.maxHealth || 100,
+                stored: e.stored || 0,
+                maxStorage: e.maxStorage || 50
             })),
             projectiles: validProjectiles.map(p => ({
                 id: p.id,

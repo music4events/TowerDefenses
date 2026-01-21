@@ -586,14 +586,19 @@ export class Network {
                 if (Extractor) {
                     localExtractor = new Extractor(serverExtractor.gridX, serverExtractor.gridY, serverExtractor.resourceType, this.game.grid);
                     localExtractor.id = serverExtractor.id;
-                    localExtractor.level = serverExtractor.level || 1;
-                    localExtractor.extractionRate = serverExtractor.extractionRate || 1;
                     this.game.extractors.push(localExtractor);
                 }
-            } else {
-                // Update existing extractor
+            }
+
+            // Update extractor properties
+            if (localExtractor) {
                 localExtractor.level = serverExtractor.level || 1;
+                localExtractor.maxLevel = serverExtractor.maxLevel || 100;
                 localExtractor.extractionRate = serverExtractor.extractionRate || 1;
+                localExtractor.health = serverExtractor.health || 100;
+                localExtractor.maxHealth = serverExtractor.maxHealth || 100;
+                localExtractor.stored = serverExtractor.stored || 0;
+                localExtractor.maxStorage = serverExtractor.maxStorage || 50;
             }
         }
 

@@ -72,6 +72,7 @@ export class Game {
         // Action modes
         this.actionMode = null; // null, 'sell', 'upgrade'
         this.selectedTurret = null;
+        this.selectedExtractor = null;
         this.hoveredTurret = null;
 
         // Apply initial state if multiplayer
@@ -254,13 +255,20 @@ export class Game {
         if (this.actionMode === 'sell' && hasBuilding) {
             this.sellBuilding(gridX, gridY);
             this.selectedTurret = null;
+            this.selectedExtractor = null;
         } else if (this.actionMode === 'upgrade' && (turret || extractor || wall)) {
             this.upgradeBuilding(gridX, gridY);
             this.selectedTurret = turret || null;
+            this.selectedExtractor = extractor || null;
         } else if (turret) {
             this.selectedTurret = turret;
+            this.selectedExtractor = null;
+        } else if (extractor) {
+            this.selectedTurret = null;
+            this.selectedExtractor = extractor;
         } else {
             this.selectedTurret = null;
+            this.selectedExtractor = null;
         }
     }
 
@@ -288,6 +296,11 @@ export class Game {
     getHoveredTurret() {
         const gridPos = this.inputHandler.getMouseGridPosition();
         return this.getTurretAt(gridPos.x, gridPos.y);
+    }
+
+    getHoveredExtractor() {
+        const gridPos = this.inputHandler.getMouseGridPosition();
+        return this.extractors.find(e => e.gridX === gridPos.x && e.gridY === gridPos.y);
     }
 
     sellBuilding(gridX, gridY) {

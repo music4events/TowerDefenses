@@ -145,7 +145,16 @@ export class UI {
 
     updateSelectionInfo() {
         const turret = this.game.selectedTurret || this.game.getHoveredTurret();
+        const extractor = this.game.selectedExtractor || this.game.getHoveredExtractor();
 
+        // Show extractor info if selected/hovered
+        if (extractor && this.selectionInfo) {
+            this.selectionInfo.classList.remove('hidden');
+            this.showExtractorInfo(extractor);
+            return;
+        }
+
+        // Show turret info if selected/hovered
         if (!turret || !this.selectionInfo) {
             if (this.selectionInfo) {
                 this.selectionInfo.classList.add('hidden');
@@ -154,7 +163,51 @@ export class UI {
         }
 
         this.selectionInfo.classList.remove('hidden');
+        this.showTurretInfo(turret);
+    }
 
+    showExtractorInfo(extractor) {
+        const stats = extractor.getStats();
+        const sellValue = extractor.getSellValue();
+        const upgradeCost = extractor.getUpgradeCost();
+
+        // Build sell value HTML
+        let sellHtml = '';
+        for (const [resource, amount] of Object.entries(sellValue)) {
+            sellHtml += `<span class="cost-${resource}">${amount}</span> `;
+        }
+
+        // Build upgrade cost HTML
+        let upgradeHtml = '';
+        if (upgradeCost) {
+            for (const [resource, amount] of Object.entries(upgradeCost)) {
+                upgradeHtml += `<span class="cost-${resource}">${amount}</span> `;
+            }
+        }
+
+        // Resource type color
+        const resourceColors = {
+            iron: '#a0a0a0',
+            copper: '#cd7f32',
+            coal: '#333333',
+            gold: '#ffd700'
+        };
+        const resColor = resourceColors[stats.resourceType] || '#ffffff';
+
+        this.selectionDetails.innerHTML = `
+            <div class="stat"><span class="stat-label">Nom</span><span style="color:${resColor}">${stats.name}</span></div>
+            <div class="stat"><span class="stat-label">Niveau</span><span>${stats.level}/${stats.maxLevel}</span></div>
+            <div class="stat"><span class="stat-label">Vie</span><span>${Math.ceil(stats.health)}/${stats.maxHealth}</span></div>
+            <div class="stat"><span class="stat-label">Production</span><span>${stats.extractionRate}/s</span></div>
+            <div class="stat"><span class="stat-label">Stock</span><span>${stats.stored}/${stats.maxStorage}</span></div>
+            <div class="upgrade-cost">
+                <div class="stat"><span class="stat-label">Vente</span><span>${sellHtml}</span></div>
+                ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
+            </div>
+        `;
+    }
+
+    showTurretInfo(turret) {
         const stats = turret.getStats();
         const sellValue = turret.getSellValue();
         const upgradeCost = turret.getUpgradeCost();
@@ -197,9 +250,6 @@ export class UI {
         const fireRateDisplay = stats.speedBoosted
             ? `${stats.fireRate} <span class="boosted">(${stats.boostedFireRate})</span>`
             : `${stats.fireRate}`;
-
-        // Health bar percentage
-        const healthPercent = Math.round((stats.health / stats.maxHealth) * 100);
 
         this.selectionDetails.innerHTML = `
             <div class="stat"><span class="stat-label">Nom</span><span>${stats.name}</span></div>
