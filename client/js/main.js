@@ -226,9 +226,7 @@ class App {
         document.getElementById('chat-container').classList.remove('hidden');
 
         const canvas = document.getElementById('gameCanvas');
-        // Use game mode from initialState if provided, otherwise use selected mode
-        const gameMode = initialState?.gameMode || this.selectedGameMode;
-        this.game = new Game(canvas, true, this.network, initialState, gameMode);
+        this.game = new Game(canvas, this.network, initialState);
         this.network.game = this.game;
 
         // Setup chat and speed buttons

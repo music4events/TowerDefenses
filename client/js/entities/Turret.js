@@ -26,7 +26,7 @@ export class Turret {
         this.cooldown = 0;
 
         this.level = 1;
-        this.maxLevel = 5;
+        this.maxLevel = 100;
         this.totalInvested = this.calculateTotalCost(this.baseConfig.cost);
 
         this.range = this.config.range * grid.cellSize;
@@ -89,15 +89,21 @@ export class Turret {
         if (this.level >= this.maxLevel) return false;
 
         this.level++;
-        const bonus = 1 + (this.level - 1) * 0.15;
+        const levelBonus = this.level - 1;
 
-        this.config.damage = Math.floor(this.baseConfig.damage * bonus);
-        this.config.range = this.baseConfig.range * (1 + (this.level - 1) * 0.1);
-        this.config.fireRate = this.baseConfig.fireRate / (1 + (this.level - 1) * 0.1);
+        // Linear scaling: +1.5% damage per level (at level 100: +148.5% = 2.485x)
+        this.config.damage = Math.floor(this.baseConfig.damage * (1 + levelBonus * 0.015));
 
-        // Upgrade health too
-        this.maxHealth = Math.floor((this.baseConfig.maxHealth || 100) * bonus);
-        this.health = Math.min(this.health + 20, this.maxHealth);
+        // Linear scaling: +0.5% range per level (at level 100: +49.5% = 1.495x)
+        this.config.range = this.baseConfig.range * (1 + levelBonus * 0.005);
+
+        // Linear scaling: fire rate decreases by 0.5% per level (at level 100: ~33% faster)
+        const fireRateBonus = 1 + levelBonus * 0.005;
+        this.config.fireRate = Math.max(0.02, this.baseConfig.fireRate / fireRateBonus);
+
+        // Upgrade health: +1% per level
+        this.maxHealth = Math.floor((this.baseConfig.maxHealth || 100) * (1 + levelBonus * 0.01));
+        this.health = Math.min(this.health + 10, this.maxHealth);
 
         this.range = this.config.range * this.grid.cellSize;
 
@@ -119,21 +125,40 @@ export class Turret {
     }
 
     getStats() {
+        // Calculate boosted values
+        const rangeMult = 1 + (this.rangeBoostAmount || 0);
+        const damageMult = 1 + (this.damageBoostAmount || 0);
+        const speedMult = 1 + (this.speedBoostAmount || 0);
+
+        const boostedDamage = Math.floor(this.config.damage * damageMult);
+        const boostedRange = this.config.range * rangeMult;
+        const boostedFireRate = this.config.fireRate / speedMult;
+
         return {
             name: this.config.name,
             level: this.level,
+            maxLevel: this.maxLevel,
             damage: this.config.damage,
+            boostedDamage: boostedDamage,
             range: this.config.range.toFixed(1),
+            boostedRange: boostedRange.toFixed(1),
             fireRate: (1 / this.config.fireRate).toFixed(1) + '/s',
+            boostedFireRate: (1 / boostedFireRate).toFixed(1) + '/s',
             health: this.health,
-            maxHealth: this.maxHealth
+            maxHealth: this.maxHealth,
+            // Boost flags
+            speedBoosted: this.speedBoosted || false,
+            damageBoosted: this.damageBoosted || false,
+            rangeBoosted: this.rangeBoosted || false
         };
     }
 
     update(deltaTime, enemies, projectiles, game) {
         if (this.isDestroyed()) return;
 
-        this.cooldown -= deltaTime;
+        // Apply speed boost to cooldown reduction
+        const speedMult = 1 + (this.speedBoostAmount || 0);
+        this.cooldown -= deltaTime * speedMult;
 
         // Healer turret - heals other turrets
         if (this.config.isHealer) {
@@ -173,6 +198,9 @@ export class Turret {
         if (this.cooldown <= 0) {
             this.cooldown = this.config.fireRate;
             const healAmount = this.config.healAmount || 10;
+            // Apply range boost
+            const rangeMult = 1 + (this.rangeBoostAmount || 0);
+            const boostedRange = this.range * rangeMult;
 
             // Heal turrets
             for (const turret of game.turrets) {
@@ -181,7 +209,7 @@ export class Turret {
                 if (turret.health >= turret.maxHealth) continue;
 
                 const dist = Math.sqrt((this.x - turret.x) ** 2 + (this.y - turret.y) ** 2);
-                if (dist <= this.range) {
+                if (dist <= boostedRange) {
                     turret.heal(healAmount);
                     this.healTargets.push(turret);
                 }
@@ -193,7 +221,7 @@ export class Turret {
                 if (wall.health >= (wall.maxHealth || 200)) continue;
 
                 const dist = Math.sqrt((this.x - wall.x) ** 2 + (this.y - wall.y) ** 2);
-                if (dist <= this.range) {
+                if (dist <= boostedRange) {
                     wall.health = Math.min(wall.maxHealth || 200, wall.health + healAmount);
                     this.healTargets.push(wall);
                 }
@@ -202,7 +230,9 @@ export class Turret {
     }
 
     updateSlowdown(deltaTime, enemies) {
-        const slowRange = (this.config.aoeRange || this.config.range) * this.grid.cellSize;
+        // Apply range boost
+        const rangeMult = 1 + (this.rangeBoostAmount || 0);
+        const slowRange = (this.config.aoeRange || this.config.range) * this.grid.cellSize * rangeMult;
 
         for (const enemy of enemies) {
             if (enemy.dead) continue;
@@ -221,13 +251,17 @@ export class Turret {
     updateDrone(deltaTime, enemies) {
         this.patrolAngle += deltaTime * 0.5;
 
+        // Apply range boost
+        const rangeMult = 1 + (this.rangeBoostAmount || 0);
+        const boostedRange = this.range * rangeMult;
+
         if (this.target && !this.target.dead) {
             // Move towards target
             const dx = this.target.x - this.droneX;
             const dy = this.target.y - this.droneY;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist > this.range * 0.5) {
+            if (dist > boostedRange * 0.5) {
                 const moveSpeed = (this.config.moveSpeed || 2) * this.grid.cellSize * deltaTime;
                 const newX = this.droneX + (dx / dist) * moveSpeed;
                 const newY = this.droneY + (dy / dist) * moveSpeed;
@@ -253,6 +287,9 @@ export class Turret {
         let closest = null;
         let closestDist = Infinity;
         const minRange = (this.config.minRange || 0) * this.grid.cellSize;
+        // Apply range boost
+        const rangeMult = 1 + (this.rangeBoostAmount || 0);
+        const boostedRange = this.range * rangeMult;
 
         for (const enemy of enemies) {
             if (enemy.dead) continue;
@@ -267,7 +304,7 @@ export class Turret {
             // Check minimum range (for mortar)
             if (dist < minRange) continue;
 
-            if (dist <= this.range && dist < closestDist) {
+            if (dist <= boostedRange && dist < closestDist) {
                 closest = enemy;
                 closestDist = dist;
             }
@@ -276,10 +313,17 @@ export class Turret {
         return closest;
     }
 
+    // Get damage with boost applied
+    getBoostedDamage() {
+        const damageMult = 1 + (this.damageBoostAmount || 0);
+        return this.config.damage * damageMult;
+    }
+
     fire(projectiles, game) {
         if (!this.target) return;
 
         const projectileType = this.getProjectileType();
+        const boostedDamage = this.getBoostedDamage();
 
         // === TOURELLES 2x2 ===
         if (this.config.isMissile && !this.config.isRocketArray && !this.config.isMissileBattery) {
@@ -372,7 +416,7 @@ export class Turret {
         }
 
         if (this.config.instantHit) {
-            this.target.takeDamage(this.config.damage);
+            this.target.takeDamage(boostedDamage);
             projectiles.push({
                 type: 'laser',
                 x: this.target.x,
@@ -397,7 +441,7 @@ export class Turret {
                 y: this.y,
                 vx: (dx / dist) * this.config.projectileSpeed * this.grid.cellSize,
                 vy: (dy / dist) * this.config.projectileSpeed * this.grid.cellSize,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 aoeRadius: this.config.aoeRadius ? this.config.aoeRadius * this.grid.cellSize : 0,
                 penetration: this.config.penetration || false,
@@ -412,6 +456,7 @@ export class Turret {
         const pellets = this.config.pelletCount || 6;
         const spread = this.config.spreadAngle || 0.5;
         const baseAngle = this.angle;
+        const boostedDamage = this.getBoostedDamage();
 
         for (let i = 0; i < pellets; i++) {
             const pelletAngle = baseAngle + (i - (pellets - 1) / 2) * (spread / (pellets - 1));
@@ -423,7 +468,7 @@ export class Turret {
                 y: this.y,
                 vx: Math.cos(pelletAngle) * speed,
                 vy: Math.sin(pelletAngle) * speed,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 sourceX: this.x,
                 sourceY: this.y,
@@ -435,6 +480,7 @@ export class Turret {
     fireMultiArtillery(projectiles) {
         const shells = this.config.shellCount || 3;
         const spread = (this.config.shellSpread || 1.5) * this.grid.cellSize;
+        const boostedDamage = this.getBoostedDamage();
 
         for (let i = 0; i < shells; i++) {
             const offsetX = (Math.random() - 0.5) * spread;
@@ -452,7 +498,7 @@ export class Turret {
                 y: this.y,
                 vx: (dx / dist) * (this.config.projectileSpeed || 7) * this.grid.cellSize,
                 vy: (dy / dist) * (this.config.projectileSpeed || 7) * this.grid.cellSize,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 aoeRadius: (this.config.aoeRadius || 1.5) * this.grid.cellSize,
                 sourceX: this.x,
@@ -463,6 +509,7 @@ export class Turret {
     }
 
     fireRailgun(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const beamEndX = this.x + Math.cos(this.angle) * this.range;
         const beamEndY = this.y + Math.sin(this.angle) * this.range;
 
@@ -478,7 +525,7 @@ export class Turret {
 
             const enemySize = (enemy.config?.size || 0.6) * this.grid.cellSize / 2;
             if (dist <= enemySize + 5) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
             }
         }
 
@@ -515,6 +562,7 @@ export class Turret {
     }
 
     fireChainLightning(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const targets = [this.target];
         let currentTarget = this.target;
 
@@ -549,7 +597,7 @@ export class Turret {
         let prevY = this.y;
 
         for (const target of targets) {
-            target.takeDamage(this.config.damage);
+            target.takeDamage(boostedDamage);
 
             projectiles.push({
                 type: 'tesla',
@@ -567,6 +615,7 @@ export class Turret {
     }
 
     fireFlame(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const spread = this.config.flameSpread || 0.4;
         const baseAngle = this.angle;
         const flameCount = this.config.flameCount || 5;  // Plus de particules!
@@ -583,7 +632,7 @@ export class Turret {
                 y: this.y + Math.sin(baseAngle) * this.grid.cellSize * 0.3,
                 vx: Math.cos(angle) * speed * this.grid.cellSize,
                 vy: Math.sin(angle) * speed * this.grid.cellSize,
-                damage: this.config.damage * 0.1,
+                damage: boostedDamage * 0.1,
                 config: this.config,
                 life: flameLife * (0.7 + Math.random() * 0.6),  // Durée variable
                 dotDamage: this.config.dotDamage,
@@ -595,6 +644,7 @@ export class Turret {
     }
 
     fireFlak(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const flakCount = this.config.flakCount || 16;
         const spreadRadius = (this.config.flakSpread || 3) * this.grid.cellSize;
         const barrels = this.config.barrelCount || 2;
@@ -627,7 +677,7 @@ export class Turret {
                 y: startY,
                 vx: (dx / dist) * speed,
                 vy: (dy / dist) * speed,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 sourceX: startX,
                 sourceY: startY,
@@ -645,6 +695,7 @@ export class Turret {
 
     // === TOURELLES 2x2 ===
     fireMissile(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const missileCount = this.config.missileCount || 2;
         const speed = (this.config.projectileSpeed || 8) * this.grid.cellSize;
 
@@ -663,7 +714,7 @@ export class Turret {
                 y: startY,
                 vx: (dx / dist) * speed,
                 vy: (dy / dist) * speed,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 target: this.target,
                 homingStrength: this.config.homingStrength || 0.15,
@@ -678,6 +729,7 @@ export class Turret {
     }
 
     firePlasma(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const speed = (this.config.projectileSpeed || 12) * this.grid.cellSize;
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
@@ -689,7 +741,7 @@ export class Turret {
             y: this.y,
             vx: (dx / dist) * speed,
             vy: (dy / dist) * speed,
-            damage: this.config.damage,
+            damage: boostedDamage,
             config: this.config,
             aoeRadius: (this.config.aoeRadius || 1.2) * this.grid.cellSize,
             plasmaSize: this.config.plasmaSize || 15,
@@ -703,13 +755,14 @@ export class Turret {
     }
 
     fireCryo(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         // Continuous beam that slows and sometimes freezes
         for (const enemy of game.enemies) {
             if (enemy.dead) continue;
             const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
 
             if (dist <= this.range) {
-                enemy.takeDamage(this.config.damage * 0.1);
+                enemy.takeDamage(boostedDamage * 0.1);
                 if (enemy.applySlow) {
                     enemy.applySlow(this.config.slowAmount || 0.6);
                 }
@@ -737,6 +790,7 @@ export class Turret {
     }
 
     fireGatling(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const spread = this.config.spread || 0.15;
         const speed = (this.config.projectileSpeed || 25) * this.grid.cellSize;
         const angle = this.angle + (Math.random() - 0.5) * spread;
@@ -747,7 +801,7 @@ export class Turret {
             y: this.y + Math.sin(this.angle) * this.grid.cellSize * 0.5,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
-            damage: this.config.damage,
+            damage: boostedDamage,
             config: this.config,
             sourceX: this.x,
             sourceY: this.y,
@@ -761,6 +815,7 @@ export class Turret {
     }
 
     fireEMP(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const empRadius = (this.config.empRadius || 4) * this.grid.cellSize;
 
         // Damage and stun all enemies in radius
@@ -769,7 +824,7 @@ export class Turret {
             const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
 
             if (dist <= empRadius) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
                 enemy.stunned = true;
                 enemy.stunnedTime = this.config.stunDuration || 2.0;
             }
@@ -790,6 +845,7 @@ export class Turret {
 
     // === TOURELLES 3x3 ===
     fireMegaTesla(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const targets = [];
         const arcCount = this.config.arcCount || 3;
         const chainTargets = this.config.chainTargets || 8;
@@ -835,7 +891,7 @@ export class Turret {
             let prevY = this.y;
 
             for (const enemy of chain) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
 
                 projectiles.push({
                     type: 'mega-tesla',
@@ -856,6 +912,7 @@ export class Turret {
     }
 
     fireMegaRailgun(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const beamEndX = this.x + Math.cos(this.angle) * this.range * 1.5;
         const beamEndY = this.y + Math.sin(this.angle) * this.range * 1.5;
 
@@ -866,7 +923,7 @@ export class Turret {
             const enemySize = (enemy.config?.size || 0.6) * this.grid.cellSize / 2;
 
             if (dist <= enemySize + 15) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
             }
         }
 
@@ -885,6 +942,7 @@ export class Turret {
     }
 
     fireRocketArray(projectiles) {
+        const boostedDamage = this.getBoostedDamage();
         const rocketCount = this.config.rocketCount || 6;
         const speed = (this.config.projectileSpeed || 10) * this.grid.cellSize;
         const salvoDelay = this.config.salvoDelay || 0.1;
@@ -905,7 +963,7 @@ export class Turret {
                 y: startY,
                 vx: (dx / dist) * speed,
                 vy: (dy / dist) * speed,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 target: this.target,
                 homingStrength: this.config.homingStrength || 0.12,
@@ -921,6 +979,7 @@ export class Turret {
     }
 
     fireLaserArray(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const laserCount = this.config.laserCount || 4;
         const sortedEnemies = [...game.enemies]
             .filter(e => !e.dead)
@@ -930,7 +989,7 @@ export class Turret {
 
         for (let i = 0; i < Math.min(laserCount, sortedEnemies.length); i++) {
             const enemy = sortedEnemies[i].enemy;
-            enemy.takeDamage(this.config.damage);
+            enemy.takeDamage(boostedDamage);
 
             projectiles.push({
                 type: 'laser-array',
@@ -946,6 +1005,7 @@ export class Turret {
     }
 
     fireParticle(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const beamEndX = this.x + Math.cos(this.angle) * this.range;
         const beamEndY = this.y + Math.sin(this.angle) * this.range;
 
@@ -954,7 +1014,7 @@ export class Turret {
             if (enemy.dead) continue;
             const dist = this.pointToLineDistance(enemy.x, enemy.y, this.x, this.y, beamEndX, beamEndY);
             if (dist <= 20) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
             }
         }
 
@@ -972,6 +1032,7 @@ export class Turret {
     }
 
     fireNuclear(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         // Target the STRONGEST enemy (highest HP) in range
         let strongestEnemy = null;
         let maxHealth = 0;
@@ -998,7 +1059,7 @@ export class Turret {
             vx: Math.cos(launchAngle) * speed * 0.5,
             vy: Math.sin(launchAngle) * speed * 0.5 - speed * 0.3, // Upward initial boost
             maxSpeed: speed * 1.5,
-            damage: this.config.damage,
+            damage: boostedDamage,
             config: this.config,
             aoeRadius: (this.config.aoeRadius || 5) * this.grid.cellSize,
             target: target, // HOMING TARGET
@@ -1018,6 +1079,7 @@ export class Turret {
     }
 
     fireStorm(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         const stormRadius = (this.config.stormRadius || 5) * this.grid.cellSize;
         const lightningStrikes = this.config.lightningStrikes || 5;
 
@@ -1042,7 +1104,7 @@ export class Turret {
         for (let i = 0; i < Math.min(lightningStrikes, enemiesInRange.length); i++) {
             const enemy = enemiesInRange[Math.floor(Math.random() * enemiesInRange.length)];
             if (enemy) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
 
                 projectiles.push({
                     type: 'storm-bolt',
@@ -1059,6 +1121,7 @@ export class Turret {
     }
 
     fireDeathRay(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         if (!this.heatLevel) this.heatLevel = 0;
 
         const beamEndX = this.x + Math.cos(this.angle) * this.range;
@@ -1069,7 +1132,7 @@ export class Turret {
             if (enemy.dead) continue;
             const dist = this.pointToLineDistance(enemy.x, enemy.y, this.x, this.y, beamEndX, beamEndY);
             if (dist <= 15) {
-                enemy.takeDamage(this.config.damage * 0.1);
+                enemy.takeDamage(boostedDamage * 0.1);
             }
         }
 
@@ -1089,6 +1152,7 @@ export class Turret {
     }
 
     fireMissileBattery(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         // Target the STRONGEST enemy (highest HP) in range
         let strongestEnemy = null;
         let maxHealth = 0;
@@ -1137,7 +1201,7 @@ export class Turret {
                 vx: Math.cos(initialAngle) * speed * 0.5,
                 vy: Math.sin(initialAngle) * speed * 0.5 - speed * 0.2, // Slight upward boost
                 maxSpeed: speed,
-                damage: this.config.damage,
+                damage: boostedDamage,
                 config: this.config,
                 target: target,
                 targetX: targetX,
@@ -1155,6 +1219,7 @@ export class Turret {
     }
 
     fireOrbital(projectiles, game) {
+        const boostedDamage = this.getBoostedDamage();
         // Target the STRONGEST enemy (highest HP) in range for maximum impact
         let strongestEnemy = null;
         let maxHealth = 0;
@@ -1190,7 +1255,7 @@ export class Turret {
             x: target.x,
             y: target.y,
             radius: strikeRadius,
-            damage: this.config.damage,
+            damage: boostedDamage,
             config: this.config,
             life: strikeDelay + 1.5,
             delay: strikeDelay,
@@ -1205,14 +1270,17 @@ export class Turret {
     }
 
     fireShockwave(projectiles, game) {
-        const aoeRange = (this.config.aoeRange || 3) * this.grid.cellSize;
+        const boostedDamage = this.getBoostedDamage();
+        // Apply range boost
+        const rangeMult = 1 + (this.rangeBoostAmount || 0);
+        const aoeRange = (this.config.aoeRange || 3) * this.grid.cellSize * rangeMult;
 
         // Damage all enemies in range
         for (const enemy of game.enemies) {
             if (enemy.dead) continue;
             const dist = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
             if (dist <= aoeRange) {
-                enemy.takeDamage(this.config.damage);
+                enemy.takeDamage(boostedDamage);
             }
         }
 

@@ -2,7 +2,6 @@ import { Grid } from './Grid.js';
 import { Renderer } from './Renderer.js';
 import { InputHandler } from './InputHandler.js';
 import { UI } from './UI.js';
-import { WaveManager } from './WaveManager.js';
 import { Nexus } from './entities/Nexus.js';
 import { Enemy } from './entities/Enemy.js';
 import { Turret } from './entities/Turret.js';
@@ -13,12 +12,11 @@ import { BUILDING_TYPES } from './data/buildings.js';
 import { ENEMY_TYPES } from './data/enemies.js';
 
 export class Game {
-    constructor(canvas, isMultiplayer = false, network = null, initialState = null, gameMode = 'waves') {
+    constructor(canvas, network = null, initialState = null) {
         this.canvas = canvas;
         this.cellSize = 32;
-        this.isMultiplayer = isMultiplayer;
+        this.isMultiplayer = true; // Always multiplayer mode
         this.network = network;
-        this.gameMode = gameMode; // 'waves' or 'endless'
 
         // Map size (3x larger: 150x114 cells)
         this.mapWidth = 150 * this.cellSize;  // 4800
@@ -91,9 +89,6 @@ export class Game {
         if (!initialState) {
             this.grid.setNexus(centerX, centerY);
         }
-
-        // Wave manager (only active in solo mode)
-        this.waveManager = new WaveManager(this, this.gameMode);
 
         // UI
         this.ui = new UI(this);
@@ -227,16 +222,9 @@ export class Game {
         const validSpeeds = [1, 2, 5, 10];
         if (!validSpeeds.includes(speed)) return;
 
-        if (this.isMultiplayer && this.network) {
-            // In multiplayer, send to server (only host can change)
+        // Send to server (only host can change)
+        if (this.network) {
             this.network.setGameSpeed(speed);
-        } else {
-            // In solo, change directly
-            this.gameSpeed = speed;
-            // Update button states
-            document.querySelectorAll('.speed-btn').forEach(btn => {
-                btn.classList.toggle('active', parseInt(btn.dataset.speed) === speed);
-            });
         }
     }
 
@@ -303,166 +291,19 @@ export class Game {
     }
 
     sellBuilding(gridX, gridY) {
-        // In multiplayer, send to server
-        if (this.isMultiplayer && this.network) {
+        // Send to server
+        if (this.network) {
             this.network.sellBuilding(gridX, gridY);
-            return;
         }
-
-        // Solo mode: handle locally
-        const turret = this.getTurretAt(gridX, gridY);
-        if (turret) {
-            this.sellTurret(turret);
-            return;
-        }
-
-        // Check for extractor
-        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
-        if (extractor) {
-            // Refund based on level
-            const sellValue = extractor.getSellValue ? extractor.getSellValue() : { iron: 37 };
-            for (const [resource, amount] of Object.entries(sellValue)) {
-                this.resources[resource] = (this.resources[resource] || 0) + amount;
-            }
-            const index = this.extractors.indexOf(extractor);
-            if (index > -1) this.extractors.splice(index, 1);
-            this.grid.removeBuilding(gridX, gridY);
-            return;
-        }
-
-        // Check for wall
-        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
-        if (wall) {
-            this.resources.iron = (this.resources.iron || 0) + 15;
-            const index = this.walls.indexOf(wall);
-            if (index > -1) this.walls.splice(index, 1);
-            this.grid.removeBuilding(gridX, gridY);
-            this.recalculateEnemyPaths();
-        }
-    }
-
-    sellTurret(turret) {
-        if (!turret.getSellValue) return;
-        const sellValue = turret.getSellValue();
-
-        // Add resources
-        for (const [resource, amount] of Object.entries(sellValue)) {
-            this.resources[resource] = (this.resources[resource] || 0) + amount;
-        }
-
-        // Remove turret
-        const index = this.turrets.indexOf(turret);
-        if (index > -1) {
-            this.turrets.splice(index, 1);
-        }
-
-        // Free grid cell(s) - handle multi-cell turrets
-        const size = turret.config?.gridSize || 1;
-        if (size > 1) {
-            this.grid.removeMultiBuilding(turret.gridX, turret.gridY, size);
-        } else {
-            this.grid.removeBuilding(turret.gridX, turret.gridY);
-        }
-
-        // Recalculate enemy paths
-        this.recalculateEnemyPaths();
-
-        this.selectedTurret = null;
     }
 
     upgradeBuilding(gridX, gridY) {
-        // In multiplayer, send to server
-        if (this.isMultiplayer && this.network) {
+        // Send to server
+        if (this.network) {
             this.network.upgradeBuilding(gridX, gridY);
-            return;
-        }
-
-        // Solo mode: handle locally
-        const turret = this.getTurretAt(gridX, gridY);
-        if (turret) {
-            this.upgradeTurret(turret);
-            return;
-        }
-
-        // Check for extractor (solo upgrade)
-        const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
-        if (extractor && extractor.upgrade) {
-            const cost = { iron: 30 + (extractor.level || 1) * 10 };
-            if (this.canAfford(cost)) {
-                this.resources.iron -= cost.iron;
-                extractor.upgrade();
-            }
-            return;
-        }
-
-        // Check for wall (solo upgrade)
-        const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
-        if (wall && wall.upgrade) {
-            const cost = wall.getUpgradeCost();
-            if (cost && this.canAfford(cost)) {
-                for (const [resource, amount] of Object.entries(cost)) {
-                    this.resources[resource] -= amount;
-                }
-                wall.upgrade();
-            }
         }
     }
 
-    upgradeTurret(turret) {
-        if (!turret.level || !turret.maxLevel) return;
-        if (turret.level >= turret.maxLevel) return;
-
-        if (!turret.getUpgradeCost) return;
-        const cost = turret.getUpgradeCost();
-        if (!cost || !this.canAfford(cost)) return;
-
-        // Deduct resources
-        for (const [resource, amount] of Object.entries(cost)) {
-            this.resources[resource] -= amount;
-        }
-
-        // Upgrade turret
-        if (turret.upgrade) {
-            turret.upgrade();
-        }
-
-        this.selectedTurret = turret;
-    }
-
-    damageStructure(structure, damage) {
-        // Server handles damage in multiplayer
-        if (this.isMultiplayer) return;
-        if (!structure) return;
-
-        // Check if it's a wall
-        const wallIndex = this.walls.indexOf(structure);
-        if (wallIndex > -1) {
-            structure.health -= damage;
-            if (structure.health <= 0) {
-                this.walls.splice(wallIndex, 1);
-                this.grid.removeBuilding(structure.gridX, structure.gridY);
-                // Add destruction effect
-                if (this.renderer) {
-                    this.renderer.addExplosion(structure.x, structure.y, this.cellSize, '#8b4513');
-                }
-            }
-            return;
-        }
-
-        // Check if it's a turret (turrets have more health implicitly)
-        const turretIndex = this.turrets.indexOf(structure);
-        if (turretIndex > -1) {
-            if (!structure.health) {
-                structure.health = 150; // Default turret health
-                structure.maxHealth = 150;
-            }
-            structure.health -= damage;
-            if (structure.health <= 0) {
-                this.turrets.splice(turretIndex, 1);
-                this.grid.removeBuilding(structure.gridX, structure.gridY);
-            }
-        }
-    }
 
     getEnemyConfig(type) {
         return ENEMY_TYPES[type];
@@ -491,123 +332,17 @@ export class Game {
     }
 
     update(deltaTime) {
-        // ===== SOLO MODE: Full game logic =====
-        if (!this.isMultiplayer) {
-            // Apply game speed multiplier in solo mode
-            const adjustedDelta = deltaTime * this.gameSpeed;
-
-            // Update wave manager
-            this.waveManager.update(adjustedDelta);
-
-            // Update extractors
-            for (const extractor of this.extractors) {
-                if (extractor.update) {
-                    extractor.update(adjustedDelta);
-                    if (extractor.stored > 0 && extractor.collect) {
-                        const collected = extractor.collect();
-                        this.resources[collected.type] = (this.resources[collected.type] || 0) + collected.amount;
-                    }
-                }
-            }
-
-            // Update enemies
-            for (const enemy of this.enemies) {
-                if (enemy.update) {
-                    enemy.update(adjustedDelta, this.nexus, this.enemies, this);
-                }
-            }
-
-            // Remove dead enemies and collect rewards
-            const enemiesToSpawn = [];
-            // Boss types for death effect
-            const bossTypes = ['boss', 'flying-boss', 'carrier-boss', 'mega-boss',
-                               'titan', 'leviathan', 'swarm-mother', 'devastator',
-                               'overlord', 'colossus', 'hive-queen', 'juggernaut',
-                               'apocalypse', 'world-ender'];
-
-            this.enemies = this.enemies.filter(enemy => {
-                if (enemy.age === undefined || enemy.age < 1.0) {
-                    enemy.dead = false;
-                    return true;
-                }
-                if (enemy.dead) {
-                    if (!enemy.reachedNexus) {
-                        // Collect reward
-                        if (enemy.getReward) {
-                            const reward = enemy.getReward();
-                            for (const [resource, amount] of Object.entries(reward)) {
-                                this.resources[resource] = (this.resources[resource] || 0) + amount;
-                            }
-                        }
-
-                        // Check if it's a boss - trigger epic death effect
-                        if (bossTypes.includes(enemy.type)) {
-                            const bossSize = enemy.config?.size || 1.5;
-                            const bossColor = enemy.config?.color || '#880088';
-                            this.renderer.addBossDeathEffect(enemy.x, enemy.y, bossSize, bossColor);
-                        } else {
-                            // Normal death effect for regular enemies
-                            this.renderer.addDeathEffect(enemy.x, enemy.y, enemy.config?.color || '#ff4444');
-                        }
-
-                        // Splitter enemies spawn children on death
-                        if (enemy.config?.splitOnDeath) {
-                            const count = enemy.config.splitCount || 2;
-                            const childType = enemy.config.splitType || 'splitter-child';
-                            for (let i = 0; i < count; i++) {
-                                enemiesToSpawn.push({
-                                    gridX: enemy.gridX,
-                                    gridY: enemy.gridY,
-                                    type: childType
-                                });
-                            }
-                        }
-                    }
-                }
-                return !enemy.dead;
-            });
-
-            // Spawn splitter children
-            for (const spawn of enemiesToSpawn) {
-                this.spawnEnemy(spawn.gridX, spawn.gridY, spawn.type);
-            }
-
-            // Update turrets
-            for (const turret of this.turrets) {
-                if (turret.update) {
-                    turret.update(adjustedDelta, this.enemies, this.projectiles, this);
-                }
-            }
-
-            // Remove destroyed turrets
-            this.turrets = this.turrets.filter(turret => {
-                if (turret.isDestroyed && turret.isDestroyed()) {
-                    this.grid.removeBuilding(turret.gridX, turret.gridY);
-                    this.recalculateEnemyPaths();
-                    return false;
-                }
-                return true;
-            });
-
-            // Update projectiles
-            this.updateProjectiles(adjustedDelta);
-
-            // Progressive path recalculation (spread work over frames to avoid lag)
-            this.progressivePathRecalc(5);
-
-            // Check game over
-            if (this.nexus.isDestroyed()) {
-                this.gameOver = true;
-                this.ui.showGameOver();
-            }
-        }
         // ===== MULTIPLAYER MODE: Server handles all game logic =====
-        // But we still interpolate projectiles locally for smooth rendering
-        if (this.isMultiplayer) {
-            this.interpolateProjectiles(deltaTime);
+        // Interpolate projectiles locally for smooth rendering
+        this.interpolateProjectiles(deltaTime);
+
+        // Check game over
+        if (this.nexus.isDestroyed()) {
+            this.gameOver = true;
+            this.ui.showGameOver();
         }
 
-        // Update UI (always)
+        // Update UI
         this.ui.update();
     }
 
@@ -624,25 +359,10 @@ export class Game {
                 }
             }
 
-            // Move projectile locally based on velocity
-            if (proj.vx !== undefined && proj.vy !== undefined) {
-                proj.x += proj.vx * deltaTime;
-                proj.y += proj.vy * deltaTime;
-            }
-        }
-    }
-
-    updateProjectiles(deltaTime) {
-        for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            const proj = this.projectiles[i];
-
-            // Handle different projectile types
-            if (proj.life !== undefined) {
-                proj.life -= deltaTime;
-                if (proj.life <= 0) {
-                    this.projectiles.splice(i, 1);
-                    continue;
-                }
+            // Handle delay for salvo firing
+            if (proj.delay !== undefined && proj.delay > 0) {
+                proj.delay -= deltaTime;
+                continue;
             }
 
             // Special handling for orbital strike
@@ -650,81 +370,11 @@ export class Game {
                 proj.delay -= deltaTime;
                 if (proj.delay <= 0 && !proj.triggered) {
                     proj.triggered = true;
-                    // Deal massive AOE damage
-                    if (!this.isMultiplayer) {
-                        this.dealAOEDamage(proj.x, proj.y, proj.radius * 2, proj.damage);
-                    }
-                    // The visual is handled in Renderer via the projectile itself
                 }
-                continue; // Don't move orbital strike projectiles
+                continue;
             }
 
-            // Special handling for nuclear that reaches target
-            if (proj.type === 'nuclear' && proj.targetX !== undefined) {
-                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
-                if (distToTarget < 20) {
-                    // Explode at target
-                    this.renderer.addNuclearExplosion(proj.x, proj.y, proj.aoeRadius);
-                    if (!this.isMultiplayer) {
-                        this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
-                    }
-                    this.projectiles.splice(i, 1);
-                    continue;
-                }
-            }
-
-            // Special handling for flak that reaches target area
-            if (proj.type === 'flak' && proj.targetX !== undefined) {
-                const distToTarget = Math.sqrt((proj.x - proj.targetX) ** 2 + (proj.y - proj.targetY) ** 2);
-                if (distToTarget < 15) {
-                    // Explode at target position - ALWAYS show visual, damage only in solo
-                    if (proj.aoeRadius > 0) {
-                        this.renderer.addFlakExplosion(proj.x, proj.y, proj.aoeRadius * 2);
-                    }
-                    if (!this.isMultiplayer) {
-                        this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
-                    }
-                    this.projectiles.splice(i, 1);
-                    continue;
-                }
-            }
-
-            // === HOMING LOGIC FOR GUIDED MISSILES ===
-            if (proj.homingStrength && proj.target && !proj.target.dead) {
-                const targetX = proj.target.x;
-                const targetY = proj.target.y;
-
-                // Calculate desired direction
-                const dx = targetX - proj.x;
-                const dy = targetY - proj.y;
-                const distToTarget = Math.sqrt(dx * dx + dy * dy);
-
-                if (distToTarget > 10) {
-                    // Current velocity
-                    const currentSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
-                    const maxSpeed = proj.maxSpeed || currentSpeed;
-
-                    // Desired direction normalized
-                    const desiredVx = (dx / distToTarget) * maxSpeed;
-                    const desiredVy = (dy / distToTarget) * maxSpeed;
-
-                    // Interpolate towards desired direction
-                    const homing = proj.homingStrength;
-                    proj.vx += (desiredVx - proj.vx) * homing;
-                    proj.vy += (desiredVy - proj.vy) * homing;
-
-                    // Maintain speed
-                    const newSpeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy);
-                    if (newSpeed > 0) {
-                        // Accelerate over time
-                        const speedMult = Math.min(maxSpeed / newSpeed, 1.05);
-                        proj.vx *= speedMult;
-                        proj.vy *= speedMult;
-                    }
-                }
-            }
-
-            // === PARTICLE TRAIL FOR MISSILES ===
+            // Particle trail for missiles (visual only)
             if ((proj.type === 'missile' || proj.type === 'rocket' || proj.type === 'battery-missile' || proj.type === 'nuclear') && proj.trail) {
                 proj.trail.push({
                     x: proj.x + (Math.random() - 0.5) * 6,
@@ -735,94 +385,16 @@ export class Game {
                 if (proj.trail.length > 20) proj.trail.shift();
             }
 
-            // Move projectile
-            if (proj.vx !== undefined) {
-                // Handle delay for salvo firing
-                if (proj.delay !== undefined && proj.delay > 0) {
-                    proj.delay -= deltaTime;
-                    continue;
-                }
-
+            // Move projectile locally based on velocity
+            if (proj.vx !== undefined && proj.vy !== undefined) {
                 proj.x += proj.vx * deltaTime;
                 proj.y += proj.vy * deltaTime;
 
-                // Check bounds (use map size, not canvas)
+                // Check bounds
                 if (proj.x < -100 || proj.x > this.mapWidth + 100 ||
                     proj.y < -100 || proj.y > this.mapHeight + 100) {
                     this.projectiles.splice(i, 1);
                     continue;
-                }
-
-                // Check enemy collisions
-                for (const enemy of this.enemies) {
-                    if (enemy.dead) continue;
-                    if (proj.hitEnemies && proj.hitEnemies.includes(enemy)) continue;
-
-                    const dist = Math.sqrt((proj.x - enemy.x) ** 2 + (proj.y - enemy.y) ** 2);
-                    const enemySize = enemy.config?.size || 1;
-                    const hitRadius = this.cellSize * enemySize / 2;
-
-                    if (dist < hitRadius) {
-                        // Hit!
-                        if (proj.aoeRadius > 0) {
-                            // Choose explosion type based on projectile
-                            if (proj.type === 'nuclear') {
-                                // EPIC Nuclear explosion
-                                this.renderer.addNuclearExplosion(proj.x, proj.y, proj.aoeRadius);
-                            } else if (proj.type === 'missile' || proj.type === 'rocket' || proj.type === 'battery-missile') {
-                                // Epic missile explosion
-                                this.renderer.addMissileExplosion(proj.x, proj.y, proj.aoeRadius);
-                            } else if (proj.type === 'plasma') {
-                                // Plasma explosion with purple color
-                                this.renderer.addMissileExplosion(proj.x, proj.y, proj.aoeRadius, '#9400d3');
-                            } else {
-                                // Standard AOE explosion
-                                this.renderer.addExplosion(proj.x, proj.y, proj.aoeRadius);
-                            }
-                            // Only deal damage in solo mode
-                            if (!this.isMultiplayer) {
-                                this.dealAOEDamage(proj.x, proj.y, proj.aoeRadius, proj.damage);
-                            }
-                            this.projectiles.splice(i, 1);
-                        } else {
-                            // Only deal damage in solo mode (server handles in multiplayer)
-                            if (!this.isMultiplayer) {
-                                if (enemy.takeDamage) {
-                                    enemy.takeDamage(proj.damage);
-                                }
-                                // Apply DOT for flamethrower
-                                if (proj.dotDamage && enemy.applyBurn) {
-                                    enemy.applyBurn(proj.dotDamage, proj.dotDuration);
-                                }
-                            }
-
-                            if (proj.penetration) {
-                                proj.hitEnemies = proj.hitEnemies || [];
-                                proj.hitEnemies.push(enemy);
-                            } else {
-                                this.projectiles.splice(i, 1);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    dealAOEDamage(x, y, radius, damage) {
-        // Skip in multiplayer - server handles damage
-        if (this.isMultiplayer) return;
-
-        for (const enemy of this.enemies) {
-            if (enemy.dead) continue;
-
-            const dist = Math.sqrt((x - enemy.x) ** 2 + (y - enemy.y) ** 2);
-            if (dist <= radius) {
-                // Damage falls off with distance
-                const falloff = 1 - (dist / radius) * 0.5;
-                if (enemy.takeDamage) {
-                    enemy.takeDamage(damage * falloff);
                 }
             }
         }
@@ -914,6 +486,9 @@ export class Game {
         // Draw muzzle flashes and other particles
         this.renderer.drawParticles(deltaTime);
 
+        // Draw all stars on top of everything
+        this.renderer.drawAllStars();
+
         this.renderer.restoreCamera();
     }
 
@@ -923,48 +498,13 @@ export class Game {
         const cost = this.getBuildingCost(buildingType);
         if (!this.canAfford(cost)) return false;
 
-        // In multiplayer, ONLY send to server - server will sync back the result
-        if (this.isMultiplayer && this.network) {
+        // Send to server - server will sync back the result
+        if (this.network) {
             this.network.placeBuilding(gridX, gridY, buildingType);
-            return true; // Assume success, server will correct if needed
+            return true;
         }
 
-        // Solo mode: Process locally
-        // Deduct resources
-        for (const [resource, amount] of Object.entries(cost)) {
-            this.resources[resource] -= amount;
-        }
-
-        // Place the building
-        if (buildingType.startsWith('turret-')) {
-            const turret = new Turret(gridX, gridY, buildingType, this.grid);
-            turret.id = Date.now();
-            this.turrets.push(turret);
-
-            // Handle multi-cell turrets
-            const size = turret.config?.gridSize || 1;
-            if (size > 1) {
-                this.grid.placeMultiBuilding(gridX, gridY, size);
-            } else {
-                this.grid.placeBuilding(gridX, gridY);
-            }
-        } else if (buildingType === 'wall' || buildingType === 'wall-reinforced') {
-            const wall = new Wall(gridX, gridY, buildingType, this.grid);
-            this.walls.push(wall);
-            this.grid.placeBuilding(gridX, gridY);
-
-            // Recalculate paths for all enemies
-            this.recalculateEnemyPaths();
-        } else if (buildingType === 'extractor') {
-            const resourceType = this.grid.getResourceType(gridX, gridY);
-            if (resourceType) {
-                const extractor = new Extractor(gridX, gridY, resourceType, this.grid);
-                this.extractors.push(extractor);
-                this.grid.placeBuilding(gridX, gridY);
-            }
-        }
-
-        return true;
+        return false;
     }
 
     canPlaceBuilding(gridX, gridY, buildingType) {

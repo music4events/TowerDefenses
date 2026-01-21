@@ -213,9 +213,9 @@ export class Network {
         }
     }
 
-    startGame(gameMode = 'waves') {
+    startGame() {
         if (this.socket && this.isHost) {
-            this.socket.emit('startGame', { gameMode });
+            this.socket.emit('startGame', { gameMode: 'endless' });
         }
     }
 
@@ -459,6 +459,7 @@ export class Network {
                     localTurret = new Turret(serverTurret.gridX, serverTurret.gridY, serverTurret.type, this.game.grid);
                     localTurret.id = serverTurret.id;
                     localTurret.level = serverTurret.level || 1;
+                    localTurret.maxLevel = serverTurret.maxLevel || 100;
                     localTurret.health = serverTurret.health;
                     localTurret.maxHealth = serverTurret.maxHealth || 100;
                     this.game.turrets.push(localTurret);
@@ -467,6 +468,7 @@ export class Network {
                 // Update existing turret
                 localTurret.angle = serverTurret.angle;
                 localTurret.level = serverTurret.level || localTurret.level;
+                localTurret.maxLevel = serverTurret.maxLevel || localTurret.maxLevel || 100;
                 localTurret.health = serverTurret.health;
                 localTurret.maxHealth = serverTurret.maxHealth || localTurret.maxHealth;
             }
@@ -487,10 +489,14 @@ export class Network {
                     localTurret.homeX = serverTurret.homeX;
                     localTurret.homeY = serverTurret.homeY;
                 }
-                // Sync boost states
+                // Sync boost states (flags for visual display)
                 localTurret.speedBoosted = serverTurret.speedBoosted || false;
                 localTurret.damageBoosted = serverTurret.damageBoosted || false;
                 localTurret.rangeBoosted = serverTurret.rangeBoosted || false;
+                // Sync boost amounts (for stats calculation)
+                localTurret.speedBoostAmount = serverTurret.speedBoostAmount || 0;
+                localTurret.damageBoostAmount = serverTurret.damageBoostAmount || 0;
+                localTurret.rangeBoostAmount = serverTurret.rangeBoostAmount || 0;
             }
         }
 

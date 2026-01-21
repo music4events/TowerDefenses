@@ -23,6 +23,9 @@ export class Renderer {
         this.explosions = [];
         this.deathEffects = [];
 
+        // Stars to be drawn on top of everything
+        this.pendingStars = [];
+
         // Maximum rendered particles/effects (50-10000) - for performance optimization
         this.maxRenderedParticles = 5000;
         this.particlesRenderedThisFrame = 0;
@@ -35,6 +38,22 @@ export class Renderer {
     // Reset counter at start of each frame
     resetParticleCounter() {
         this.particlesRenderedThisFrame = 0;
+        // Clear pending stars for new frame
+        this.pendingStars = [];
+    }
+
+    // Collect a star to be drawn later (on top of everything)
+    collectStar(x, y, level) {
+        if (level > 0) {
+            this.pendingStars.push({ x, y, level });
+        }
+    }
+
+    // Draw all collected stars on top of everything
+    drawAllStars() {
+        for (const star of this.pendingStars) {
+            this.drawStars(star.x, star.y, star.level);
+        }
     }
 
     // Check if we should render this particle (for optimization)
@@ -475,9 +494,9 @@ export class Renderer {
             this.ctx.globalAlpha = 1;
         }
 
-        // Draw upgrade stars
+        // Collect stars to draw later (on top of everything)
         if (level && level > 1) {
-            this.drawStars(x, y + size / 2 + 8, level - 1);
+            this.collectStar(x, y + size / 2 + 8, level - 1);
         }
 
         // Boost indicators
@@ -686,10 +705,10 @@ export class Renderer {
             this.ctx.stroke();
         }
 
-        // Level stars
+        // Collect stars to draw later (on top of everything)
         if (level > 1) {
             const starY = y + totalSize / 2 + 10;
-            this.drawStars(x, starY, level - 1);
+            this.collectStar(x, starY, level - 1);
         }
 
         // Health bar
@@ -993,10 +1012,10 @@ export class Renderer {
             this.ctx.restore();
         }
 
-        // Level stars (bigger for 3x3)
+        // Collect stars to draw later (on top of everything)
         if (level > 1) {
             const starY = y + totalSize / 2 + 12;
-            this.drawStars(x, starY, level - 1);
+            this.collectStar(x, starY, level - 1);
         }
 
         // Health bar (wider for 3x3)
@@ -1041,15 +1060,72 @@ export class Renderer {
         }
     }
 
-    drawStars(x, y, count) {
+    drawStars(x, y, level) {
+        if (level <= 0) return;
+
+        // level received is turret.level - 1, so ranges from 1 to 99
+        // We want: 1-5 → tier 0 (1-5 stars), 6-10 → tier 1, ..., 95-99 → tier 18, 100 → tier 19
+        // Treat 99 as 100 so max level turret shows 5 stars in highest tier
+        const adjustedLevel = Math.min(level >= 99 ? 100 : level, 100);
+
+        // Calculate tier (0-19) and stars in current tier (1-5)
+        // 100 levels / 5 stars per tier = 20 tiers
+        const tier = Math.floor((adjustedLevel - 1) / 5);
+        const starsInTier = ((adjustedLevel - 1) % 5) + 1;
+
+        // Star colors by tier (20 tiers for 100 levels)
+        const tierColors = [
+            '#cd7f32', // Tier 0 (1-5): Bronze
+            '#c0c0c0', // Tier 1 (6-10): Silver
+            '#ffd700', // Tier 2 (11-15): Gold
+            '#00ffff', // Tier 3 (16-20): Cyan
+            '#9932cc', // Tier 4 (21-25): Purple
+            '#4169e1', // Tier 5 (26-30): Royal Blue
+            '#32cd32', // Tier 6 (31-35): Lime Green
+            '#ff4500', // Tier 7 (36-40): Orange Red
+            '#ff1493', // Tier 8 (41-45): Deep Pink
+            '#ffffff', // Tier 9 (46-50): White
+            '#ff6b6b', // Tier 10 (51-55): Coral Red
+            '#4ecdc4', // Tier 11 (56-60): Teal
+            '#ffe66d', // Tier 12 (61-65): Bright Yellow
+            '#95e1d3', // Tier 13 (66-70): Mint
+            '#f38181', // Tier 14 (71-75): Salmon
+            '#aa96da', // Tier 15 (76-80): Lavender
+            '#fcbad3', // Tier 16 (81-85): Pink
+            '#a8d8ea', // Tier 17 (86-90): Sky Blue
+            '#ff9f1c', // Tier 18 (91-95): Orange
+            '#e0aaff'  // Tier 19 (96-100): Violet (Legendary)
+        ];
+
+        const starColor = tierColors[tier] || '#e0aaff';
         const starSize = 4;
         const spacing = 8;
-        const startX = x - ((count - 1) * spacing) / 2;
+        const startX = x - ((starsInTier - 1) * spacing) / 2;
 
-        this.ctx.fillStyle = '#f39c12';
-        for (let i = 0; i < count; i++) {
-            this.drawStar(startX + i * spacing, y, starSize);
+        // Draw glow for higher tiers (tier 5+)
+        if (tier >= 5) {
+            this.ctx.shadowColor = starColor;
+            this.ctx.shadowBlur = 4 + Math.min(tier, 15);
         }
+
+        // Draw outline for legendary tiers (15+)
+        if (tier >= 15) {
+            this.ctx.strokeStyle = '#000';
+            this.ctx.lineWidth = 1;
+        }
+
+        this.ctx.fillStyle = starColor;
+        for (let i = 0; i < starsInTier; i++) {
+            this.drawStar(startX + i * spacing, y, starSize);
+            if (tier >= 15) {
+                this.ctx.stroke();
+            }
+        }
+
+        // Reset shadow and stroke
+        this.ctx.shadowColor = 'transparent';
+        this.ctx.shadowBlur = 0;
+        this.ctx.lineWidth = 1;
     }
 
     drawStar(cx, cy, size) {
@@ -1196,9 +1272,9 @@ export class Renderer {
 
         this.ctx.restore();
 
-        // Draw upgrade stars
+        // Collect stars to draw later (on top of everything)
         if (level && level > 1) {
-            this.drawStars(x, y + size / 2 + 8, level - 1);
+            this.collectStar(x, y + size / 2 + 8, level - 1);
         }
     }
 

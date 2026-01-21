@@ -83,13 +83,9 @@ export class UI {
             }
         }
 
-        // Update wave info
+        // Update wave info (endless mode)
         if (this.waveNumber) {
-            if (this.game.gameMode === 'endless') {
-                this.waveNumber.textContent = `Difficulte ${this.game.waveNumber + 1}`;
-            } else {
-                this.waveNumber.textContent = `Vague ${this.game.waveNumber}`;
-            }
+            this.waveNumber.textContent = `Difficulte ${this.game.waveNumber || 1}`;
         }
 
         // Update kill counter and score
@@ -99,31 +95,14 @@ export class UI {
             this.killCounter.textContent = `Kills: ${kills.toLocaleString()} | Score: ${score.toLocaleString()}`;
         }
 
-        if (this.waveTimer && this.game.waveManager) {
-            if (this.game.gameMode === 'endless') {
-                // Endless mode - show enemy count and difficulty
-                const difficulty = this.game.waveManager.endlessDifficulty;
-                this.waveTimer.textContent = `Ennemis: ${this.game.enemies.length} | x${difficulty.toFixed(1)}`;
+        // Endless mode - show enemy count and difficulty
+        if (this.waveTimer) {
+            const difficulty = this.game.endlessDifficulty || 1;
+            this.waveTimer.textContent = `Ennemis: ${this.game.enemies.length} | x${difficulty.toFixed(1)}`;
 
-                // Hide skip button in endless mode
-                if (this.skipWaveBtn) {
-                    this.skipWaveBtn.classList.add('hidden');
-                }
-            } else {
-                // Wave mode
-                const timeLeft = Math.ceil(this.game.waveManager.getTimeToNextWave());
-                const isWaiting = timeLeft > 0 && !this.game.waveManager.isActive();
-
-                if (isWaiting) {
-                    this.waveTimer.textContent = `Prochaine vague: ${timeLeft}s`;
-                } else {
-                    this.waveTimer.textContent = `Ennemis restants: ${this.game.enemies.length}`;
-                }
-
-                // Show/hide skip button
-                if (this.skipWaveBtn) {
-                    this.skipWaveBtn.classList.toggle('hidden', !isWaiting);
-                }
+            // Hide skip button in endless mode
+            if (this.skipWaveBtn) {
+                this.skipWaveBtn.classList.add('hidden');
             }
         }
 
@@ -180,19 +159,13 @@ export class UI {
         const sellValue = turret.getSellValue();
         const upgradeCost = turret.getUpgradeCost();
 
-        let starsHtml = '';
-        for (let i = 0; i < turret.level - 1; i++) {
-            starsHtml += '★';
-        }
-        for (let i = turret.level - 1; i < turret.maxLevel - 1; i++) {
-            starsHtml += '☆';
-        }
-
+        // Build sell value HTML
         let sellHtml = '';
         for (const [resource, amount] of Object.entries(sellValue)) {
             sellHtml += `<span class="cost-${resource}">${amount}</span> `;
         }
 
+        // Build upgrade cost HTML
         let upgradeHtml = '';
         if (upgradeCost) {
             for (const [resource, amount] of Object.entries(upgradeCost)) {
@@ -200,16 +173,45 @@ export class UI {
             }
         }
 
+        // Build boost indicators
+        let boostHtml = '';
+        if (stats.speedBoosted || stats.damageBoosted || stats.rangeBoosted) {
+            boostHtml = '<div class="stat boosts">';
+            if (stats.speedBoosted) boostHtml += '<span class="boost-speed">SPD</span>';
+            if (stats.damageBoosted) boostHtml += '<span class="boost-damage">DMG</span>';
+            if (stats.rangeBoosted) boostHtml += '<span class="boost-range">RNG</span>';
+            boostHtml += '</div>';
+        }
+
+        // Damage display with boost
+        const damageDisplay = stats.damageBoosted
+            ? `${stats.damage} <span class="boosted">(${stats.boostedDamage})</span>`
+            : `${stats.damage}`;
+
+        // Range display with boost
+        const rangeDisplay = stats.rangeBoosted
+            ? `${stats.range} <span class="boosted">(${stats.boostedRange})</span>`
+            : `${stats.range}`;
+
+        // Fire rate display with boost
+        const fireRateDisplay = stats.speedBoosted
+            ? `${stats.fireRate} <span class="boosted">(${stats.boostedFireRate})</span>`
+            : `${stats.fireRate}`;
+
+        // Health bar percentage
+        const healthPercent = Math.round((stats.health / stats.maxHealth) * 100);
+
         this.selectionDetails.innerHTML = `
             <div class="stat"><span class="stat-label">Nom</span><span>${stats.name}</span></div>
-            <div class="stat"><span class="stat-label">Niveau</span><span>${stats.level}/${turret.maxLevel}</span></div>
-            <div class="stat"><span class="stat-label">Degats</span><span>${stats.damage}</span></div>
-            <div class="stat"><span class="stat-label">Portee</span><span>${stats.range}</span></div>
-            <div class="stat"><span class="stat-label">Cadence</span><span>${stats.fireRate}</span></div>
-            <div class="stars">${starsHtml}</div>
+            <div class="stat"><span class="stat-label">Niveau</span><span>${stats.level}/${stats.maxLevel}</span></div>
+            <div class="stat"><span class="stat-label">Vie</span><span>${Math.ceil(stats.health)}/${stats.maxHealth}</span></div>
+            <div class="stat"><span class="stat-label">Degats</span><span>${damageDisplay}</span></div>
+            <div class="stat"><span class="stat-label">Portee</span><span>${rangeDisplay}</span></div>
+            <div class="stat"><span class="stat-label">Cadence</span><span>${fireRateDisplay}</span></div>
+            ${boostHtml}
             <div class="upgrade-cost">
                 <div class="stat"><span class="stat-label">Vente</span><span>${sellHtml}</span></div>
-                ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat"><span class="stat-label">MAX</span></div>'}
+                ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
             </div>
         `;
     }

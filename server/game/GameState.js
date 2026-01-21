@@ -867,11 +867,10 @@ const ENEMY_TYPES = {
 };
 
 class GameState {
-    constructor(gameMode = 'waves') {
+    constructor() {
         this.cellSize = 32;
         this.cols = 150;  // 3x larger map
         this.rows = 114;  // 3x larger map
-        this.gameMode = gameMode; // 'waves' or 'endless'
 
         this.resources = { iron: 500, copper: 0, coal: 0, gold: 0 };
         this.nexusHealth = 1000;
@@ -887,11 +886,6 @@ class GameState {
         this.extractors = [];
         this.enemies = [];
         this.projectiles = [];
-
-        this.waveTimer = 0;
-        this.waveActive = false;
-        this.enemiesToSpawn = [];
-        this.spawnTimer = 0;
 
         // Endless mode settings
         this.endlessSpawnRate = 2; // Spawn every 2 seconds
@@ -1013,9 +1007,6 @@ class GameState {
 
         // Calculate the 4 main paths
         this.calculateMainPaths();
-
-        // Start first wave timer
-        this.waveTimer = 30;
     }
 
     generateResources() {
@@ -1051,15 +1042,12 @@ class GameState {
             // NOTE: pendingEffects is NOT cleared here - it accumulates between syncs
             // It gets cleared in serializeForSync() after being sent to clients
 
-            // Wave/Endless management based on game mode
-            if (this.gameMode === 'endless') {
-                this.updateEndless(adjustedDelta);
-            } else {
-                this.updateWaves(adjustedDelta);
-            }
-            // Debug: log game mode periodically (every 60 seconds real time)
+            // Endless mode enemy spawning
+            this.updateEndless(adjustedDelta);
+
+            // Debug: log game status periodically (every 60 seconds real time)
             if (!this._lastModeLog || Date.now() - this._lastModeLog > 60000) {
-                console.log(`[GameState] Mode: ${this.gameMode}, Difficulty: ${this.endlessDifficulty?.toFixed(2) || 'N/A'}, Wave: ${this.waveNumber}`);
+                console.log(`[GameState] Endless Mode - Difficulty: ${this.endlessDifficulty?.toFixed(2) || 'N/A'}, Wave: ${this.waveNumber}`);
                 this._lastModeLog = Date.now();
             }
 
@@ -1213,31 +1201,6 @@ class GameState {
             this.progressivePathRecalc(5);
         } catch (error) {
             console.error('Error in GameState.update:', error);
-        }
-    }
-
-    updateWaves(deltaTime) {
-        if (!this.waveActive && this.waveTimer > 0) {
-            this.waveTimer -= deltaTime;
-            if (this.waveTimer <= 0) {
-                this.startWave();
-            }
-        }
-
-        if (this.waveActive) {
-            this.spawnTimer += deltaTime;
-
-            while (this.enemiesToSpawn.length > 0 &&
-                   this.spawnTimer >= this.enemiesToSpawn[0].delay) {
-                const enemyData = this.enemiesToSpawn.shift();
-                this.spawnEnemy(enemyData);
-            }
-
-            if (this.enemiesToSpawn.length === 0 && this.enemies.length === 0) {
-                this.waveActive = false;
-                this.waveTimer = 60;
-                this.spawnTimer = 0;
-            }
         }
     }
 
@@ -1403,307 +1366,6 @@ class GameState {
             this.enemies.push(enemy);
         } catch (error) {
             console.error('Error in spawnEndlessEnemy:', error);
-        }
-    }
-
-    startWave() {
-        this.waveNumber++;
-        this.waveActive = true;
-        this.generateWaveEnemies();
-    }
-
-    generateWaveEnemies() {
-        this.enemiesToSpawn = [];
-        const baseCount = 5 + this.waveNumber * 2;
-
-        // Spawn rate increases with waves (faster spawning)
-        const spawnInterval = Math.max(0.2, 0.5 - this.waveNumber * 0.02);
-
-        // Grunts - always
-        for (let i = 0; i < baseCount; i++) {
-            this.enemiesToSpawn.push({ type: 'grunt', delay: i * spawnInterval });
-        }
-
-        // Runners - from wave 2
-        if (this.waveNumber >= 2) {
-            const count = Math.floor(baseCount * 0.3);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'runner', delay: 2 + i * spawnInterval * 0.6 });
-            }
-        }
-
-        // Tanks - from wave 3
-        if (this.waveNumber >= 3) {
-            const count = Math.floor(this.waveNumber / 3);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'tank', delay: 5 + i * 2 });
-            }
-        }
-
-        // Kamikazes - from wave 4
-        if (this.waveNumber >= 4) {
-            const count = Math.floor(this.waveNumber / 4);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'kamikaze', delay: 3 + i * 1.5 });
-            }
-        }
-
-        // Flying enemies - from wave 5
-        if (this.waveNumber >= 5) {
-            const count = Math.floor(this.waveNumber / 5);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'flying', delay: 4 + i * 2 });
-            }
-        }
-
-        // Splitters - from wave 6
-        if (this.waveNumber >= 6) {
-            const count = Math.floor(this.waveNumber / 6);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'splitter', delay: 6 + i * 3 });
-            }
-        }
-
-        // Armored-front - from wave 7
-        if (this.waveNumber >= 7) {
-            const count = Math.floor(this.waveNumber / 7);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'armored-front', delay: 7 + i * 2.5 });
-            }
-        }
-
-        // Healers - from wave 8 (supporting enemies)
-        if (this.waveNumber >= 8) {
-            const count = Math.floor(this.waveNumber / 8);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'healer', delay: 8 + i * 4 });
-            }
-        }
-
-        // Flying swarm - from wave 9
-        if (this.waveNumber >= 9) {
-            const count = Math.floor(this.waveNumber / 9) * 2;
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'flying-swarm', delay: 3 + i * 0.5 });
-            }
-        }
-
-        // Kamikaze spawner - from wave 10
-        if (this.waveNumber >= 10) {
-            const count = Math.floor(this.waveNumber / 10);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'kamikaze-spawner', delay: 5 + i * 3 });
-            }
-        }
-
-        // Flying bomber - from wave 12
-        if (this.waveNumber >= 12) {
-            const count = Math.floor(this.waveNumber / 12);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'flying-bomber', delay: 6 + i * 2.5 });
-            }
-        }
-
-        // Transport - from wave 15
-        if (this.waveNumber >= 15) {
-            const count = Math.floor(this.waveNumber / 15);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'transport', delay: 8 + i * 5 });
-            }
-        }
-
-        // Transport elite - from wave 20
-        if (this.waveNumber >= 20) {
-            const count = Math.floor(this.waveNumber / 20);
-            for (let i = 0; i < count; i++) {
-                this.enemiesToSpawn.push({ type: 'transport-elite', delay: 10 + i * 6 });
-            }
-        }
-
-        // Boss every 10 waves
-        if (this.waveNumber % 10 === 0) {
-            this.enemiesToSpawn.push({ type: 'boss', delay: 10 });
-        }
-
-        // Flying boss every 15 waves (starting wave 15)
-        if (this.waveNumber >= 15 && this.waveNumber % 15 === 0) {
-            this.enemiesToSpawn.push({ type: 'flying-boss', delay: 12 });
-        }
-
-        // Carrier boss every 25 waves (starting wave 25)
-        if (this.waveNumber >= 25 && this.waveNumber % 25 === 0) {
-            this.enemiesToSpawn.push({ type: 'carrier-boss', delay: 15 });
-        }
-
-        // Mega boss every 50 waves (starting wave 50)
-        if (this.waveNumber >= 50 && this.waveNumber % 50 === 0) {
-            this.enemiesToSpawn.push({ type: 'mega-boss', delay: 20 });
-        }
-
-        // === MEGA BOSSES FOR WAVES 100-200 (Every 10 waves) ===
-        // These are epic bosses that spawn previous bosses when killed
-        if (this.waveNumber === 100) {
-            this.enemiesToSpawn.push({ type: 'titan-prime', delay: 25 });
-        }
-        if (this.waveNumber === 110) {
-            this.enemiesToSpawn.push({ type: 'void-herald', delay: 25 });
-        }
-        if (this.waveNumber === 120) {
-            this.enemiesToSpawn.push({ type: 'siege-breaker', delay: 25 });
-        }
-        if (this.waveNumber === 130) {
-            this.enemiesToSpawn.push({ type: 'swarm-emperor', delay: 25 });
-        }
-        if (this.waveNumber === 140) {
-            this.enemiesToSpawn.push({ type: 'inferno-lord', delay: 25 });
-        }
-        if (this.waveNumber === 150) {
-            this.enemiesToSpawn.push({ type: 'fortress-titan', delay: 30 });
-        }
-        if (this.waveNumber === 160) {
-            this.enemiesToSpawn.push({ type: 'sky-sovereign', delay: 30 });
-        }
-        if (this.waveNumber === 170) {
-            this.enemiesToSpawn.push({ type: 'harbinger-of-doom', delay: 30 });
-        }
-        if (this.waveNumber === 180) {
-            this.enemiesToSpawn.push({ type: 'oblivion-bringer', delay: 35 });
-        }
-        if (this.waveNumber === 190) {
-            // Two mega-bosses at wave 190!
-            this.enemiesToSpawn.push({ type: 'harbinger-of-doom', delay: 30 });
-            this.enemiesToSpawn.push({ type: 'oblivion-bringer', delay: 40 });
-        }
-        if (this.waveNumber === 200) {
-            // THE ULTIMATE BOSS
-            this.enemiesToSpawn.push({ type: 'eternal-nightmare', delay: 35 });
-        }
-
-        // === MEGA BOSSES - Waves 210-300 (Tier 6 - Dimensional) ===
-        if (this.waveNumber === 210) {
-            this.enemiesToSpawn.push({ type: 'dimensional-rift', delay: 35 });
-        }
-        if (this.waveNumber === 220) {
-            this.enemiesToSpawn.push({ type: 'chaos-incarnate', delay: 35 });
-        }
-        if (this.waveNumber === 240) {
-            this.enemiesToSpawn.push({ type: 'storm-bringer', delay: 35 });
-        }
-        if (this.waveNumber === 260) {
-            this.enemiesToSpawn.push({ type: 'plague-father', delay: 35 });
-        }
-        if (this.waveNumber === 280) {
-            this.enemiesToSpawn.push({ type: 'void-tyrant', delay: 35 });
-        }
-        if (this.waveNumber === 300) {
-            // Major milestone boss + escort
-            this.enemiesToSpawn.push({ type: 'primordial-terror', delay: 30 });
-            this.enemiesToSpawn.push({ type: 'void-tyrant', delay: 45 });
-        }
-
-        // === MEGA BOSSES - Waves 300-400 (Tier 7 - Elder) ===
-        if (this.waveNumber === 320) {
-            this.enemiesToSpawn.push({ type: 'elder-god', delay: 35 });
-        }
-        if (this.waveNumber === 340) {
-            this.enemiesToSpawn.push({ type: 'cosmic-horror', delay: 35 });
-        }
-        if (this.waveNumber === 360) {
-            this.enemiesToSpawn.push({ type: 'death-incarnate', delay: 35 });
-        }
-        if (this.waveNumber === 380) {
-            this.enemiesToSpawn.push({ type: 'the-consumer', delay: 35 });
-        }
-        if (this.waveNumber === 400) {
-            // Major milestone - dual bosses
-            this.enemiesToSpawn.push({ type: 'reality-shatterer', delay: 30 });
-            this.enemiesToSpawn.push({ type: 'the-consumer', delay: 50 });
-        }
-
-        // === MEGA BOSSES - Waves 400-500 (Tier 8 - Ultimate) ===
-        if (this.waveNumber === 420) {
-            this.enemiesToSpawn.push({ type: 'universe-devourer', delay: 35 });
-        }
-        if (this.waveNumber === 440) {
-            this.enemiesToSpawn.push({ type: 'void-emperor', delay: 35 });
-        }
-        if (this.waveNumber === 460) {
-            this.enemiesToSpawn.push({ type: 'omega-beast', delay: 35 });
-        }
-        if (this.waveNumber === 480) {
-            this.enemiesToSpawn.push({ type: 'genesis-destroyer', delay: 35 });
-        }
-        if (this.waveNumber === 500) {
-            // THE ABSOLUTE - FINAL BOSS
-            this.enemiesToSpawn.push({ type: 'the-absolute', delay: 40 });
-            // Escort of previous tier bosses
-            this.enemiesToSpawn.push({ type: 'reality-shatterer', delay: 60 });
-            this.enemiesToSpawn.push({ type: 'universe-devourer', delay: 80 });
-        }
-
-        this.enemiesToSpawn.sort((a, b) => a.delay - b.delay);
-    }
-
-    spawnEnemy(enemyData) {
-        try {
-            // Pick random edge spawn point
-            const edges = ['top', 'bottom', 'left', 'right'];
-            const edge = edges[Math.floor(Math.random() * edges.length)];
-
-            let x, y;
-            switch (edge) {
-                case 'top': x = Math.floor(Math.random() * this.cols); y = 0; break;
-                case 'bottom': x = Math.floor(Math.random() * this.cols); y = this.rows - 1; break;
-                case 'left': x = 0; y = Math.floor(Math.random() * this.rows); break;
-                case 'right': x = this.cols - 1; y = Math.floor(Math.random() * this.rows); break;
-            }
-
-            const config = ENEMY_TYPES[enemyData.type];
-            if (!config) {
-                console.error(`Unknown enemy type: ${enemyData.type}`);
-                return;
-            }
-
-            // Scaling: HP increases 10% per wave, speed 3%, damage 5%, attack range 3%
-            const healthMult = 1 + (this.waveNumber - 1) * 0.1;
-            const speedMult = 1 + (this.waveNumber - 1) * 0.03;
-            const damageMult = 1 + (this.waveNumber - 1) * 0.05;
-            const attackRangeMult = 1 + (this.waveNumber - 1) * 0.03;
-
-            const enemy = {
-                id: Date.now() + Math.random(),
-                type: enemyData.type,
-                x: x * this.cellSize + this.cellSize / 2,
-                y: y * this.cellSize + this.cellSize / 2,
-                gridX: x,
-                gridY: y,
-                health: config.health * healthMult,
-                maxHealth: config.health * healthMult,
-                speed: config.speed * speedMult,
-                damage: config.damage * damageMult,
-                turretAttackRange: (config.turretAttackRange || 0) * attackRangeMult,
-                turretAttackDamage: (config.turretAttackDamage || 0) * damageMult,
-                path: [],
-                pathIndex: 0,
-                dead: false,
-                reachedNexus: false,
-                burning: false,
-                burnTime: 0,
-                burnDamage: 0,
-                spawnTimer: 0
-            };
-
-            // Use main paths - find nearest path point
-            const path = this.findNearestMainPath(x, y);
-            if (path && path.length > 0) {
-                enemy.path = path;
-            } else {
-                // No path found - mark enemy to go through walls
-                enemy.ignoreWalls = true;
-            }
-            this.enemies.push(enemy);
-        } catch (error) {
-            console.error('Error spawning enemy:', error);
         }
     }
 
@@ -3217,17 +2879,29 @@ class GameState {
                 this.resources[res] -= amt;
             }
 
-            // Apply upgrade
+            // Apply upgrade using linear scaling based on base config
             turret.level++;
-            turret.config.damage = Math.floor(turret.config.damage * 1.25);
-            turret.config.range = turret.config.range * 1.1;
-            if (turret.config.fireRate > 0.05) {
-                turret.config.fireRate = turret.config.fireRate * 0.9;
-            }
+            const baseConfig = TURRET_TYPES[turret.type];
+            const levelBonus = turret.level - 1;
+
+            // Linear scaling: +1.5% damage per level (at level 100: +148.5% = 2.485x)
+            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.015));
+
+            // Linear scaling: +0.5% range per level (at level 100: +49.5% = 1.495x)
+            turret.config.range = baseConfig.range * (1 + levelBonus * 0.005);
+
+            // Linear scaling: fire rate decreases by 0.5% per level (at level 100: ~33% faster)
+            const fireRateBonus = 1 + levelBonus * 0.005;
+            turret.config.fireRate = Math.max(0.02, baseConfig.fireRate / fireRateBonus);
+
             // Also upgrade aoeRange for slowdown/shockwave turrets
-            if (turret.config.aoeRange) {
-                turret.config.aoeRange = turret.config.aoeRange * 1.1;
+            if (baseConfig.aoeRange) {
+                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.005);
             }
+
+            // Upgrade health: +1% per level
+            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.01));
+            turret.health = Math.min(turret.health + 10, turret.maxHealth);
 
             return { success: true, type: 'turret', level: turret.level };
         }
@@ -3261,7 +2935,7 @@ class GameState {
         // Find wall at position
         const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
         if (wall) {
-            if (wall.level >= (wall.maxLevel || 5)) {
+            if (wall.level >= (wall.maxLevel || 100)) {
                 return { success: false, message: 'Already max level' };
             }
 
@@ -3599,8 +3273,6 @@ class GameState {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
             waveNumber: this.waveNumber,
-            waveTimer: this.waveTimer,
-            waveActive: this.waveActive,
             totalKills: this.totalKills,
             totalScore: this.totalScore,
             endlessDifficulty: this.endlessDifficulty || 1,
@@ -3628,6 +3300,7 @@ class GameState {
                 y: t.y,
                 angle: t.angle,
                 level: t.level || 1,
+                maxLevel: t.maxLevel || 100,
                 damage: t.config?.damage,
                 range: t.config?.range,
                 fireRate: t.config?.fireRate,
@@ -3638,7 +3311,10 @@ class GameState {
                 homeY: t.homeY,
                 speedBoosted: t.speedBoosted || false,
                 damageBoosted: t.damageBoosted || false,
-                rangeBoosted: t.rangeBoosted || false
+                rangeBoosted: t.rangeBoosted || false,
+                speedBoostAmount: t.speedBoostAmount || 0,
+                damageBoostAmount: t.damageBoostAmount || 0,
+                rangeBoostAmount: t.rangeBoostAmount || 0
             })),
             walls: validWalls.map(w => ({
                 id: w.id,
