@@ -1091,21 +1091,20 @@ export class Renderer {
         this.ctx.fillStyle = baseColor;
         this.ctx.fillRect(x - size / 2, y - size / 2, size, size);
 
-        // Border to show upgrade level (brighter for higher levels)
+        // Border to show upgrade level (brighter for higher levels, capped at reasonable value)
         if (level > 0) {
-            this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + level * 0.1})`;
-            this.ctx.lineWidth = 1 + level * 0.5;
+            const borderAlpha = Math.min(0.8, 0.2 + level * 0.006);
+            const borderWidth = Math.min(3, 1 + level * 0.02);
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${borderAlpha})`;
+            this.ctx.lineWidth = borderWidth;
             this.ctx.strokeRect(x - size / 2, y - size / 2, size, size);
 
-            // Level indicator (small dots in corner)
-            const dotSize = 3;
-            const dotSpacing = 5;
-            this.ctx.fillStyle = '#ffffff';
-            for (let i = 0; i < Math.min(level, 5); i++) {
-                this.ctx.beginPath();
-                this.ctx.arc(x - size / 2 + 4 + i * dotSpacing, y + size / 2 - 4, dotSize / 2, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
+            // Level number in center (small text)
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.font = 'bold 10px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(level.toString(), x, y);
         }
 
         // Damage cracks
@@ -1125,32 +1124,48 @@ export class Renderer {
             this.ctx.stroke();
         }
 
-        // Health bar (always show for walls, as they're key defensive structures)
-        const barWidth = size;
-        const barHeight = 4;
-        const barY = y - size / 2 - 8;
+        // Health bar - ONLY show when damaged
+        if (health < maxHealth) {
+            const barWidth = size;
+            const barHeight = 4;
+            const barY = y - size / 2 - 8;
 
-        // Background
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
+            // Background
+            this.ctx.fillStyle = '#333';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth, barHeight);
 
-        // Health fill
-        this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
-        this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
+            // Health fill
+            this.ctx.fillStyle = healthPercent > 0.5 ? '#44ff44' : healthPercent > 0.25 ? '#ffff00' : '#ff4444';
+            this.ctx.fillRect(x - barWidth / 2, barY, barWidth * healthPercent, barHeight);
 
-        // Border for health bar
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(x - barWidth / 2, barY, barWidth, barHeight);
+            // Border for health bar
+            this.ctx.strokeStyle = '#000';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(x - barWidth / 2, barY, barWidth, barHeight);
+        }
     }
 
-    // Helper to darken a hex color
-    darkenColor(hex, amount) {
-        // Remove # if present
-        hex = hex.replace('#', '');
-        let r = parseInt(hex.substring(0, 2), 16);
-        let g = parseInt(hex.substring(2, 4), 16);
-        let b = parseInt(hex.substring(4, 6), 16);
+    // Helper to darken a color (supports hex and rgb)
+    darkenColor(color, amount) {
+        let r, g, b;
+
+        // Check if it's an rgb() color
+        if (color.startsWith('rgb')) {
+            const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (match) {
+                r = parseInt(match[1]);
+                g = parseInt(match[2]);
+                b = parseInt(match[3]);
+            } else {
+                return color; // Can't parse, return original
+            }
+        } else {
+            // Hex color
+            const hex = color.replace('#', '');
+            r = parseInt(hex.substring(0, 2), 16);
+            g = parseInt(hex.substring(2, 4), 16);
+            b = parseInt(hex.substring(4, 6), 16);
+        }
 
         r = Math.floor(r * (1 - amount));
         g = Math.floor(g * (1 - amount));

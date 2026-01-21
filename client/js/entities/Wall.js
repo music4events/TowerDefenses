@@ -15,9 +15,9 @@ export class Wall {
         this.maxHealth = this.config.health;
         this.health = this.maxHealth;
 
-        // Upgrade level (0 = base, up to 5)
+        // Upgrade level (0 = base, up to 100)
         this.level = 0;
-        this.maxLevel = 5;
+        this.maxLevel = 100;
     }
 
     takeDamage(amount) {

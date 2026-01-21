@@ -490,25 +490,60 @@ const BUILDING_TYPES = {
     'extractor': { health: 100, cost: { iron: 50 } }
 };
 
-// Wall upgrade paths
+// Generate wall upgrade cost based on level
+function getWallUpgradeCost(level, isReinforced = false) {
+    const baseMult = isReinforced ? 1.5 : 1;
+
+    // Iron: base 20, increases each level
+    const iron = Math.floor((20 + level * 15) * baseMult * (1 + level * 0.02));
+
+    // Copper: starts at level 10
+    let copper = 0;
+    if (level >= 10) {
+        copper = Math.floor((10 + (level - 10) * 8) * baseMult * (1 + level * 0.015));
+    }
+
+    // Gold: starts at level 30
+    let gold = 0;
+    if (level >= 30) {
+        gold = Math.floor((5 + (level - 30) * 4) * baseMult * (1 + level * 0.01));
+    }
+
+    const cost = { iron };
+    if (copper > 0) cost.copper = copper;
+    if (gold > 0) cost.gold = gold;
+
+    return cost;
+}
+
+// Generate health bonus based on level
+function getWallHealthBonus(level, isReinforced = false) {
+    const baseMult = isReinforced ? 1.5 : 1;
+    // Health bonus grows exponentially: 50 * (1.08 ^ level)
+    return Math.floor(50 * Math.pow(1.08, level) * baseMult);
+}
+
+// Generate 100 levels dynamically
+function generateWallLevels(isReinforced = false) {
+    const levels = {};
+    for (let level = 1; level <= 100; level++) {
+        levels[level] = {
+            cost: getWallUpgradeCost(level, isReinforced),
+            healthBonus: getWallHealthBonus(level, isReinforced)
+        };
+    }
+    return levels;
+}
+
+// Wall upgrade paths - 100 levels each
 const WALL_UPGRADES = {
     'wall': {
-        levels: {
-            1: { cost: { iron: 30 }, healthBonus: 100 },
-            2: { cost: { iron: 50, copper: 10 }, healthBonus: 150 },
-            3: { cost: { iron: 80, copper: 25 }, healthBonus: 200 },
-            4: { cost: { iron: 120, copper: 40, gold: 10 }, healthBonus: 300 },
-            5: { cost: { iron: 200, copper: 60, gold: 25 }, healthBonus: 500 }
-        }
+        maxLevel: 100,
+        levels: generateWallLevels(false)
     },
     'wall-reinforced': {
-        levels: {
-            1: { cost: { iron: 60, copper: 30 }, healthBonus: 200 },
-            2: { cost: { iron: 100, copper: 50 }, healthBonus: 300 },
-            3: { cost: { iron: 150, copper: 75, gold: 15 }, healthBonus: 400 },
-            4: { cost: { iron: 200, copper: 100, gold: 30 }, healthBonus: 600 },
-            5: { cost: { iron: 300, copper: 150, gold: 50 }, healthBonus: 1000 }
-        }
+        maxLevel: 100,
+        levels: generateWallLevels(true)
     }
 };
 
@@ -1972,18 +2007,30 @@ class GameState {
         const range = (turret.config.range || 4) * this.cellSize * rangeMult;
         const minRange = (turret.config.minRange || 0) * this.cellSize;
 
-        // Healer turret - heals other turrets
+        // Healer turret - heals other turrets AND walls
         if (turret.config.isHealer) {
             if (turret.cooldown <= 0) {
                 turret.cooldown = turret.config.fireRate || 0.5;
+                const healAmount = turret.config.healAmount || 10;
+
+                // Heal turrets
                 for (const other of this.turrets) {
                     if (other === turret) continue;
                     if (other.health === undefined || other.health >= (other.config?.maxHealth || 100)) continue;
 
                     const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
                     if (dist <= range) {
-                        const healAmount = turret.config.healAmount || 10;
                         other.health = Math.min(other.config?.maxHealth || 100, other.health + healAmount);
+                    }
+                }
+
+                // Heal walls
+                for (const wall of this.walls) {
+                    if (!wall || wall.health >= (wall.maxHealth || 200)) continue;
+
+                    const dist = Math.sqrt((turret.x - wall.x) ** 2 + (turret.y - wall.y) ** 2);
+                    if (dist <= range) {
+                        wall.health = Math.min(wall.maxHealth || 200, wall.health + healAmount);
                     }
                 }
             }
@@ -2989,7 +3036,7 @@ class GameState {
                 cooldown: 0,
                 config: { ...config }, // Copy config so we can modify it
                 level: 1,
-                maxLevel: 5,
+                maxLevel: 100,
                 health: config.health || 100,
                 maxHealth: config.maxHealth || 100,
                 playerId
@@ -3023,7 +3070,7 @@ class GameState {
                 health: wallConfig.health,
                 maxHealth: wallConfig.health,
                 level: 0,
-                maxLevel: 5,
+                maxLevel: 100,
                 playerId
             });
             this.grid[gridY][gridX] = 1;
@@ -3039,7 +3086,7 @@ class GameState {
                     resourceType,
                     timer: 0,
                     level: 1,
-                    maxLevel: 5,
+                    maxLevel: 100,
                     extractionRate: 1, // Resources per second
                     playerId
                 });

@@ -172,7 +172,9 @@ export class Turret {
         this.healTargets = [];
         if (this.cooldown <= 0) {
             this.cooldown = this.config.fireRate;
+            const healAmount = this.config.healAmount || 10;
 
+            // Heal turrets
             for (const turret of game.turrets) {
                 if (turret === this) continue;
                 if (turret.isDestroyed()) continue;
@@ -180,8 +182,20 @@ export class Turret {
 
                 const dist = Math.sqrt((this.x - turret.x) ** 2 + (this.y - turret.y) ** 2);
                 if (dist <= this.range) {
-                    turret.heal(this.config.healAmount || 10);
+                    turret.heal(healAmount);
                     this.healTargets.push(turret);
+                }
+            }
+
+            // Heal walls
+            for (const wall of game.walls) {
+                if (!wall || wall.health <= 0) continue;
+                if (wall.health >= (wall.maxHealth || 200)) continue;
+
+                const dist = Math.sqrt((this.x - wall.x) ** 2 + (this.y - wall.y) ** 2);
+                if (dist <= this.range) {
+                    wall.health = Math.min(wall.maxHealth || 200, wall.health + healAmount);
+                    this.healTargets.push(wall);
                 }
             }
         }

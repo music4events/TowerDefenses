@@ -42,77 +42,98 @@ export const BUILDING_TYPES = {
     }
 };
 
-// Wall upgrade paths
+// Helper function to interpolate color from dark to bright
+function getWallColor(level, maxLevel = 100) {
+    // Start: dark brown (#533535), End: golden (#ffd700)
+    const t = level / maxLevel;
+
+    // Color progression: brown -> orange -> gold
+    let r, g, b;
+
+    if (t < 0.5) {
+        // Brown to orange (0-50)
+        const t2 = t * 2;
+        r = Math.floor(83 + (255 - 83) * t2);  // 83 -> 255
+        g = Math.floor(53 + (165 - 53) * t2);  // 53 -> 165
+        b = Math.floor(53 + (0 - 53) * t2);    // 53 -> 0
+    } else {
+        // Orange to gold (50-100)
+        const t2 = (t - 0.5) * 2;
+        r = 255;
+        g = Math.floor(165 + (215 - 165) * t2); // 165 -> 215
+        b = Math.floor(0 + (0) * t2);            // 0 -> 0
+    }
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+// Generate wall upgrade cost based on level
+function getWallUpgradeCost(level, isReinforced = false) {
+    const baseMult = isReinforced ? 1.5 : 1;
+
+    // Iron: base 20, increases each level
+    const iron = Math.floor((20 + level * 15) * baseMult * (1 + level * 0.02));
+
+    // Copper: starts at level 10
+    let copper = 0;
+    if (level >= 10) {
+        copper = Math.floor((10 + (level - 10) * 8) * baseMult * (1 + level * 0.015));
+    }
+
+    // Gold: starts at level 30
+    let gold = 0;
+    if (level >= 30) {
+        gold = Math.floor((5 + (level - 30) * 4) * baseMult * (1 + level * 0.01));
+    }
+
+    const cost = { iron };
+    if (copper > 0) cost.copper = copper;
+    if (gold > 0) cost.gold = gold;
+
+    return cost;
+}
+
+// Generate health bonus based on level
+function getWallHealthBonus(level, isReinforced = false) {
+    const baseMult = isReinforced ? 1.5 : 1;
+    // Health bonus grows exponentially: 50 * (1.08 ^ level)
+    return Math.floor(50 * Math.pow(1.08, level) * baseMult);
+}
+
+// Generate 100 levels dynamically
+function generateWallLevels(isReinforced = false) {
+    const levels = {};
+    const prefix = isReinforced ? 'Mur Renforcé' : 'Mur';
+
+    for (let level = 1; level <= 100; level++) {
+        levels[level] = {
+            cost: getWallUpgradeCost(level, isReinforced),
+            healthBonus: getWallHealthBonus(level, isReinforced),
+            color: getWallColor(level),
+            name: `${prefix} +${level}`
+        };
+    }
+
+    return levels;
+}
+
+// Wall upgrade paths - 100 levels each
 export const WALL_UPGRADES = {
     'wall': {
-        levels: {
-            1: {
-                cost: { iron: 30 },
-                healthBonus: 100,
-                color: '#634545',
-                name: 'Mur +1'
-            },
-            2: {
-                cost: { iron: 50, copper: 10 },
-                healthBonus: 150,
-                color: '#735555',
-                name: 'Mur +2'
-            },
-            3: {
-                cost: { iron: 80, copper: 25 },
-                healthBonus: 200,
-                color: '#836565',
-                name: 'Mur +3'
-            },
-            4: {
-                cost: { iron: 120, copper: 40, gold: 10 },
-                healthBonus: 300,
-                color: '#937575',
-                name: 'Mur +4'
-            },
-            5: {
-                cost: { iron: 200, copper: 60, gold: 25 },
-                healthBonus: 500,
-                color: '#a38585',
-                name: 'Mur +5'
-            }
-        }
+        maxLevel: 100,
+        levels: generateWallLevels(false)
     },
     'wall-reinforced': {
-        levels: {
-            1: {
-                cost: { iron: 60, copper: 30 },
-                healthBonus: 200,
-                color: '#7b5433',
-                name: 'Mur Renforcé +1'
-            },
-            2: {
-                cost: { iron: 100, copper: 50 },
-                healthBonus: 300,
-                color: '#8b6443',
-                name: 'Mur Renforcé +2'
-            },
-            3: {
-                cost: { iron: 150, copper: 75, gold: 15 },
-                healthBonus: 400,
-                color: '#9b7453',
-                name: 'Mur Renforcé +3'
-            },
-            4: {
-                cost: { iron: 200, copper: 100, gold: 30 },
-                healthBonus: 600,
-                color: '#ab8463',
-                name: 'Mur Renforcé +4'
-            },
-            5: {
-                cost: { iron: 300, copper: 150, gold: 50 },
-                healthBonus: 1000,
-                color: '#bb9473',
-                name: 'Mur Renforcé +5'
-            }
-        }
+        maxLevel: 100,
+        levels: generateWallLevels(true)
     }
 };
+
+// Helper functions exported for use elsewhere
+export function getWallUpgradeInfo(wallType, level) {
+    const upgrades = WALL_UPGRADES[wallType] || WALL_UPGRADES['wall'];
+    return upgrades.levels[level] || null;
+}
 
 export const RESOURCE_TYPES = {
     'iron': {
