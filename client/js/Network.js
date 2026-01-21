@@ -375,9 +375,11 @@ export class Network {
                     // Moving projectile - use velocity for smooth movement
                     localProj.vx = sp.vx || 0;
                     localProj.vy = sp.vy || 0;
-                    // Faster lerp to server position to correct drift (0.5 instead of 0.3)
-                    localProj.x += (sp.x - localProj.x) * 0.5;
-                    localProj.y += (sp.y - localProj.y) * 0.5;
+                    // Lerp scales with game speed for faster catch-up at high speeds
+                    const gameSpeed = this.game.gameSpeed || 1;
+                    const lerpFactor = Math.min(0.9, 0.5 * gameSpeed);
+                    localProj.x += (sp.x - localProj.x) * lerpFactor;
+                    localProj.y += (sp.y - localProj.y) * lerpFactor;
                 } else {
                     // Static beam - just update position
                     localProj.x = sp.x;
@@ -650,10 +652,27 @@ export class Network {
                     };
                     this.game.enemies.push(localEnemy);
                 } else {
-                    // Interpolate position
-                    const lerpFactor = 0.3;
-                    localEnemy.x += (serverEnemy.x - localEnemy.x) * lerpFactor;
-                    localEnemy.y += (serverEnemy.y - localEnemy.y) * lerpFactor;
+                    // Interpolate position - adjust lerp based on game speed and distance
+                    const gameSpeed = this.game.gameSpeed || 1;
+                    const dx = serverEnemy.x - localEnemy.x;
+                    const dy = serverEnemy.y - localEnemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Base lerp factor scales with game speed
+                    // At higher speeds, snap more aggressively to prevent lag
+                    let lerpFactor = Math.min(0.8, 0.3 * gameSpeed);
+
+                    // If too far behind, snap directly to server position
+                    const snapThreshold = 50 * gameSpeed; // Snap if > 50 pixels behind (scaled by speed)
+                    if (distance > snapThreshold) {
+                        // Snap directly to prevent rubberbanding
+                        localEnemy.x = serverEnemy.x;
+                        localEnemy.y = serverEnemy.y;
+                    } else {
+                        localEnemy.x += dx * lerpFactor;
+                        localEnemy.y += dy * lerpFactor;
+                    }
+
                     localEnemy.health = serverEnemy.health;
                     localEnemy.angle = serverEnemy.angle || localEnemy.angle;
                     localEnemy.burning = serverEnemy.burning;
