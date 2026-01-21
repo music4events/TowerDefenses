@@ -266,7 +266,7 @@ export class Game {
         if (this.actionMode === 'sell' && hasBuilding) {
             this.sellBuilding(gridX, gridY);
             this.selectedTurret = null;
-        } else if (this.actionMode === 'upgrade' && (turret || extractor)) {
+        } else if (this.actionMode === 'upgrade' && (turret || extractor || wall)) {
             this.upgradeBuilding(gridX, gridY);
             this.selectedTurret = turret || null;
         } else if (turret) {

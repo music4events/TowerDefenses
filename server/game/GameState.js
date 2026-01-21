@@ -2037,9 +2037,9 @@ class GameState {
             return;
         }
 
-        // Slowdown turret - slows enemies in range
+        // Slowdown turret - slows enemies in range (affected by range boost)
         if (turret.config.isSlowdown) {
-            const slowRange = (turret.config.aoeRange || turret.config.range) * this.cellSize;
+            const slowRange = (turret.config.aoeRange || turret.config.range) * this.cellSize * rangeMult;
             for (const enemy of this.enemies) {
                 if (!enemy || enemy.dead) continue;
                 const dist = Math.sqrt((turret.x - enemy.x) ** 2 + (turret.y - enemy.y) ** 2);
@@ -2105,10 +2105,10 @@ class GameState {
             return;
         }
 
-        // Shockwave turret - periodic electric AOE
+        // Shockwave turret - periodic electric AOE (affected by range boost)
         if (turret.config.isShockwave) {
             if (turret.cooldown <= 0) {
-                const shockRange = (turret.config.aoeRange || turret.config.range) * this.cellSize;
+                const shockRange = (turret.config.aoeRange || turret.config.range) * this.cellSize * rangeMult;
                 let hitAny = false;
 
                 for (const enemy of this.enemies) {
