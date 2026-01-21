@@ -137,43 +137,82 @@ export class Grid {
         return false;
     }
 
-    // Multi-cell building support (3x3 turrets)
-    canPlaceMulti(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                const x = centerX + dx;
-                const y = centerY + dy;
-                if (!this.canPlace(x, y)) return false;
+    // Multi-cell building support (2x2 and 3x3 turrets)
+    // For 2x2: place at (x,y), (x+1,y), (x,y+1), (x+1,y+1) - topleft corner is anchor
+    // For 3x3: place centered at (x,y) with offset -1 to +1
+    canPlaceMulti(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    if (!this.canPlace(anchorX + dx, anchorY + dy)) return false;
+                }
+            }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    if (!this.canPlace(anchorX + dx, anchorY + dy)) return false;
+                }
             }
         }
         return true;
     }
 
-    placeMultiBuilding(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                this.placeBuilding(centerX + dx, centerY + dy);
+    placeMultiBuilding(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    this.placeBuilding(anchorX + dx, anchorY + dy);
+                }
+            }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    this.placeBuilding(anchorX + dx, anchorY + dy);
+                }
             }
         }
     }
 
-    removeMultiBuilding(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                this.removeBuilding(centerX + dx, centerY + dy);
+    removeMultiBuilding(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    this.removeBuilding(anchorX + dx, anchorY + dy);
+                }
+            }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    this.removeBuilding(anchorX + dx, anchorY + dy);
+                }
             }
         }
     }
 
     // Get world position for center of multi-cell building
-    gridToWorldMulti(centerX, centerY, size) {
-        return {
-            x: centerX * this.cellSize + this.cellSize / 2,
-            y: centerY * this.cellSize + this.cellSize / 2
-        };
+    gridToWorldMulti(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: center is between the 4 cells
+            return {
+                x: (anchorX + 1) * this.cellSize,
+                y: (anchorY + 1) * this.cellSize
+            };
+        } else {
+            // 3x3: center is the anchor cell center
+            return {
+                x: anchorX * this.cellSize + this.cellSize / 2,
+                y: anchorY * this.cellSize + this.cellSize / 2
+            };
+        }
     }
 
     setNexus(x, y) {

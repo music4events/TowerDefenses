@@ -4135,37 +4135,69 @@ export class Renderer {
         const cellSize = this.grid.cellSize;
 
         if (gridSize > 1) {
-            // Multi-cell preview (3x3)
-            const offset = Math.floor(gridSize / 2);
+            // Multi-cell preview
             this.ctx.globalAlpha = 0.5;
 
-            for (let dy = -offset; dy <= offset; dy++) {
-                for (let dx = -offset; dx <= offset; dx++) {
-                    const x = gridX + dx;
-                    const y = gridY + dy;
-                    const cellCanPlace = this.grid.canPlace(x, y);
-                    const worldPos = this.grid.gridToWorld(x, y);
-                    const size = cellSize * 0.9;
+            if (gridSize === 2) {
+                // 2x2: anchor is top-left corner
+                for (let dy = 0; dy < 2; dy++) {
+                    for (let dx = 0; dx < 2; dx++) {
+                        const x = gridX + dx;
+                        const y = gridY + dy;
+                        const cellCanPlace = this.grid.canPlace(x, y);
+                        const worldPos = this.grid.gridToWorld(x, y);
+                        const size = cellSize * 0.9;
 
-                    this.ctx.fillStyle = cellCanPlace ? '#44ff44' : '#ff4444';
-                    this.ctx.fillRect(
-                        worldPos.x - size / 2,
-                        worldPos.y - size / 2,
-                        size, size
-                    );
+                        this.ctx.fillStyle = cellCanPlace ? '#44ff44' : '#ff4444';
+                        this.ctx.fillRect(
+                            worldPos.x - size / 2,
+                            worldPos.y - size / 2,
+                            size, size
+                        );
+                    }
                 }
-            }
 
-            // Draw outline around the whole footprint
-            const centerWorldPos = this.grid.gridToWorld(gridX, gridY);
-            const totalSize = cellSize * gridSize;
-            this.ctx.strokeStyle = canPlace ? '#00ff00' : '#ff0000';
-            this.ctx.lineWidth = 3;
-            this.ctx.strokeRect(
-                centerWorldPos.x - totalSize / 2,
-                centerWorldPos.y - totalSize / 2,
-                totalSize, totalSize
-            );
+                // Draw outline around the whole 2x2 footprint
+                const topLeftWorldPos = this.grid.gridToWorld(gridX, gridY);
+                const totalSize = cellSize * 2;
+                this.ctx.strokeStyle = canPlace ? '#00ff00' : '#ff0000';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(
+                    topLeftWorldPos.x - cellSize / 2,
+                    topLeftWorldPos.y - cellSize / 2,
+                    totalSize, totalSize
+                );
+            } else {
+                // 3x3 or other odd sizes: anchor is center
+                const offset = Math.floor(gridSize / 2);
+                for (let dy = -offset; dy <= offset; dy++) {
+                    for (let dx = -offset; dx <= offset; dx++) {
+                        const x = gridX + dx;
+                        const y = gridY + dy;
+                        const cellCanPlace = this.grid.canPlace(x, y);
+                        const worldPos = this.grid.gridToWorld(x, y);
+                        const size = cellSize * 0.9;
+
+                        this.ctx.fillStyle = cellCanPlace ? '#44ff44' : '#ff4444';
+                        this.ctx.fillRect(
+                            worldPos.x - size / 2,
+                            worldPos.y - size / 2,
+                            size, size
+                        );
+                    }
+                }
+
+                // Draw outline around the whole footprint
+                const centerWorldPos = this.grid.gridToWorld(gridX, gridY);
+                const totalSize = cellSize * gridSize;
+                this.ctx.strokeStyle = canPlace ? '#00ff00' : '#ff0000';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(
+                    centerWorldPos.x - totalSize / 2,
+                    centerWorldPos.y - totalSize / 2,
+                    totalSize, totalSize
+                );
+            }
 
             this.ctx.globalAlpha = 1;
         } else {

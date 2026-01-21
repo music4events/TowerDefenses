@@ -7,7 +7,15 @@ export class Turret {
         this.config = { ...TURRET_TYPES[type] };
         this.baseConfig = TURRET_TYPES[type];
 
-        const worldPos = grid.gridToWorld(gridX, gridY);
+        // Calculate world position based on grid size
+        const gridSize = this.config.gridSize || 1;
+        let worldPos;
+        if (gridSize > 1) {
+            // Multi-cell turret: use gridToWorldMulti for proper centering
+            worldPos = grid.gridToWorldMulti(gridX, gridY, gridSize);
+        } else {
+            worldPos = grid.gridToWorld(gridX, gridY);
+        }
         this.x = worldPos.x;
         this.y = worldPos.y;
         this.gridX = gridX;

@@ -2871,8 +2871,23 @@ class GameState {
             this.resources[res] -= amt;
         }
 
-        const worldX = gridX * this.cellSize + this.cellSize / 2;
-        const worldY = gridY * this.cellSize + this.cellSize / 2;
+        // Calculate world position (adjusted for multi-cell turrets)
+        let worldX, worldY;
+        if (buildingType.startsWith('turret-')) {
+            const config = TURRET_TYPES[buildingType];
+            const gridSize = config?.gridSize || 1;
+            if (gridSize > 1) {
+                const pos = this.gridToWorldMulti(gridX, gridY, gridSize);
+                worldX = pos.x;
+                worldY = pos.y;
+            } else {
+                worldX = gridX * this.cellSize + this.cellSize / 2;
+                worldY = gridY * this.cellSize + this.cellSize / 2;
+            }
+        } else {
+            worldX = gridX * this.cellSize + this.cellSize / 2;
+            worldY = gridY * this.cellSize + this.cellSize / 2;
+        }
 
         if (buildingType.startsWith('turret-')) {
             const config = TURRET_TYPES[buildingType];
@@ -3116,47 +3131,109 @@ class GameState {
         return this.grid[gridY][gridX] === 0 || this.grid[gridY][gridX] === 2;
     }
 
-    canPlaceMulti(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                const x = centerX + dx;
-                const y = centerY + dy;
-                if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
-                    return false;
+    // Multi-cell building support (2x2 and 3x3 turrets)
+    // For 2x2: anchor is top-left corner, checks (x,y) to (x+1,y+1)
+    // For 3x3: anchor is center, checks -1 to +1 offset
+    canPlaceMulti(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    const x = anchorX + dx;
+                    const y = anchorY + dy;
+                    if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
+                        return false;
+                    }
+                    const cell = this.grid[y][x];
+                    if (cell !== 0 && cell !== 2) {
+                        return false;
+                    }
                 }
-                const cell = this.grid[y][x];
-                // Can only place on empty (0) or resource (2) cells
-                if (cell !== 0 && cell !== 2) {
-                    return false;
+            }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    const x = anchorX + dx;
+                    const y = anchorY + dy;
+                    if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
+                        return false;
+                    }
+                    const cell = this.grid[y][x];
+                    if (cell !== 0 && cell !== 2) {
+                        return false;
+                    }
                 }
             }
         }
         return true;
     }
 
-    placeMultiBuilding(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                this.grid[centerY + dy][centerX + dx] = 1;
+    placeMultiBuilding(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    this.grid[anchorY + dy][anchorX + dx] = 1;
+                }
+            }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    this.grid[anchorY + dy][anchorX + dx] = 1;
+                }
             }
         }
     }
 
-    removeMultiBuilding(centerX, centerY, size) {
-        const offset = Math.floor(size / 2);
-        for (let dy = -offset; dy <= offset; dy++) {
-            for (let dx = -offset; dx <= offset; dx++) {
-                const x = centerX + dx;
-                const y = centerY + dy;
-                // Check if there was a resource here originally
-                if (this.resourceMap[y][x]) {
-                    this.grid[y][x] = 2;
-                } else {
-                    this.grid[y][x] = 0;
+    removeMultiBuilding(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: anchor is top-left corner
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    const x = anchorX + dx;
+                    const y = anchorY + dy;
+                    if (this.resourceMap[y][x]) {
+                        this.grid[y][x] = 2;
+                    } else {
+                        this.grid[y][x] = 0;
+                    }
                 }
             }
+        } else {
+            // 3x3 or other odd sizes: anchor is center
+            const offset = Math.floor(size / 2);
+            for (let dy = -offset; dy <= offset; dy++) {
+                for (let dx = -offset; dx <= offset; dx++) {
+                    const x = anchorX + dx;
+                    const y = anchorY + dy;
+                    if (this.resourceMap[y][x]) {
+                        this.grid[y][x] = 2;
+                    } else {
+                        this.grid[y][x] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    // Get world position for center of multi-cell building
+    gridToWorldMulti(anchorX, anchorY, size) {
+        if (size === 2) {
+            // 2x2: center is between the 4 cells
+            return {
+                x: (anchorX + 1) * this.cellSize,
+                y: (anchorY + 1) * this.cellSize
+            };
+        } else {
+            // 3x3: center is the anchor cell center
+            return {
+                x: anchorX * this.cellSize + this.cellSize / 2,
+                y: anchorY * this.cellSize + this.cellSize / 2
+            };
         }
     }
 
