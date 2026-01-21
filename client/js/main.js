@@ -14,8 +14,8 @@ class App {
         this.game = null;
         this.network = null;
         this.isMultiplayer = true; // Always multiplayer now
-        this.selectedGameMode = 'waves'; // 'waves' or 'endless'
-        this.currentLeaderboardMode = 'waves';
+        this.selectedGameMode = 'endless'; // Only endless mode
+        this.currentLeaderboardMode = 'endless';
 
         this.setupLobby();
     }
@@ -32,7 +32,7 @@ class App {
             document.getElementById('leaderboard-panel').classList.remove('hidden');
             document.getElementById('multiplayer-panel').classList.add('hidden');
             document.getElementById('room-panel').classList.add('hidden');
-            this.loadLeaderboard('waves');
+            this.loadLeaderboard('endless');
         });
 
         // Back from leaderboard
@@ -46,15 +46,6 @@ class App {
                 document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 this.loadLeaderboard(tab.dataset.mode);
-            });
-        });
-
-        // Game mode selection buttons (multiplayer)
-        document.querySelectorAll('.mp-mode').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.mp-mode').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                this.selectedGameMode = btn.dataset.mode;
             });
         });
 
@@ -79,10 +70,10 @@ class App {
             this.network.joinRoom(roomCode, playerName);
         });
 
-        // Start game (host only)
+        // Start game (host only) - endless mode only
         document.getElementById('btn-start-game').addEventListener('click', () => {
             if (this.network && this.network.isHost) {
-                this.network.startGame(this.selectedGameMode);
+                this.network.startGame('endless');
             }
         });
     }
