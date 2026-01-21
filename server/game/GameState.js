@@ -2886,28 +2886,28 @@ class GameState {
                 this.resources[res] -= amt;
             }
 
-            // Apply upgrade using flat values
+            // Apply upgrade using percentage of base values
             turret.level++;
             const baseConfig = TURRET_TYPES[turret.type];
             const levelBonus = turret.level - 1;
 
-            // Flat damage: +1 damage per level (level 100: base + 99)
-            turret.config.damage = Math.floor(baseConfig.damage + levelBonus * 1);
+            // +2% of base damage per level (level 100: base * 2.98)
+            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.02));
 
-            // Flat range: +0.05 range per level (level 100: base + 4.95)
-            turret.config.range = baseConfig.range + levelBonus * 0.05;
+            // +1% of base range per level (level 100: base * 1.99)
+            turret.config.range = baseConfig.range * (1 + levelBonus * 0.01);
 
-            // Flat fire rate reduction: -0.5% per level (level 100: ~33% faster)
+            // -0.5% fire rate per level (level 100: ~33% faster)
             const fireRateBonus = 1 + levelBonus * 0.005;
             turret.config.fireRate = Math.max(0.02, baseConfig.fireRate / fireRateBonus);
 
             // Also upgrade aoeRange for slowdown/shockwave turrets
             if (baseConfig.aoeRange) {
-                turret.config.aoeRange = baseConfig.aoeRange + levelBonus * 0.03;
+                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.01);
             }
 
-            // Flat health: +5 HP per level
-            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) + levelBonus * 5);
+            // +2% of base health per level
+            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.02));
             turret.health = Math.min(turret.health + 10, turret.maxHealth);
 
             return { success: true, type: 'turret', level: turret.level };
