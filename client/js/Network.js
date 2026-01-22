@@ -237,6 +237,12 @@ export class Network {
         }
     }
 
+    upgradeNexus() {
+        if (this.socket) {
+            this.socket.emit('upgradeNexus');
+        }
+    }
+
     sendChatMessage(message) {
         if (this.socket) {
             this.socket.emit('chatMessage', { message });
@@ -262,8 +268,28 @@ export class Network {
             if (state.resources) {
                 this.game.resources = state.resources;
             }
-            if (state.nexusHealth !== undefined && this.game.nexus) {
-                this.game.nexus.health = state.nexusHealth;
+            if (this.game.nexus) {
+                if (state.nexusHealth !== undefined) {
+                    this.game.nexus.health = state.nexusHealth;
+                }
+                if (state.nexusMaxHealth !== undefined) {
+                    this.game.nexus.maxHealth = state.nexusMaxHealth;
+                }
+                if (state.nexusLevel !== undefined) {
+                    this.game.nexus.level = state.nexusLevel;
+                }
+                if (state.nexusMaxLevel !== undefined) {
+                    this.game.nexus.maxLevel = state.nexusMaxLevel;
+                }
+                if (state.nexusDamageBonus !== undefined) {
+                    this.game.nexus.damageBonus = state.nexusDamageBonus;
+                }
+                if (state.nexusRangeBonus !== undefined) {
+                    this.game.nexus.rangeBonus = state.nexusRangeBonus;
+                }
+                if (state.nexusFireRateBonus !== undefined) {
+                    this.game.nexus.fireRateBonus = state.nexusFireRateBonus;
+                }
             }
             if (state.waveNumber !== undefined) {
                 this.game.waveNumber = state.waveNumber;

@@ -875,6 +875,12 @@ class GameState {
         this.resources = { iron: 500, copper: 0, coal: 0, gold: 0 };
         this.nexusHealth = 1000;
         this.nexusMaxHealth = 1000;
+        this.nexusLevel = 1;
+        this.nexusMaxLevel = 50;
+        // Nexus bonuses applied to ALL turrets
+        this.nexusDamageBonus = 0;    // +2% per level
+        this.nexusRangeBonus = 0;     // +1% per level
+        this.nexusFireRateBonus = 0;  // +1% per level
         this.waveNumber = 0;
         this.totalKills = 0;
         this.totalScore = 0;
@@ -1663,29 +1669,30 @@ class GameState {
         if (!turret || !turret.config) return;
         if (turret.health !== undefined && turret.health <= 0) return;
 
-        // Apply cooldown reduction (speed boost from boosters makes it faster)
-        const speedMult = 1 + (turret.speedBoostAmount || 0);
+        // Apply cooldown reduction (speed boost from boosters + nexus bonus makes it faster)
+        const speedMult = 1 + (turret.speedBoostAmount || 0) + (this.nexusFireRateBonus || 0);
         turret.cooldown -= deltaTime * speedMult;
 
-        // Apply range boost from nearby range boosters
-        const rangeMult = 1 + (turret.rangeBoostAmount || 0);
+        // Apply range boost from nearby range boosters + nexus bonus
+        const rangeMult = 1 + (turret.rangeBoostAmount || 0) + (this.nexusRangeBonus || 0);
         const range = (turret.config.range || 4) * this.cellSize * rangeMult;
         const minRange = (turret.config.minRange || 0) * this.cellSize;
 
-        // Healer turret - heals other turrets AND walls
+        // Healer turret - heals other turrets AND walls (including 2x2 and 3x3)
         if (turret.config.isHealer) {
             if (turret.cooldown <= 0) {
                 turret.cooldown = turret.config.fireRate || 0.5;
                 const healAmount = turret.config.healAmount || 10;
 
-                // Heal turrets
+                // Heal turrets (use turret.maxHealth, not config.maxHealth for upgraded turrets)
                 for (const other of this.turrets) {
                     if (other === turret) continue;
-                    if (other.health === undefined || other.health >= (other.config?.maxHealth || 100)) continue;
+                    const otherMaxHealth = other.maxHealth || other.config?.maxHealth || 100;
+                    if (other.health === undefined || other.health >= otherMaxHealth) continue;
 
                     const dist = Math.sqrt((turret.x - other.x) ** 2 + (turret.y - other.y) ** 2);
                     if (dist <= range) {
-                        other.health = Math.min(other.config?.maxHealth || 100, other.health + healAmount);
+                        other.health = Math.min(otherMaxHealth, other.health + healAmount);
                     }
                 }
 
@@ -1696,6 +1703,14 @@ class GameState {
                     const dist = Math.sqrt((turret.x - wall.x) ** 2 + (turret.y - wall.y) ** 2);
                     if (dist <= range) {
                         wall.health = Math.min(wall.maxHealth || 200, wall.health + healAmount);
+                    }
+                }
+
+                // Heal Nexus
+                if (this.nexus && this.nexus.health < this.nexus.maxHealth) {
+                    const dist = Math.sqrt((turret.x - this.nexus.x) ** 2 + (turret.y - this.nexus.y) ** 2);
+                    if (dist <= range) {
+                        this.nexus.health = Math.min(this.nexus.maxHealth, this.nexus.health + healAmount);
                     }
                 }
             }
@@ -1888,8 +1903,8 @@ class GameState {
     fireTurret(turret, target) {
         if (!turret || !turret.config || !target || target.dead) return;
 
-        // Apply damage boost from nearby boosters
-        const damageMult = 1 + (turret.damageBoostAmount || 0);
+        // Apply damage boost from nearby boosters + nexus bonus
+        const damageMult = 1 + (turret.damageBoostAmount || 0) + (this.nexusDamageBonus || 0);
         const damage = (turret.config.damage || 10) * damageMult;
         const range = (turret.config.range || 5) * this.cellSize;
 
@@ -2891,23 +2906,23 @@ class GameState {
             const baseConfig = TURRET_TYPES[turret.type];
             const levelBonus = turret.level - 1;
 
-            // +2% of base damage per level (level 100: base * 2.98)
-            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.02));
+            // +5% of base damage per level (level 100: base * 5.95)
+            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.05));
 
-            // +1% of base range per level (level 100: base * 1.99)
-            turret.config.range = baseConfig.range * (1 + levelBonus * 0.01);
+            // +3% of base range per level (level 100: base * 3.97)
+            turret.config.range = baseConfig.range * (1 + levelBonus * 0.03);
 
-            // -0.5% fire rate per level (level 100: ~33% faster)
-            const fireRateBonus = 1 + levelBonus * 0.005;
+            // -2% fire rate per level (level 100: ~66% faster)
+            const fireRateBonus = 1 + levelBonus * 0.02;
             turret.config.fireRate = Math.max(0.02, baseConfig.fireRate / fireRateBonus);
 
             // Also upgrade aoeRange for slowdown/shockwave turrets
             if (baseConfig.aoeRange) {
-                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.01);
+                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.03);
             }
 
-            // +2% of base health per level
-            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.02));
+            // +3% of base health per level
+            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.03));
             turret.health = Math.min(turret.health + 10, turret.maxHealth);
 
             return { success: true, type: 'turret', level: turret.level };
@@ -2934,12 +2949,12 @@ class GameState {
 
             // Apply upgrade
             extractor.level++;
-            // +10% extraction rate per level (flat bonus)
-            extractor.extractionRate = 1 + (extractor.level - 1) * 0.1;
-            // +10 max storage per level
-            extractor.maxStorage = 50 + (extractor.level - 1) * 10;
-            // +5 max health per level
-            extractor.maxHealth = 100 + (extractor.level - 1) * 5;
+            // +25% extraction rate per level (level 100: 25.75/s)
+            extractor.extractionRate = 1 + (extractor.level - 1) * 0.25;
+            // +20 max storage per level
+            extractor.maxStorage = 50 + (extractor.level - 1) * 20;
+            // +10 max health per level
+            extractor.maxHealth = 100 + (extractor.level - 1) * 10;
             extractor.health = Math.min(extractor.health + 10, extractor.maxHealth);
 
             return { success: true, type: 'extractor', level: extractor.level };
@@ -2983,6 +2998,54 @@ class GameState {
         }
 
         return { success: false, message: 'No upgradeable building at this position' };
+    }
+
+    upgradeNexus(playerId) {
+        if (this.nexusLevel >= this.nexusMaxLevel) {
+            return { success: false, message: 'Nexus already max level' };
+        }
+
+        // Nexus upgrade cost scales with level
+        const upgradeCost = {
+            iron: 200 + this.nexusLevel * 100,
+            copper: 50 + this.nexusLevel * 50,
+            gold: 20 + this.nexusLevel * 20
+        };
+
+        if (!this.canAfford(upgradeCost)) {
+            return { success: false, message: 'Not enough resources' };
+        }
+
+        // Deduct cost
+        for (const [res, amt] of Object.entries(upgradeCost)) {
+            this.resources[res] -= amt;
+        }
+
+        // Apply upgrade
+        this.nexusLevel++;
+        const levelBonus = this.nexusLevel - 1;
+
+        // +2% damage bonus per level for all turrets
+        this.nexusDamageBonus = levelBonus * 0.02;
+        // +1% range bonus per level for all turrets
+        this.nexusRangeBonus = levelBonus * 0.01;
+        // +1% fire rate bonus per level for all turrets
+        this.nexusFireRateBonus = levelBonus * 0.01;
+
+        // Increase nexus max health by 5% per level
+        this.nexusMaxHealth = Math.floor(1000 * (1 + levelBonus * 0.05));
+        this.nexusHealth = Math.min(this.nexusHealth + 100, this.nexusMaxHealth);
+
+        return { success: true, level: this.nexusLevel };
+    }
+
+    getNexusUpgradeCost() {
+        if (this.nexusLevel >= this.nexusMaxLevel) return null;
+        return {
+            iron: 200 + this.nexusLevel * 100,
+            copper: 50 + this.nexusLevel * 50,
+            gold: 20 + this.nexusLevel * 20
+        };
     }
 
     canPlace(gridX, gridY, buildingType) {
@@ -3254,6 +3317,11 @@ class GameState {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
             nexusMaxHealth: this.nexusMaxHealth,
+            nexusLevel: this.nexusLevel,
+            nexusMaxLevel: this.nexusMaxLevel,
+            nexusDamageBonus: this.nexusDamageBonus,
+            nexusRangeBonus: this.nexusRangeBonus,
+            nexusFireRateBonus: this.nexusFireRateBonus,
             waveNumber: this.waveNumber,
             grid: this.grid,
             resourceMap: this.resourceMap,
@@ -3285,6 +3353,12 @@ class GameState {
         const result = {
             resources: this.resources,
             nexusHealth: this.nexusHealth,
+            nexusMaxHealth: this.nexusMaxHealth,
+            nexusLevel: this.nexusLevel,
+            nexusMaxLevel: this.nexusMaxLevel,
+            nexusDamageBonus: this.nexusDamageBonus,
+            nexusRangeBonus: this.nexusRangeBonus,
+            nexusFireRateBonus: this.nexusFireRateBonus,
             waveNumber: this.waveNumber,
             totalKills: this.totalKills,
             totalScore: this.totalScore,

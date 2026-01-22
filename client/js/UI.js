@@ -146,6 +146,14 @@ export class UI {
     updateSelectionInfo() {
         const turret = this.game.selectedTurret || this.game.getHoveredTurret();
         const extractor = this.game.selectedExtractor || this.game.getHoveredExtractor();
+        const isNexus = this.game.selectedNexus || this.game.isHoveringNexus();
+
+        // Show nexus info if selected/hovered
+        if (isNexus && this.game.nexus && this.selectionInfo) {
+            this.selectionInfo.classList.remove('hidden');
+            this.showNexusInfo(this.game.nexus);
+            return;
+        }
 
         // Show extractor info if selected/hovered
         if (extractor && this.selectionInfo) {
@@ -202,6 +210,31 @@ export class UI {
             <div class="stat"><span class="stat-label">Stock</span><span>${stats.stored}/${stats.maxStorage}</span></div>
             <div class="upgrade-cost">
                 <div class="stat"><span class="stat-label">Vente</span><span>${sellHtml}</span></div>
+                ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
+            </div>
+        `;
+    }
+
+    showNexusInfo(nexus) {
+        const stats = nexus.getStats();
+        const upgradeCost = nexus.getUpgradeCost();
+
+        // Build upgrade cost HTML
+        let upgradeHtml = '';
+        if (upgradeCost) {
+            for (const [resource, amount] of Object.entries(upgradeCost)) {
+                upgradeHtml += `<span class="cost-${resource}">${amount}</span> `;
+            }
+        }
+
+        this.selectionDetails.innerHTML = `
+            <div class="stat"><span class="stat-label">Nom</span><span style="color:#e94560">${stats.name}</span></div>
+            <div class="stat"><span class="stat-label">Niveau</span><span>${stats.level}/${stats.maxLevel}</span></div>
+            <div class="stat"><span class="stat-label">Vie</span><span>${Math.ceil(stats.health)}/${stats.maxHealth}</span></div>
+            <div class="stat nexus-bonus"><span class="stat-label">Bonus Degats</span><span class="boosted">+${stats.damageBonus}%</span></div>
+            <div class="stat nexus-bonus"><span class="stat-label">Bonus Portee</span><span class="boosted">+${stats.rangeBonus}%</span></div>
+            <div class="stat nexus-bonus"><span class="stat-label">Bonus Cadence</span><span class="boosted">+${stats.fireRateBonus}%</span></div>
+            <div class="upgrade-cost">
                 ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
             </div>
         `;

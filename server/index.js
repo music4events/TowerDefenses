@@ -344,6 +344,31 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Player upgrades Nexus
+    socket.on('upgradeNexus', () => {
+        if (!currentRoom) return;
+
+        const room = rooms.get(currentRoom);
+        if (!room || !room.started) return;
+
+        const result = room.gameState.upgradeNexus(socket.id);
+
+        if (result.success) {
+            io.to(currentRoom).emit('nexusUpgraded', {
+                level: result.level,
+                playerId: socket.id,
+                resources: room.gameState.resources,
+                nexusHealth: room.gameState.nexusHealth,
+                nexusMaxHealth: room.gameState.nexusMaxHealth,
+                nexusDamageBonus: room.gameState.nexusDamageBonus,
+                nexusRangeBonus: room.gameState.nexusRangeBonus,
+                nexusFireRateBonus: room.gameState.nexusFireRateBonus
+            });
+        } else {
+            socket.emit('upgradeFailed', { message: result.message });
+        }
+    });
+
     // Chat message
     socket.on('chatMessage', (data) => {
         if (!currentRoom) return;

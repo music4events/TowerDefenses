@@ -73,6 +73,7 @@ export class Game {
         this.actionMode = null; // null, 'sell', 'upgrade'
         this.selectedTurret = null;
         this.selectedExtractor = null;
+        this.selectedNexus = false;
         this.hoveredTurret = null;
 
         // Apply initial state if multiplayer
@@ -246,29 +247,47 @@ export class Game {
             return;
         }
 
-        // Check if clicking on a building (turret, extractor, wall)
+        // Check if clicking on a building (turret, extractor, wall) or nexus
         const turret = this.getTurretAt(gridX, gridY);
         const extractor = this.extractors.find(e => e.gridX === gridX && e.gridY === gridY);
         const wall = this.walls.find(w => w.gridX === gridX && w.gridY === gridY);
+        const isNexus = this.nexus && gridX === this.nexus.gridX && gridY === this.nexus.gridY;
         const hasBuilding = turret || extractor || wall;
 
         if (this.actionMode === 'sell' && hasBuilding) {
             this.sellBuilding(gridX, gridY);
             this.selectedTurret = null;
             this.selectedExtractor = null;
-        } else if (this.actionMode === 'upgrade' && (turret || extractor || wall)) {
-            this.upgradeBuilding(gridX, gridY);
-            this.selectedTurret = turret || null;
-            this.selectedExtractor = extractor || null;
+            this.selectedNexus = false;
+        } else if (this.actionMode === 'upgrade') {
+            if (isNexus) {
+                // Upgrade nexus
+                this.upgradeNexus();
+                this.selectedNexus = true;
+                this.selectedTurret = null;
+                this.selectedExtractor = null;
+            } else if (turret || extractor || wall) {
+                this.upgradeBuilding(gridX, gridY);
+                this.selectedTurret = turret || null;
+                this.selectedExtractor = extractor || null;
+                this.selectedNexus = false;
+            }
         } else if (turret) {
             this.selectedTurret = turret;
             this.selectedExtractor = null;
+            this.selectedNexus = false;
         } else if (extractor) {
             this.selectedTurret = null;
             this.selectedExtractor = extractor;
+            this.selectedNexus = false;
+        } else if (isNexus) {
+            this.selectedTurret = null;
+            this.selectedExtractor = null;
+            this.selectedNexus = true;
         } else {
             this.selectedTurret = null;
             this.selectedExtractor = null;
+            this.selectedNexus = false;
         }
     }
 
@@ -301,6 +320,17 @@ export class Game {
     getHoveredExtractor() {
         const gridPos = this.inputHandler.getMouseGridPosition();
         return this.extractors.find(e => e.gridX === gridPos.x && e.gridY === gridPos.y);
+    }
+
+    isHoveringNexus() {
+        const gridPos = this.inputHandler.getMouseGridPosition();
+        return this.nexus && gridPos.x === this.nexus.gridX && gridPos.y === this.nexus.gridY;
+    }
+
+    upgradeNexus() {
+        if (this.network) {
+            this.network.upgradeNexus();
+        }
     }
 
     sellBuilding(gridX, gridY) {
