@@ -2909,24 +2909,24 @@ class GameState {
             const baseConfig = TURRET_TYPES[turret.type];
             const levelBonus = turret.level - 1;
 
-            // +5% of base damage per level (level 100: base * 5.95)
-            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.05));
+            // +10% of base damage per level (level 100: base * 10.9)
+            turret.config.damage = Math.floor(baseConfig.damage * (1 + levelBonus * 0.10));
 
-            // +3% of base range per level (level 100: base * 3.97)
-            turret.config.range = baseConfig.range * (1 + levelBonus * 0.03);
+            // +6% of base range per level (level 100: base * 6.94)
+            turret.config.range = baseConfig.range * (1 + levelBonus * 0.06);
 
-            // -2% fire rate per level (level 100: ~66% faster)
-            const fireRateBonus = 1 + levelBonus * 0.02;
+            // -5% fire rate per level (level 100: ~6x faster)
+            const fireRateBonus = 1 + levelBonus * 0.05;
             turret.config.fireRate = Math.max(0.02, baseConfig.fireRate / fireRateBonus);
 
             // Also upgrade aoeRange for slowdown/shockwave turrets
             if (baseConfig.aoeRange) {
-                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.03);
+                turret.config.aoeRange = baseConfig.aoeRange * (1 + levelBonus * 0.06);
             }
 
-            // +3% of base health per level
-            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.03));
-            turret.health = Math.min(turret.health + 10, turret.maxHealth);
+            // +5% of base health per level
+            turret.maxHealth = Math.floor((baseConfig.maxHealth || 100) * (1 + levelBonus * 0.05));
+            turret.health = Math.min(turret.health + 20, turret.maxHealth);
 
             return { success: true, type: 'turret', level: turret.level };
         }
@@ -2952,13 +2952,13 @@ class GameState {
 
             // Apply upgrade
             extractor.level++;
-            // +25% extraction rate per level (level 100: 25.75/s)
-            extractor.extractionRate = 1 + (extractor.level - 1) * 0.25;
-            // +20 max storage per level
-            extractor.maxStorage = 50 + (extractor.level - 1) * 20;
-            // +10 max health per level
-            extractor.maxHealth = 100 + (extractor.level - 1) * 10;
-            extractor.health = Math.min(extractor.health + 10, extractor.maxHealth);
+            // +50% extraction rate per level (level 100: 50.5/s)
+            extractor.extractionRate = 1 + (extractor.level - 1) * 0.50;
+            // +40 max storage per level
+            extractor.maxStorage = 50 + (extractor.level - 1) * 40;
+            // +20 max health per level
+            extractor.maxHealth = 100 + (extractor.level - 1) * 20;
+            extractor.health = Math.min(extractor.health + 20, extractor.maxHealth);
 
             return { success: true, type: 'extractor', level: extractor.level };
         }
