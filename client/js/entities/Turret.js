@@ -91,19 +91,19 @@ export class Turret {
         this.level++;
         const levelBonus = this.level - 1;
 
-        // +5% of base damage per level (level 100: base * 5.95)
-        this.config.damage = Math.floor(this.baseConfig.damage * (1 + levelBonus * 0.05));
+        // +10% of base damage per level (level 100: base * 10.9)
+        this.config.damage = Math.floor(this.baseConfig.damage * (1 + levelBonus * 0.10));
 
-        // +3% of base range per level (level 100: base * 3.97)
-        this.config.range = this.baseConfig.range * (1 + levelBonus * 0.03);
+        // +6% of base range per level (level 100: base * 6.94)
+        this.config.range = this.baseConfig.range * (1 + levelBonus * 0.06);
 
-        // -2% fire rate per level (level 100: ~66% faster)
-        const fireRateBonus = 1 + levelBonus * 0.02;
+        // -5% fire rate per level (level 100: ~6x faster)
+        const fireRateBonus = 1 + levelBonus * 0.05;
         this.config.fireRate = Math.max(0.02, this.baseConfig.fireRate / fireRateBonus);
 
-        // +3% of base health per level
-        this.maxHealth = Math.floor((this.baseConfig.maxHealth || 100) * (1 + levelBonus * 0.03));
-        this.health = Math.min(this.health + 10, this.maxHealth);
+        // +5% of base health per level
+        this.maxHealth = Math.floor((this.baseConfig.maxHealth || 100) * (1 + levelBonus * 0.05));
+        this.health = Math.min(this.health + 20, this.maxHealth);
 
         this.range = this.config.range * this.grid.cellSize;
 

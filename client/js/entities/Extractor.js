@@ -69,10 +69,13 @@ export class Extractor {
         if (this.level >= this.maxLevel) return false;
 
         this.level++;
-        // +50% extraction rate per level
-        this.extractionRate = (this.config.extractionRate || 1) * (1 + (this.level - 1) * 0.5);
-        // +20 max storage per level
-        this.maxStorage = 50 + (this.level - 1) * 20;
+        // +50% extraction rate per level (level 100: 50.5/s)
+        this.extractionRate = 1 + (this.level - 1) * 0.50;
+        // +40 max storage per level
+        this.maxStorage = 50 + (this.level - 1) * 40;
+        // +20 max health per level
+        this.maxHealth = 100 + (this.level - 1) * 20;
+        this.health = Math.min(this.health + 20, this.maxHealth);
 
         return true;
     }
