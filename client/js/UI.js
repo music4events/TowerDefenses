@@ -265,12 +265,23 @@ export class UI {
         };
         const resColor = resourceColors[stats.resourceType] || '#ffffff';
 
+        // Production display with nexus bonus
+        const productionDisplay = stats.hasNexusBonus
+            ? `${stats.extractionRate}/s <span class="boosted">(${stats.effectiveRate}/s)</span>`
+            : `${stats.extractionRate}/s`;
+
+        // Nexus bonus indicator
+        const nexusBoostHtml = stats.hasNexusBonus
+            ? `<div class="stat boosts"><span class="stat-label">Bonus</span><span class="boost-tags"><span class="boost-nexus" title="Nexus +${stats.nexusBonusPercent}%">NEXUS +${stats.nexusBonusPercent}%</span></span></div>`
+            : '';
+
         this.selectionDetails.innerHTML = `
             <div class="stat"><span class="stat-label">Nom</span><span style="color:${resColor}">${stats.name}</span></div>
             <div class="stat"><span class="stat-label">Niveau</span><span>${stats.level}/${stats.maxLevel}</span></div>
             <div class="stat"><span class="stat-label">Vie</span><span>${Math.ceil(stats.health)}/${stats.maxHealth}</span></div>
-            <div class="stat"><span class="stat-label">Production</span><span>${stats.extractionRate}/s</span></div>
+            <div class="stat"><span class="stat-label">Production</span><span>${productionDisplay}</span></div>
             <div class="stat"><span class="stat-label">Stock</span><span>${stats.stored}/${stats.maxStorage}</span></div>
+            ${nexusBoostHtml}
             <div class="upgrade-cost">
                 <div class="stat"><span class="stat-label">Vente</span><span>${sellHtml}</span></div>
                 ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
@@ -323,28 +334,48 @@ export class UI {
             }
         }
 
-        // Build boost indicators
+        // Check if any boost is active (booster OR nexus)
+        const hasDamageBoost = stats.damageBoosted || stats.nexusDamageBoosted;
+        const hasRangeBoost = stats.rangeBoosted || stats.nexusRangeBoosted;
+        const hasSpeedBoost = stats.speedBoosted || stats.nexusSpeedBoosted;
+
+        // Build boost indicators with source info
         let boostHtml = '';
-        if (stats.speedBoosted || stats.damageBoosted || stats.rangeBoosted) {
-            boostHtml = '<div class="stat boosts">';
-            if (stats.speedBoosted) boostHtml += '<span class="boost-speed">SPD</span>';
-            if (stats.damageBoosted) boostHtml += '<span class="boost-damage">DMG</span>';
-            if (stats.rangeBoosted) boostHtml += '<span class="boost-range">RNG</span>';
-            boostHtml += '</div>';
+        if (hasSpeedBoost || hasDamageBoost || hasRangeBoost) {
+            boostHtml = '<div class="stat boosts"><span class="stat-label">Bonus</span><span class="boost-tags">';
+            if (hasSpeedBoost) {
+                let speedSources = [];
+                if (stats.speedBoosted) speedSources.push(`T+${stats.boosterSpeedPercent}%`);
+                if (stats.nexusSpeedBoosted) speedSources.push(`N+${stats.nexusSpeedPercent}%`);
+                boostHtml += `<span class="boost-speed" title="Cadence: ${speedSources.join(' ')}">SPD</span>`;
+            }
+            if (hasDamageBoost) {
+                let dmgSources = [];
+                if (stats.damageBoosted) dmgSources.push(`T+${stats.boosterDamagePercent}%`);
+                if (stats.nexusDamageBoosted) dmgSources.push(`N+${stats.nexusDamagePercent}%`);
+                boostHtml += `<span class="boost-damage" title="Degats: ${dmgSources.join(' ')}">DMG</span>`;
+            }
+            if (hasRangeBoost) {
+                let rngSources = [];
+                if (stats.rangeBoosted) rngSources.push(`T+${stats.boosterRangePercent}%`);
+                if (stats.nexusRangeBoosted) rngSources.push(`N+${stats.nexusRangePercent}%`);
+                boostHtml += `<span class="boost-range" title="Portee: ${rngSources.join(' ')}">RNG</span>`;
+            }
+            boostHtml += '</span></div>';
         }
 
-        // Damage display with boost
-        const damageDisplay = stats.damageBoosted
+        // Damage display with boost (show boosted value if any boost active)
+        const damageDisplay = hasDamageBoost
             ? `${stats.damage} <span class="boosted">(${stats.boostedDamage})</span>`
             : `${stats.damage}`;
 
         // Range display with boost
-        const rangeDisplay = stats.rangeBoosted
+        const rangeDisplay = hasRangeBoost
             ? `${stats.range} <span class="boosted">(${stats.boostedRange})</span>`
             : `${stats.range}`;
 
         // Fire rate display with boost
-        const fireRateDisplay = stats.speedBoosted
+        const fireRateDisplay = hasSpeedBoost
             ? `${stats.fireRate} <span class="boosted">(${stats.boostedFireRate})</span>`
             : `${stats.fireRate}`;
 

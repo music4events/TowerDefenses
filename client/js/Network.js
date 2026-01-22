@@ -526,6 +526,10 @@ export class Network {
                 localTurret.speedBoostAmount = serverTurret.speedBoostAmount || 0;
                 localTurret.damageBoostAmount = serverTurret.damageBoostAmount || 0;
                 localTurret.rangeBoostAmount = serverTurret.rangeBoostAmount || 0;
+                // Sync nexus bonus amounts
+                localTurret.nexusSpeedBoost = serverTurret.nexusSpeedBoost || 0;
+                localTurret.nexusDamageBoost = serverTurret.nexusDamageBoost || 0;
+                localTurret.nexusRangeBoost = serverTurret.nexusRangeBoost || 0;
             }
         }
 
@@ -624,6 +628,8 @@ export class Network {
                 localExtractor.level = serverExtractor.level || 1;
                 localExtractor.maxLevel = serverExtractor.maxLevel || 100;
                 localExtractor.extractionRate = serverExtractor.extractionRate || 1;
+                localExtractor.effectiveRate = serverExtractor.effectiveRate || localExtractor.extractionRate;
+                localExtractor.nexusMineBonus = serverExtractor.nexusMineBonus || 0;
                 localExtractor.health = serverExtractor.health || 100;
                 localExtractor.maxHealth = serverExtractor.maxHealth || 100;
                 localExtractor.stored = serverExtractor.stored || 0;

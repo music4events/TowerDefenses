@@ -125,14 +125,32 @@ export class Turret {
     }
 
     getStats() {
-        // Calculate boosted values
-        const rangeMult = 1 + (this.rangeBoostAmount || 0);
-        const damageMult = 1 + (this.damageBoostAmount || 0);
-        const speedMult = 1 + (this.speedBoostAmount || 0);
+        // Calculate booster amounts (from booster turrets)
+        const boosterRange = this.rangeBoostAmount || 0;
+        const boosterDamage = this.damageBoostAmount || 0;
+        const boosterSpeed = this.speedBoostAmount || 0;
 
-        const boostedDamage = Math.floor(this.config.damage * damageMult);
-        const boostedRange = this.config.range * rangeMult;
-        const boostedFireRate = this.config.fireRate / speedMult;
+        // Calculate nexus bonus amounts
+        const nexusRange = this.nexusRangeBoost || 0;
+        const nexusDamage = this.nexusDamageBoost || 0;
+        const nexusSpeed = this.nexusSpeedBoost || 0;
+
+        // Total multipliers (base + booster + nexus)
+        const totalRangeMult = 1 + boosterRange + nexusRange;
+        const totalDamageMult = 1 + boosterDamage + nexusDamage;
+        const totalSpeedMult = 1 + boosterSpeed + nexusSpeed;
+
+        const boostedDamage = Math.floor(this.config.damage * totalDamageMult);
+        const boostedRange = this.config.range * totalRangeMult;
+        const boostedFireRate = this.config.fireRate / totalSpeedMult;
+
+        // Check if any boost is active
+        const hasBoosterSpeed = boosterSpeed > 0;
+        const hasBoosterDamage = boosterDamage > 0;
+        const hasBoosterRange = boosterRange > 0;
+        const hasNexusSpeed = nexusSpeed > 0;
+        const hasNexusDamage = nexusDamage > 0;
+        const hasNexusRange = nexusRange > 0;
 
         return {
             name: this.config.name,
@@ -146,10 +164,21 @@ export class Turret {
             boostedFireRate: (1 / boostedFireRate).toFixed(1) + '/s',
             health: this.health,
             maxHealth: this.maxHealth,
-            // Boost flags
-            speedBoosted: this.speedBoosted || false,
-            damageBoosted: this.damageBoosted || false,
-            rangeBoosted: this.rangeBoosted || false
+            // Booster turret flags
+            speedBoosted: hasBoosterSpeed,
+            damageBoosted: hasBoosterDamage,
+            rangeBoosted: hasBoosterRange,
+            // Nexus bonus flags
+            nexusSpeedBoosted: hasNexusSpeed,
+            nexusDamageBoosted: hasNexusDamage,
+            nexusRangeBoosted: hasNexusRange,
+            // Boost percentages for display
+            boosterSpeedPercent: Math.round(boosterSpeed * 100),
+            boosterDamagePercent: Math.round(boosterDamage * 100),
+            boosterRangePercent: Math.round(boosterRange * 100),
+            nexusSpeedPercent: Math.round(nexusSpeed * 100),
+            nexusDamagePercent: Math.round(nexusDamage * 100),
+            nexusRangePercent: Math.round(nexusRange * 100)
         };
     }
 

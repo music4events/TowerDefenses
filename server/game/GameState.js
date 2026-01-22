@@ -3385,31 +3385,46 @@ class GameState {
                 isAttackingWall: e.isAttackingWall || false,
                 ignoreWalls: e.ignoreWalls || false
             })),
-            turrets: validTurrets.map(t => ({
-                id: t.id,
-                type: t.type,
-                gridX: t.gridX,
-                gridY: t.gridY,
-                x: t.x,
-                y: t.y,
-                angle: t.angle,
-                level: t.level || 1,
-                maxLevel: t.maxLevel || 100,
-                damage: t.config?.damage,
-                range: t.config?.range,
-                fireRate: t.config?.fireRate,
-                aoeRange: t.config?.aoeRange,
-                health: t.health,
-                maxHealth: t.maxHealth || t.config?.maxHealth || 100,
-                homeX: t.homeX,
-                homeY: t.homeY,
-                speedBoosted: t.speedBoosted || false,
-                damageBoosted: t.damageBoosted || false,
-                rangeBoosted: t.rangeBoosted || false,
-                speedBoostAmount: t.speedBoostAmount || 0,
-                damageBoostAmount: t.damageBoostAmount || 0,
-                rangeBoostAmount: t.rangeBoostAmount || 0
-            })),
+            turrets: validTurrets.map(t => {
+                // Check if this turret is a booster (boosters don't receive boosts)
+                const isBooster = t.config?.isSpeedBooster || t.config?.isDamageBooster || t.config?.isRangeBooster || t.config?.isHealer;
+
+                // Nexus boosts apply to all non-booster turrets
+                const nexusSpeed = isBooster ? 0 : (this.nexusFireRateBonus || 0);
+                const nexusDamage = isBooster ? 0 : (this.nexusDamageBonus || 0);
+                const nexusRange = isBooster ? 0 : (this.nexusRangeBonus || 0);
+
+                return {
+                    id: t.id,
+                    type: t.type,
+                    gridX: t.gridX,
+                    gridY: t.gridY,
+                    x: t.x,
+                    y: t.y,
+                    angle: t.angle,
+                    level: t.level || 1,
+                    maxLevel: t.maxLevel || 100,
+                    damage: t.config?.damage,
+                    range: t.config?.range,
+                    fireRate: t.config?.fireRate,
+                    aoeRange: t.config?.aoeRange,
+                    health: t.health,
+                    maxHealth: t.maxHealth || t.config?.maxHealth || 100,
+                    homeX: t.homeX,
+                    homeY: t.homeY,
+                    // Booster turret flags
+                    speedBoosted: t.speedBoosted || false,
+                    damageBoosted: t.damageBoosted || false,
+                    rangeBoosted: t.rangeBoosted || false,
+                    speedBoostAmount: t.speedBoostAmount || 0,
+                    damageBoostAmount: t.damageBoostAmount || 0,
+                    rangeBoostAmount: t.rangeBoostAmount || 0,
+                    // Nexus bonus flags and amounts
+                    nexusSpeedBoost: nexusSpeed,
+                    nexusDamageBoost: nexusDamage,
+                    nexusRangeBoost: nexusRange
+                };
+            }),
             walls: validWalls.map(w => ({
                 id: w.id,
                 type: w.type || 'wall',
@@ -3421,21 +3436,27 @@ class GameState {
                 maxHealth: w.maxHealth || 200,
                 level: w.level || 0
             })),
-            extractors: validExtractors.map(e => ({
-                id: e.id,
-                gridX: e.gridX,
-                gridY: e.gridY,
-                x: e.x,
-                y: e.y,
-                resourceType: e.resourceType,
-                level: e.level || 1,
-                maxLevel: e.maxLevel || 100,
-                extractionRate: e.extractionRate || 1,
-                health: e.health || 100,
-                maxHealth: e.maxHealth || 100,
-                stored: e.stored || 0,
-                maxStorage: e.maxStorage || 50
-            })),
+            extractors: validExtractors.map(e => {
+                const baseRate = e.extractionRate || 1;
+                const effectiveRate = baseRate * (1 + (this.nexusMineBonus || 0));
+                return {
+                    id: e.id,
+                    gridX: e.gridX,
+                    gridY: e.gridY,
+                    x: e.x,
+                    y: e.y,
+                    resourceType: e.resourceType,
+                    level: e.level || 1,
+                    maxLevel: e.maxLevel || 100,
+                    extractionRate: baseRate,
+                    effectiveRate: effectiveRate,
+                    nexusMineBonus: this.nexusMineBonus || 0,
+                    health: e.health || 100,
+                    maxHealth: e.maxHealth || 100,
+                    stored: e.stored || 0,
+                    maxStorage: e.maxStorage || 50
+                };
+            }),
             projectiles: validProjectiles.map(p => ({
                 id: p.id,
                 type: p.type || 'bullet',

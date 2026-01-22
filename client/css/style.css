@@ -627,6 +627,21 @@ body {
     font-weight: bold;
 }
 
+#selection-details .boost-nexus {
+    background: linear-gradient(90deg, #e94560, #9b59b6);
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+#selection-details .boost-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
 #selection-details .max-level {
     color: #ffd700;
     font-weight: bold;

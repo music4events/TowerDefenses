@@ -26,14 +26,22 @@ export class Extractor {
     }
 
     getStats() {
+        const baseRate = this.extractionRate || 1;
+        const effectiveRate = this.effectiveRate || baseRate;
+        const nexusBonus = this.nexusMineBonus || 0;
+        const hasNexusBonus = nexusBonus > 0;
+
         return {
             name: `Mine de ${this.resourceType}`,
             level: this.level,
             maxLevel: this.maxLevel,
             health: this.health,
             maxHealth: this.maxHealth,
-            extractionRate: this.extractionRate.toFixed(2),
-            stored: this.stored,
+            extractionRate: baseRate.toFixed(2),
+            effectiveRate: effectiveRate.toFixed(2),
+            hasNexusBonus: hasNexusBonus,
+            nexusBonusPercent: Math.round(nexusBonus * 100),
+            stored: Math.floor(this.stored || 0),
             maxStorage: this.maxStorage,
             resourceType: this.resourceType
         };
