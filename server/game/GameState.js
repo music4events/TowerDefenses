@@ -2532,6 +2532,13 @@ class GameState {
     }
 
     updateProjectiles(deltaTime) {
+        // Limit projectiles to prevent memory issues (max 5000)
+        const MAX_PROJECTILES = 5000;
+        if (this.projectiles.length > MAX_PROJECTILES) {
+            // Remove oldest projectiles (keep newest ones)
+            this.projectiles = this.projectiles.slice(-MAX_PROJECTILES);
+        }
+
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const proj = this.projectiles[i];
             if (!proj) {
@@ -3371,6 +3378,12 @@ class GameState {
     }
 
     serializeForSync() {
+        // Limit pending effects to prevent memory buildup (max 500)
+        const MAX_EFFECTS = 500;
+        if (this.pendingEffects.length > MAX_EFFECTS) {
+            this.pendingEffects = this.pendingEffects.slice(-MAX_EFFECTS);
+        }
+
         // Capture effects before clearing
         const effectsToSend = this.pendingEffects.slice();
         this.pendingEffects = []; // Clear after capturing
@@ -3381,6 +3394,18 @@ class GameState {
         const validWalls = this.walls.filter(w => w);
         const validExtractors = this.extractors.filter(e => e);
         const validProjectiles = this.projectiles.filter(p => p);
+
+        // Memory cleanup: compact arrays to release memory from dead objects
+        this.enemies = validEnemies;
+        this.projectiles = validProjectiles;
+
+        // Reduce sync frequency under high load (>2000 enemies = sync every 2nd frame)
+        const highLoad = validEnemies.length > 2000;
+        this.syncSkipCounter = (this.syncSkipCounter || 0) + 1;
+        if (highLoad && this.syncSkipCounter % 2 !== 0) {
+            // Skip this sync to reduce CPU/bandwidth
+            return null;
+        }
 
         // Increment sync counter - send full state every ~5 seconds (100 syncs at 20/sec)
         this.syncCounter = (this.syncCounter || 0) + 1;

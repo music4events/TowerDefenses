@@ -453,7 +453,9 @@ function startGameLoop(roomCode) {
     const SYNC_RATE = 20; // Send state to clients 20 times per second (reduced for bandwidth)
     let lastTime = Date.now();
     let lastSyncTime = Date.now();
+    let lastGCTime = Date.now();
     const syncInterval = 1000 / SYNC_RATE;
+    const GC_INTERVAL = 30000; // Garbage collection every 30 seconds
 
     const gameLoop = setInterval(() => {
         try {
@@ -477,10 +479,33 @@ function startGameLoop(roomCode) {
             // Send state to clients at SYNC_RATE
             if (now - lastSyncTime >= syncInterval) {
                 lastSyncTime = now;
-                io.to(roomCode).emit('gameState', {
-                    state: room.gameState.serializeForSync(),
-                    timestamp: now
-                });
+                const syncState = room.gameState.serializeForSync();
+                // Skip sync if null (high load throttling)
+                if (syncState) {
+                    io.to(roomCode).emit('gameState', {
+                        state: syncState,
+                        timestamp: now
+                    });
+                }
+            }
+
+            // Periodic memory cleanup (every 30 seconds)
+            if (now - lastGCTime >= GC_INTERVAL) {
+                lastGCTime = now;
+                const memUsage = process.memoryUsage();
+                const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+                const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+
+                // Log memory if high (> 500MB heap used)
+                if (heapUsedMB > 500) {
+                    console.log(`[Memory] Room ${roomCode}: ${heapUsedMB}MB / ${heapTotalMB}MB heap, ${room.gameState.enemies.length} enemies, ${room.gameState.projectiles.length} projectiles`);
+                }
+
+                // Force garbage collection if available and memory is high
+                if (global.gc && heapUsedMB > 800) {
+                    console.log(`[GC] Forcing garbage collection (${heapUsedMB}MB used)`);
+                    global.gc();
+                }
             }
 
             // Check game over
