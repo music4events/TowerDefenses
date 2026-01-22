@@ -506,7 +506,12 @@ export class Game {
 
             // Draw range when hovering or selected (check config exists)
             if ((turret === hoveredTurret || turret === this.selectedTurret) && turret.config?.range) {
-                this.renderer.drawRangeIndicator(turret.x, turret.y, turret.config.range);
+                // Calculate boosted range (booster turrets + nexus bonus)
+                const boosterRangeBoost = turret.rangeBoostAmount || 0;
+                const nexusRangeBoost = turret.nexusRangeBoost || 0;
+                const totalRangeMult = 1 + boosterRangeBoost + nexusRangeBoost;
+                const boostedRange = turret.config.range * totalRangeMult;
+                this.renderer.drawRangeIndicator(turret.x, turret.y, boostedRange);
             }
 
             // Draw healer beams

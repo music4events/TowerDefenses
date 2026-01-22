@@ -274,6 +274,11 @@ export class Renderer {
         const { x, y, config } = turret;
         if (!config) return;
 
+        // Calculate range multiplier from boosters and nexus
+        const boosterRangeBoost = turret.rangeBoostAmount || 0;
+        const nexusRangeBoost = turret.nexusRangeBoost || 0;
+        const rangeMult = 1 + boosterRangeBoost + nexusRangeBoost;
+
         // Draw drone connection line to home
         if (config.isDrone && turret.homeX !== undefined) {
             this.ctx.strokeStyle = 'rgba(147, 112, 219, 0.3)';
@@ -292,9 +297,9 @@ export class Renderer {
             this.ctx.fill();
         }
 
-        // Draw slowdown zone
+        // Draw slowdown zone (with boosted range)
         if (config.isSlowdown) {
-            const slowRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            const slowRange = (config.aoeRange || config.range) * this.grid.cellSize * rangeMult;
             this.ctx.fillStyle = 'rgba(136, 221, 255, 0.05)';
             this.ctx.beginPath();
             this.ctx.arc(x, y, slowRange, 0, Math.PI * 2);
@@ -305,9 +310,9 @@ export class Renderer {
             this.ctx.stroke();
         }
 
-        // Draw shockwave turret zone
+        // Draw shockwave turret zone (with boosted range)
         if (config.isShockwave) {
-            const shockRange = (config.aoeRange || config.range) * this.grid.cellSize;
+            const shockRange = (config.aoeRange || config.range) * this.grid.cellSize * rangeMult;
             const pulse = (Date.now() / 100) % (Math.PI * 2);
             const pulseAlpha = 0.1 + Math.sin(pulse) * 0.05;
 
