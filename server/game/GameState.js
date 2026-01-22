@@ -943,8 +943,6 @@ class GameState {
             const path = this.findPath(spawn.x, spawn.y, this.nexusX, this.nexusY);
             this.mainPaths[direction] = path || [];
         }
-
-        console.log(`[Pathfinding] Main paths calculated: N=${this.mainPaths.north.length}, E=${this.mainPaths.east.length}, S=${this.mainPaths.south.length}, W=${this.mainPaths.west.length}`);
     }
 
     // Find the nearest main path for an enemy position
@@ -1250,9 +1248,25 @@ class GameState {
 
     spawnEndlessEnemy() {
         try {
+            // Enemy limit to prevent lag (3000 max)
+            const MAX_ENEMIES = 3000;
+            const currentEnemyCount = this.enemies.length;
+
             // Progressive boss spawn rate: +1% every 10 waves
             const bossSpawnBonus = Math.floor(this.waveNumber / 10) * 0.01;
             const wave = this.waveNumber;
+
+            // Boss type names (prioritized when at enemy limit)
+            const bossTypes = [
+                'boss', 'flying-boss', 'carrier-boss', 'mega-boss', 'titan', 'devastator',
+                'leviathan', 'colossus', 'hive-queen', 'juggernaut', 'apocalypse', 'world-ender',
+                'titan-prime', 'void-herald', 'siege-breaker', 'swarm-emperor', 'inferno-lord',
+                'fortress-titan', 'sky-sovereign', 'harbinger-of-doom', 'oblivion-bringer',
+                'eternal-nightmare', 'dimensional-rift', 'chaos-incarnate', 'storm-bringer',
+                'plague-father', 'void-tyrant', 'primordial-terror', 'elder-god', 'cosmic-horror',
+                'death-incarnate', 'the-consumer', 'reality-shatterer', 'universe-devourer',
+                'void-emperor', 'omega-beast', 'genesis-destroyer', 'the-absolute'
+            ];
 
             // Choose enemy type based on wave number (difficulty = wave)
             const types = ['grunt'];
@@ -1318,7 +1332,15 @@ class GameState {
             // === THE FINAL BOSS (Wave 500+) ===
             if (wave >= 500 && Math.random() < 0.00005 + bossSpawnBonus) types.push('the-absolute');
 
-            const type = types[Math.floor(Math.random() * types.length)];
+            let type = types[Math.floor(Math.random() * types.length)];
+
+            // If at enemy limit, only spawn bosses
+            if (currentEnemyCount >= MAX_ENEMIES) {
+                if (!bossTypes.includes(type)) {
+                    // Not a boss and at limit - skip spawn
+                    return;
+                }
+            }
 
             // Pick random edge spawn point
             const edges = ['top', 'bottom', 'left', 'right'];
@@ -1383,6 +1405,9 @@ class GameState {
 
     spawnSplitterChild(spawn) {
         try {
+            // Skip if at enemy limit (3000)
+            if (this.enemies.length >= 3000) return;
+
             const config = ENEMY_TYPES[spawn.type];
             if (!config) return;
 
@@ -1423,6 +1448,9 @@ class GameState {
 
     spawnTransportUnit(transport, transportType) {
         try {
+            // Skip if at enemy limit (3000)
+            if (this.enemies.length >= 3000) return;
+
             const spawnType = transportType.spawnType || 'grunt';
             const spawnCount = transportType.spawnCount || 1;
             const config = ENEMY_TYPES[spawnType];

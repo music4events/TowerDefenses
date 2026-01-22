@@ -245,8 +245,6 @@ export class Grid {
             const path = this.findPath(spawn.x, spawn.y, this.nexusX, this.nexusY);
             this.mainPaths[direction] = path || [];
         }
-
-        console.log(`[Grid] Main paths calculated: N=${this.mainPaths.north.length}, E=${this.mainPaths.east.length}, S=${this.mainPaths.south.length}, W=${this.mainPaths.west.length}`);
     }
 
     // Find the nearest main path for an enemy position
