@@ -445,53 +445,29 @@ body {
 #graphics-settings {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    background: #16213e;
-    border-radius: 4px;
     flex-shrink: 0;
 }
 
-#graphics-settings span {
-    color: #8892b0;
-    font-size: 11px;
-}
-
-#particle-slider {
-    width: 70px;
-    height: 6px;
-    -webkit-appearance: none;
-    background: linear-gradient(to right, #0f3460, #e94560);
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#particle-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    background: #e94560;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 4px rgba(233, 69, 96, 0.5);
-}
-
-#particle-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: #e94560;
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 0 4px rgba(233, 69, 96, 0.5);
-}
-
-#particle-value {
-    min-width: 70px;
-    text-align: right;
+.effects-btn {
+    background: #16213e;
+    border: 2px solid #e94560;
+    border-radius: 6px;
+    padding: 6px 12px;
     color: #e94560;
+    font-size: 11px;
     font-weight: bold;
-    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.effects-btn.active {
+    background: #e94560;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(233, 69, 96, 0.5);
+}
+
+.effects-btn:hover {
+    transform: scale(1.05);
 }
 
 /* Action modes (Sell/Upgrade) */

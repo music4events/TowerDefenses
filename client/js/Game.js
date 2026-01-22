@@ -528,19 +528,24 @@ export class Game {
             this.renderer.drawEnemy(enemy);
         }
 
-        // Draw projectiles
-        for (const projectile of this.projectiles) {
-            this.renderer.drawProjectile(projectile);
+        // Draw projectiles, explosions, and effects (if enabled)
+        if (this.renderer.effectsEnabled) {
+            for (const projectile of this.projectiles) {
+                this.renderer.drawProjectile(projectile);
+            }
+
+            // Draw explosions
+            this.renderer.drawExplosions(deltaTime);
+
+            // Draw death effects
+            this.renderer.drawDeathEffects(deltaTime);
+
+            // Draw muzzle flashes and other particles
+            this.renderer.drawParticles(deltaTime);
+        } else {
+            // Still update explosion timers for cleanup even when effects are disabled
+            this.renderer.updateExplosionsOnly(deltaTime);
         }
-
-        // Draw explosions
-        this.renderer.drawExplosions(deltaTime);
-
-        // Draw death effects
-        this.renderer.drawDeathEffects(deltaTime);
-
-        // Draw muzzle flashes and other particles
-        this.renderer.drawParticles(deltaTime);
 
         // Draw all stars on top of everything
         this.renderer.drawAllStars();

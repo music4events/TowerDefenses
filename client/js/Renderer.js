@@ -29,10 +29,40 @@ export class Renderer {
         // Maximum rendered particles/effects (50-10000) - for performance optimization
         this.maxRenderedParticles = 5000;
         this.particlesRenderedThisFrame = 0;
+
+        // Effects toggle (projectiles, explosions, etc.)
+        this.effectsEnabled = true;
     }
 
     setMaxParticles(limit) {
         this.maxRenderedParticles = Math.max(50, Math.min(10000, limit));
+    }
+
+    setEffectsEnabled(enabled) {
+        this.effectsEnabled = enabled;
+    }
+
+    // Update explosions without drawing (for when effects are disabled)
+    updateExplosionsOnly(deltaTime) {
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const exp = this.explosions[i];
+            exp.time += deltaTime;
+            // Clean up expired explosions (max 2 seconds)
+            if (exp.time > 2.0) {
+                this.explosions.splice(i, 1);
+            }
+        }
+        // Also clear particles and death effects
+        this.particles = this.particles.filter(p => {
+            p.life -= deltaTime;
+            return p.life > 0;
+        });
+        for (let i = this.deathEffects.length - 1; i >= 0; i--) {
+            this.deathEffects[i].time += deltaTime;
+            if (this.deathEffects[i].time > 2.0) {
+                this.deathEffects.splice(i, 1);
+            }
+        }
     }
 
     // Reset counter at start of each frame

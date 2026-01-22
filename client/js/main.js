@@ -249,15 +249,14 @@ class App {
             });
         }
 
-        // Animation limit slider (50-10000)
-        const particleSlider = document.getElementById('particle-slider');
-        const particleValue = document.getElementById('particle-value');
-        if (particleSlider) {
-            particleSlider.addEventListener('input', () => {
-                const value = parseInt(particleSlider.value);
-                particleValue.textContent = value.toLocaleString() + ' anim.';
+        // Effects toggle button
+        const effectsBtn = document.getElementById('btn-toggle-effects');
+        if (effectsBtn) {
+            effectsBtn.addEventListener('click', () => {
+                const isActive = effectsBtn.classList.toggle('active');
+                effectsBtn.textContent = isActive ? '✨ Effets ON' : '❌ Effets OFF';
                 if (this.game && this.game.renderer) {
-                    this.game.renderer.setMaxParticles(value);
+                    this.game.renderer.setEffectsEnabled(isActive);
                 }
             });
         }
