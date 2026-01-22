@@ -1,3 +1,6 @@
+import { TURRET_TYPES } from './data/turrets.js';
+import { BUILDING_TYPES } from './data/buildings.js';
+
 export class UI {
     constructor(game) {
         this.game = game;
@@ -22,6 +25,7 @@ export class UI {
         this.selectionDetails = document.getElementById('selection-details');
 
         this.setupBuildButtons();
+        this.populateBuildStats();
         this.setupSkipButton();
         this.setupActionModes();
     }
@@ -44,6 +48,65 @@ export class UI {
                 this.game.inputHandler.setSelectedBuilding(building);
                 this.updateActionModeButtons();
             });
+        });
+    }
+
+    populateBuildStats() {
+        document.querySelectorAll('.build-btn').forEach(btn => {
+            const buildingType = btn.dataset.building;
+            let config = null;
+
+            if (buildingType.startsWith('turret-')) {
+                config = TURRET_TYPES[buildingType];
+            } else if (buildingType === 'extractor') {
+                config = BUILDING_TYPES[buildingType];
+            } else if (buildingType === 'wall') {
+                config = BUILDING_TYPES[buildingType];
+            }
+
+            if (!config) return;
+
+            // Create stats element
+            const statsEl = document.createElement('span');
+            statsEl.className = 'btn-stats';
+
+            if (buildingType.startsWith('turret-')) {
+                // Turret stats
+                const damage = config.damage || 0;
+                const range = config.range || 0;
+                const fireRate = config.fireRate ? (1 / config.fireRate).toFixed(1) : 0;
+
+                // Special turret indicators
+                let special = '';
+                if (config.isHealer) special = 'Heal';
+                else if (config.isSlowdown) special = 'Slow';
+                else if (config.isSpeedBooster) special = 'Spd+';
+                else if (config.isDamageBooster) special = 'Dmg+';
+                else if (config.isRangeBooster) special = 'Rng+';
+                else if (config.chainTargets) special = `x${config.chainTargets}`;
+                else if (config.laserCount) special = `x${config.laserCount}`;
+                else if (config.pelletCount) special = `x${config.pelletCount}`;
+                else if (config.missileCount) special = `x${config.missileCount}`;
+                else if (config.rocketCount) special = `x${config.rocketCount}`;
+                else if (config.flakCount) special = `x${config.flakCount}`;
+                else if (config.aoeRadius) special = `AoE`;
+
+                if (damage > 0) {
+                    statsEl.innerHTML = `<span class="stat-dmg">${damage}</span><span class="stat-rng">${range}</span><span class="stat-rate">${fireRate}/s</span>${special ? `<span class="stat-special">${special}</span>` : ''}`;
+                } else if (special) {
+                    statsEl.innerHTML = `<span class="stat-rng">${range}</span><span class="stat-special">${special}</span>`;
+                }
+            } else if (buildingType === 'extractor') {
+                statsEl.innerHTML = `<span class="stat-special">1/s</span>`;
+            } else if (buildingType === 'wall') {
+                statsEl.innerHTML = `<span class="stat-hp">${config.health || 200} HP</span>`;
+            }
+
+            // Insert stats after cost
+            const costEl = btn.querySelector('.btn-cost');
+            if (costEl && statsEl.innerHTML) {
+                costEl.after(statsEl);
+            }
         });
     }
 

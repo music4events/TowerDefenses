@@ -439,17 +439,17 @@ export const TURRET_TYPES = {
     'turret-laser-array': {
         name: 'Laser Array',
         gridSize: 3,
-        damage: 35,
-        range: 16,                // +4 portée!
-        fireRate: 0.15,
+        damage: 45,               // Dégâts augmentés
+        range: 18,                // +2 portée!
+        fireRate: 0.12,           // Plus rapide!
         color: '#32cd32',
         cost: { iron: 1000, copper: 400, gold: 160 },
 
         isLaserArray: true,
-        laserCount: 4,            // 4 lasers simultanes
+        laserCount: 8,            // 8 lasers simultanes (multi-targeting!)
         instantHit: true,
         beamColor: '#00ff00',
-        beamWidth: 3,
+        beamWidth: 4,
         pulseEffect: true,
 
         size: 2.8,

@@ -307,6 +307,58 @@ body {
     color: #1a1a2e;
 }
 
+/* Turret stats in build buttons */
+.btn-stats {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 9px;
+    margin-top: 2px;
+    opacity: 0.85;
+}
+
+.btn-stats span {
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+.stat-dmg {
+    background: #e94560;
+    color: #fff;
+}
+
+.stat-dmg::before {
+    content: "D:";
+    opacity: 0.7;
+}
+
+.stat-rng {
+    background: #4a9eff;
+    color: #fff;
+}
+
+.stat-rng::before {
+    content: "R:";
+    opacity: 0.7;
+}
+
+.stat-rate {
+    background: #2ecc71;
+    color: #fff;
+}
+
+.stat-special {
+    background: #9b59b6;
+    color: #fff;
+}
+
+.stat-hp {
+    background: #27ae60;
+    color: #fff;
+}
+
 /* Skip wave button */
 .skip-btn {
     display: block;
