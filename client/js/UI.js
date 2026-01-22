@@ -234,6 +234,7 @@ export class UI {
             <div class="stat nexus-bonus"><span class="stat-label">Bonus Degats</span><span class="boosted">+${stats.damageBonus}%</span></div>
             <div class="stat nexus-bonus"><span class="stat-label">Bonus Portee</span><span class="boosted">+${stats.rangeBonus}%</span></div>
             <div class="stat nexus-bonus"><span class="stat-label">Bonus Cadence</span><span class="boosted">+${stats.fireRateBonus}%</span></div>
+            <div class="stat nexus-bonus"><span class="stat-label">Bonus Mines</span><span class="boosted">+${stats.mineBonus}%</span></div>
             <div class="upgrade-cost">
                 ${upgradeCost ? `<div class="stat"><span class="stat-label">Upgrade</span><span>${upgradeHtml}</span></div>` : '<div class="stat max-level"><span class="stat-label">MAX LEVEL</span></div>'}
             </div>

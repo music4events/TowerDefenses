@@ -51,7 +51,7 @@ export class InputHandler {
             if (this.selectedBuilding && this.onPlace) {
                 this.onPlace(this.gridX, this.gridY, this.selectedBuilding);
             } else if (this.onSelect) {
-                this.onSelect(this.gridX, this.gridY);
+                this.onSelect(this.gridX, this.gridY, e.shiftKey);
             }
         } else if (e.button === 2) { // Right click
             this.selectedBuilding = null;

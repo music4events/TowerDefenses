@@ -96,8 +96,8 @@ export class Game {
         this.ui = new UI(this);
 
         // Setup input callbacks
-        this.inputHandler.onPlace = (x, y, building) => this.handleClick(x, y, building);
-        this.inputHandler.onSelect = (x, y) => this.handleClick(x, y, null);
+        this.inputHandler.onPlace = (x, y, building) => this.handleClick(x, y, building, false);
+        this.inputHandler.onSelect = (x, y, shiftKey) => this.handleClick(x, y, null, shiftKey);
 
         // Center camera on nexus
         this.centerCameraOnNexus();
@@ -240,7 +240,7 @@ export class Game {
         this.selectedTurret = null;
     }
 
-    handleClick(gridX, gridY, building) {
+    handleClick(gridX, gridY, building, shiftKey = false) {
         // If we have a building selected, try to place it
         if (building) {
             this.placeBuilding(gridX, gridY, building);
@@ -254,6 +254,9 @@ export class Game {
         const isNexus = this.nexus && gridX === this.nexus.gridX && gridY === this.nexus.gridY;
         const hasBuilding = turret || extractor || wall;
 
+        // Number of upgrades: 5 if shift is held, 1 otherwise
+        const upgradeCount = shiftKey ? 5 : 1;
+
         if (this.actionMode === 'sell' && hasBuilding) {
             this.sellBuilding(gridX, gridY);
             this.selectedTurret = null;
@@ -261,13 +264,18 @@ export class Game {
             this.selectedNexus = false;
         } else if (this.actionMode === 'upgrade') {
             if (isNexus) {
-                // Upgrade nexus
-                this.upgradeNexus();
+                // Upgrade nexus (multiple times if shift held)
+                for (let i = 0; i < upgradeCount; i++) {
+                    this.upgradeNexus();
+                }
                 this.selectedNexus = true;
                 this.selectedTurret = null;
                 this.selectedExtractor = null;
             } else if (turret || extractor || wall) {
-                this.upgradeBuilding(gridX, gridY);
+                // Upgrade building (multiple times if shift held)
+                for (let i = 0; i < upgradeCount; i++) {
+                    this.upgradeBuilding(gridX, gridY);
+                }
                 this.selectedTurret = turret || null;
                 this.selectedExtractor = extractor || null;
                 this.selectedNexus = false;

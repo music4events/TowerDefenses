@@ -877,10 +877,11 @@ class GameState {
         this.nexusMaxHealth = 1000;
         this.nexusLevel = 1;
         this.nexusMaxLevel = 50;
-        // Nexus bonuses applied to ALL turrets
-        this.nexusDamageBonus = 0;    // +2% per level
-        this.nexusRangeBonus = 0;     // +1% per level
-        this.nexusFireRateBonus = 0;  // +1% per level
+        // Nexus bonuses applied to ALL turrets and mines
+        this.nexusDamageBonus = 0;    // +10% per level
+        this.nexusRangeBonus = 0;     // +10% per level
+        this.nexusFireRateBonus = 0;  // +5% per level
+        this.nexusMineBonus = 0;      // +20% per level for mine generation
         this.waveNumber = 0;
         this.totalKills = 0;
         this.totalScore = 0;
@@ -1061,7 +1062,9 @@ class GameState {
             for (const extractor of this.extractors) {
                 if (!extractor) continue;
                 extractor.timer = (extractor.timer || 0) + adjustedDelta;
-                const extractionTime = 1 / (extractor.extractionRate || 1);
+                // Apply nexus mine bonus to extraction rate
+                const effectiveRate = (extractor.extractionRate || 1) * (1 + (this.nexusMineBonus || 0));
+                const extractionTime = 1 / effectiveRate;
                 if (extractor.timer >= extractionTime) {
                     extractor.timer = 0;
                     // Track stored (up to maxStorage)
@@ -3025,12 +3028,14 @@ class GameState {
         this.nexusLevel++;
         const levelBonus = this.nexusLevel - 1;
 
-        // +2% damage bonus per level for all turrets
-        this.nexusDamageBonus = levelBonus * 0.02;
-        // +1% range bonus per level for all turrets
-        this.nexusRangeBonus = levelBonus * 0.01;
-        // +1% fire rate bonus per level for all turrets
-        this.nexusFireRateBonus = levelBonus * 0.01;
+        // +10% damage bonus per level for all turrets
+        this.nexusDamageBonus = levelBonus * 0.10;
+        // +10% range bonus per level for all turrets
+        this.nexusRangeBonus = levelBonus * 0.10;
+        // +5% fire rate bonus per level for all turrets
+        this.nexusFireRateBonus = levelBonus * 0.05;
+        // +20% mine generation bonus per level
+        this.nexusMineBonus = levelBonus * 0.20;
 
         // Increase nexus max health by 5% per level
         this.nexusMaxHealth = Math.floor(1000 * (1 + levelBonus * 0.05));
@@ -3322,6 +3327,7 @@ class GameState {
             nexusDamageBonus: this.nexusDamageBonus,
             nexusRangeBonus: this.nexusRangeBonus,
             nexusFireRateBonus: this.nexusFireRateBonus,
+            nexusMineBonus: this.nexusMineBonus,
             waveNumber: this.waveNumber,
             grid: this.grid,
             resourceMap: this.resourceMap,
@@ -3359,6 +3365,7 @@ class GameState {
             nexusDamageBonus: this.nexusDamageBonus,
             nexusRangeBonus: this.nexusRangeBonus,
             nexusFireRateBonus: this.nexusFireRateBonus,
+            nexusMineBonus: this.nexusMineBonus,
             waveNumber: this.waveNumber,
             totalKills: this.totalKills,
             totalScore: this.totalScore,

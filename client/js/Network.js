@@ -290,6 +290,9 @@ export class Network {
                 if (state.nexusFireRateBonus !== undefined) {
                     this.game.nexus.fireRateBonus = state.nexusFireRateBonus;
                 }
+                if (state.nexusMineBonus !== undefined) {
+                    this.game.nexus.mineBonus = state.nexusMineBonus;
+                }
             }
             if (state.waveNumber !== undefined) {
                 this.game.waveNumber = state.waveNumber;

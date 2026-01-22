@@ -12,10 +12,11 @@ export class Nexus {
         this.level = 1;
         this.maxLevel = 50;
 
-        // Bonuses applied to all turrets
+        // Bonuses applied to all turrets and mines
         this.damageBonus = 0;
         this.rangeBonus = 0;
         this.fireRateBonus = 0;
+        this.mineBonus = 0;
     }
 
     takeDamage(amount) {
@@ -45,7 +46,8 @@ export class Nexus {
             maxHealth: this.maxHealth,
             damageBonus: Math.round(this.damageBonus * 100),
             rangeBonus: Math.round(this.rangeBonus * 100),
-            fireRateBonus: Math.round(this.fireRateBonus * 100)
+            fireRateBonus: Math.round(this.fireRateBonus * 100),
+            mineBonus: Math.round(this.mineBonus * 100)
         };
     }
 
