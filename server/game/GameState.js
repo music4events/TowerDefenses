@@ -1820,7 +1820,9 @@ class GameState {
         // Speed Booster - boosts nearby turrets' fire rate
         if (turret.config.isSpeedBooster) {
             const boostRange = (turret.config.range || 4) * this.cellSize;
-            const boostAmount = turret.config.fireRateBoost || 0.25;
+            const baseBoost = turret.config.fireRateBoost || 0.25;
+            const levelBonus = ((turret.level || 1) - 1) * 0.05; // +5% per level
+            const boostAmount = baseBoost + levelBonus;
 
             for (const other of this.turrets) {
                 if (other === turret) continue;
@@ -1839,7 +1841,9 @@ class GameState {
         // Damage Booster - boosts nearby turrets' damage
         if (turret.config.isDamageBooster) {
             const boostRange = (turret.config.range || 4) * this.cellSize;
-            const boostAmount = turret.config.damageBoost || 0.3;
+            const baseBoost = turret.config.damageBoost || 0.3;
+            const levelBonus = ((turret.level || 1) - 1) * 0.05; // +5% per level
+            const boostAmount = baseBoost + levelBonus;
 
             for (const other of this.turrets) {
                 if (other === turret) continue;
@@ -1858,7 +1862,9 @@ class GameState {
         // Range Booster - boosts nearby turrets' range
         if (turret.config.isRangeBooster) {
             const boostRange = (turret.config.range || 4) * this.cellSize;
-            const boostAmount = turret.config.rangeBoost || 0.25;
+            const baseBoost = turret.config.rangeBoost || 0.25;
+            const levelBonus = ((turret.level || 1) - 1) * 0.05; // +5% per level
+            const boostAmount = baseBoost + levelBonus;
 
             for (const other of this.turrets) {
                 if (other === turret) continue;
